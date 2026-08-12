@@ -1,8 +1,8 @@
-export async function translateArticle(text, target = 'zh') {
+export async function translateArticle(text, target = 'zh', options = {}) {
   const resp = await fetch('/api/translate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, target }),
+    body: JSON.stringify({ text, target, ...options }),
   });
 
   if (!resp.ok) {

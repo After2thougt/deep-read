@@ -1,76 +1,32 @@
 # Vocabulary Trainer
 
-A React + Vite web app with a Node.js backend for paragraph translation, dictionary lookup, and English grammar analysis.
+React + Vite frontend with an Express backend for translation, dictionary lookup, AI analysis, and SQLite-backed article and vocabulary storage.
 
-## Project structure
+## Local development
 
-- `src/` — React application, pages, components, API wrappers
-- `public/` — static assets
-- `backend/` — Express backend for translation, dictionary lookup, and AI analysis
-- `vite.config.js` — Vite dev server proxy configured to forward `/api` requests to the backend
-
-## Local setup
-
-1. Install dependencies in the root and backend folders:
-   ```bash
-   cd d:\Projects\vocabulary-trainer
-   npm install
-   cd backend
-   npm install
-   ```
-
-2. Copy backend environment file:
-   ```bash
-   cd backend
-   cp .env.example .env
-   ```
-
-3. Fill in `.env` with your API keys and provider configuration.
-
-4. Start the backend server:
-   ```bash
-   cd backend
-   node server.js
-   ```
-
-5. Start the frontend app:
-   ```bash
-   cd d:\Projects\vocabulary-trainer
-   npm run dev -- --host 127.0.0.1
-   ```
-
-## Backend environment variables
-
-The backend uses `backend/.env` to configure translation and analysis providers. Example values:
-
-- `TRANSLATE_PROVIDER` — `tencent`, `libre`, or `mock`
-- `OPENAI_API_BASE` — custom OpenAI/ChatAnywhere proxy URL
-- `OPENAI_API_MODE` — `chat_completions` or `responses`
-- `GOOGLE_GEMINI_API_KEY` — optional Gemini analysis key
-
-> Do not commit `.env` files. They are ignored by `.gitignore`.
-
-## GitHub upload steps
-
-After installing Git locally, run:
-
-```bash
-cd d:\Projects\vocabulary-trainer
-git init
-git add .
-git commit -m "Initial commit"
+```powershell
+cd D:\Projects\vocabulary-trainer
+npm install
+npm --prefix backend install
+Copy-Item .env.example .env
+npm start
 ```
 
-Then create a new repository on GitHub and add the remote:
+For a frontend development server with API proxying:
 
-```bash
-git remote add origin https://github.com/<your-username>/<repo-name>.git
-git branch -M main
-git push -u origin main
+```powershell
+npm run dev
 ```
 
-## Notes
+Set `DATABASE_PATH=./data/app.db` in `.env` for local storage. The backend creates tables safely with `CREATE TABLE IF NOT EXISTS` and uses SQLite WAL mode. API secrets stay in `.env`; browser code calls only `/api/...`.
 
-- The front-end uses a Vite proxy to forward `/api` requests to `http://localhost:3001`.
-- The backend includes support for Tencent translation and OpenAI/ChatAnywhere analysis.
-- Keep API keys out of Git by using `.env.example` as a template only.
+## Commands
+
+```powershell
+npm run build
+npm start
+npm run db:backup
+npm run db:restore -- D:\backups\app-YYYYMMDDTHHMMSSZ.db
+```
+
+Production configuration, Nginx, PM2, HTTPS, backups, updates, and rollback instructions are in [DEPLOY.md](DEPLOY.md).

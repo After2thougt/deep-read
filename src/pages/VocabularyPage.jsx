@@ -1,16 +1,40 @@
 import { useEffect, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { getVocabulary, removeVocabulary } from "../api/vocabulary";
+import { fetchVocabulary, removeVocabulary } from "../api/vocabulary";
 
 export default function VocabularyPage() {
   const [words, setWords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    setWords(getVocabulary());
+    let mounted = true;
+
+    async function loadVocabulary() {
+      try {
+        setLoading(true);
+        setError("");
+        const words = await fetchVocabulary();
+        if (mounted) setWords(words);
+      } catch (err) {
+        if (mounted) setError(err.message || "Unable to load vocabulary.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    loadVocabulary();
+    return () => { mounted = false; };
   }, []);
 
-  function removeWord(word) {
-    setWords(removeVocabulary(word));
+  async function removeWord(word) {
+    try {
+      setError("");
+      await removeVocabulary(word);
+      setWords((current) => current.filter((item) => item.word.toLowerCase() !== word.toLowerCase()));
+    } catch (err) {
+      setError(err.message || "Unable to remove word.");
+    }
   }
 
   return (
@@ -19,7 +43,9 @@ export default function VocabularyPage() {
         <p className="eyebrow">Your saved words</p>
         <h2>Vocabulary Bank</h2>
       </div>
-      {words.length === 0 ? (
+      {loading && <p className="side-message">Loading vocabulary…</p>}
+      {error && <p className="error-message">{error}</p>}
+      {!loading && !error && words.length === 0 ? (
         <p className="empty-vocabulary">No saved words yet. Look up a word in the reader, then save it here.</p>
       ) : (
         <div className="vocabulary-list">

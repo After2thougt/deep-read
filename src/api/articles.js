@@ -1,44 +1,21 @@
-const STORAGE_KEY = "deepread-articles";
+import { apiFetch } from "./http";
+import { normalizeArticle } from "./normalize";
 
-function readArticles() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
+export async function fetchArticles() {
+  const rows = await apiFetch("/api/articles");
+  return rows.map(normalizeArticle);
 }
 
-function writeArticles(articles) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
+export async function saveArticle({ id, title, content, highlights = [] }) {
+  const row = await apiFetch("/api/articles", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, title, content, highlights }),
+  });
+
+  return normalizeArticle(row);
 }
 
-export function getArticles() {
-  return readArticles();
-}
-
-export function saveArticle({ id, title, content }) {
-  const now = new Date().toISOString();
-  const articles = readArticles();
-  const existingArticle = articles.find((item) => item.id === id);
-  const article = {
-    id: id || crypto.randomUUID(),
-    title: title.trim() || "Untitled article",
-    content,
-    highlights: arguments[0].highlights ?? existingArticle?.highlights ?? [],
-    updatedAt: now,
-  };
-  const existingIndex = articles.findIndex((item) => item.id === article.id);
-  const updatedArticles = existingIndex === -1
-    ? [article, ...articles]
-    : articles.map((item) => (item.id === article.id ? { ...item, ...article } : item));
-
-  writeArticles(updatedArticles);
-  return article;
-}
-
-export function removeArticle(id) {
-  const updatedArticles = readArticles().filter((article) => article.id !== id);
-  writeArticles(updatedArticles);
-  return updatedArticles;
+export async function removeArticle(id) {
+  await apiFetch(`/api/articles/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

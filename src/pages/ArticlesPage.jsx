@@ -1,16 +1,40 @@
 import { useEffect, useState } from "react";
 import { BookOpen, Trash2 } from "lucide-react";
-import { getArticles, removeArticle } from "../api/articles";
+import { fetchArticles, removeArticle } from "../api/articles";
 
 export default function ArticlesPage({ onOpenArticle }) {
   const [articles, setArticles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    setArticles(getArticles());
+    let mounted = true;
+
+    async function loadArticles() {
+      try {
+        setLoading(true);
+        setError("");
+        const articles = await fetchArticles();
+        if (mounted) setArticles(articles);
+      } catch (err) {
+        if (mounted) setError(err.message || "Unable to load articles.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    loadArticles();
+    return () => { mounted = false; };
   }, []);
 
-  function deleteArticle(id) {
-    setArticles(removeArticle(id));
+  async function deleteArticle(id) {
+    try {
+      setError("");
+      await removeArticle(id);
+      setArticles((current) => current.filter((article) => article.id !== id));
+    } catch (err) {
+      setError(err.message || "Unable to delete article.");
+    }
   }
 
   return (
@@ -19,7 +43,9 @@ export default function ArticlesPage({ onOpenArticle }) {
         <p className="eyebrow">Your reading library</p>
         <h2>Saved Articles</h2>
       </div>
-      {articles.length === 0 ? (
+      {loading && <p className="side-message">Loading articles…</p>}
+      {error && <p className="error-message">{error}</p>}
+      {!loading && !error && articles.length === 0 ? (
         <p className="empty-vocabulary">No saved articles yet. Upload a TXT file or paste an article in Reader.</p>
       ) : (
         <div className="article-list">

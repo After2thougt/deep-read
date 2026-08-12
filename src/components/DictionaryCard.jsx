@@ -1,34 +1,26 @@
-import { Star } from "lucide-react";
+import { Check, Star, Volume2 } from "lucide-react";
 
-function getDefinition(result) {
-  if (result.definition) return result.definition;
-  if (Array.isArray(result.definitions)) return result.definitions[0];
-  return "No definition available.";
-}
+function getDefinition(result) { return result.definition || (Array.isArray(result.definitions) ? result.definitions[0] : null) || "No definition available."; }
+function getExample(result) { return result.example || (Array.isArray(result.examples) ? result.examples[0] : null) || ""; }
 
-function getExample(result) {
-  if (result.example) return result.example;
-  if (Array.isArray(result.examples)) return result.examples[0];
-  return "No example available.";
-}
+export default function DictionaryCard({ result, isSaved, isSaving, onSave, syncMessage }) {
+  function pronounceWord() {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(result.word);
+    utterance.lang = "en-US";
+    utterance.rate = 0.85;
+    window.speechSynthesis.speak(utterance);
+  }
 
-export default function DictionaryCard({ result, isSaved, isSaving, isSynced, onSave, syncMessage }) {
-  return (
-    <section className="dictionary" aria-live="polite">
-      <p className="eyebrow">Dictionary</p>
-      <h2>{result.word}</h2>
-      {result.phonetic && <p className="phonetic">{result.phonetic}</p>}
-      {result.partOfSpeech && <p className="part-of-speech">{result.partOfSpeech}</p>}
-      <p>{getDefinition(result)}</p>
-      <div className="example">
-        <strong>Example</strong>
-        <p>{getExample(result)}</p>
-      </div>
-      <button className="primary-button" onClick={onSave} disabled={isSaving || isSynced}>
-        <Star size={18} fill={isSaved ? "currentColor" : "none"} />
-        {isSaving ? "Saving…" : isSynced ? "Saved & Synced to Eudic" : isSaved ? "Sync to Eudic" : "Save to Vocabulary"}
-      </button>
-      {syncMessage && <p className="sync-message">{syncMessage}</p>}
-    </section>
-  );
+  return <section className="dictionary" aria-live="polite">
+    <div className="dictionary-title"><div><div className="dictionary-word-row"><h3>{result.word}</h3><button className="pronunciation-button" type="button" onClick={pronounceWord} aria-label={`Pronounce ${result.word}`} title="Pronounce word"><Volume2 size={17} /></button></div>{result.phonetic && <p className="phonetic">{result.phonetic}</p>}</div>{result.partOfSpeech && <span className="part-of-speech">{result.partOfSpeech}</span>}</div>
+    <p className="dictionary-definition">{getDefinition(result)}</p>
+    {getExample(result) && <div className="example"><strong>Example</strong><p>{getExample(result)}</p></div>}
+    <button className="primary-button dictionary-save" type="button" onClick={onSave} disabled={isSaving || isSaved}>
+      {isSaved ? <Check size={18} /> : <Star size={18} />}
+      {isSaving ? "Saving..." : isSaved ? "Saved" : "Save word"}
+    </button>
+    {syncMessage && <p className="sync-message">{syncMessage}</p>}
+  </section>;
 }

@@ -49,13 +49,13 @@ export default function ArticleInput({
         </div>
         <div className="article-actions">
           <button className="secondary-button" onClick={() => setIsCollapsed(false)} type="button">
-            <Pencil size={18} /> Edit article
+            <Pencil size={18} /> Edit
           </button>
           <button className="secondary-button" onClick={startNewArticle} type="button">
-            <FilePlus2 size={18} /> New article
+            <FilePlus2 size={18} /> New
           </button>
           <button className="primary-button save-article-button" onClick={onSave} type="button">
-            <Save size={18} /> Save article
+            <Save size={18} /> Save
           </button>
         </div>
       </section>
