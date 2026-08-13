@@ -518,11 +518,12 @@ Every hardSentences item MUST include:
 sentence: the exact complete source sentence;
 difficulty: a concise level;
 reason: why this sentence is difficult;
-sentenceStructure: a clear step-by-step clause and phrase map of THIS sentence, including word order;
+sentenceStructure: a clear pipe-separated text (grammar type) fallback map of THIS sentence, including word order;
+sentenceStructureGroups: an array of 1-4 reliable syntax groups. Each group has label (use Main Clause, Coordinate Clause, Subordinate Clause, Relative Clause, Absolute Construction, Participial Phrase, Infinitive Phrase, Prepositional Phrase only when genuinely supported) and tokens (array of {text, type}). Preserve source order. Do not invent clause relationships. Put simple modifiers inline with their owning group when possible;
 grammarExplanation: a concrete, sentence-specific explanation of the grammar and why it matters for a learner. Do not use placeholders such as "may contain complex structure";
 literaryAnalysis: evidence-based comment, or say that literary value is limited;
 chineseUnderstanding: natural Chinese meaning.
-The fields sentenceStructure, grammarExplanation, and literaryAnalysis are mandatory for every selected sentence. Do not return a separate structure field.
+The fields sentenceStructure, sentenceStructureGroups, grammarExplanation, and literaryAnalysis are mandatory for every selected sentence. Do not return a separate structure field.
 vocabularyAnalysis: extract 3-8 useful words from the entire current page, each with word, partOfSpeech, level, meaning, usage. Prefer C1/C2, literary, classical, formal, uncommon, potentially misleading, or contextually special words. Never include basic words such as the, room, night, and, or was. Use Formal, Literary, Archaic, or Advanced when an exact CEFR level is uncertain.
 phraseCollocations: extract 3-6 important page-level phrases, each with phrase, meaning, context, usage, example. State literary colouring in usage when relevant.
 Preserve the exact source sentence text and do not invent facts.
@@ -959,9 +960,161 @@ app.post("/api/eudic/vocabulary", async (req, res) => {
   }
 });
 
+function parseListNumber(value, fallback, max = 50) {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
+}
+
 app.get('/api/articles', async (req, res) => {
+  const page = parseListNumber(req.query.page, 1, Number.MAX_SAFE_INTEGER);
+  const limit = parseListNumber(req.query.limit, 10);
+  const tag = typeof req.query.tag === 'string' ? req.query.tag : 'all';
+  const params = [];
+  let where = '';
+
+  if (tag === 'untagged') {
+    where = 'WHERE NOT EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id)';
+  } else if (tag !== 'all') {
+    const tagId = Number(tag);
+    if (!Number.isInteger(tagId) || tagId <= 0) return res.status(400).json({ error: 'Invalid tag filter.' });
+    where = 'WHERE EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id AND at.tag_id = ?)';
+    params.push(tagId);
+  }
+
   try {
-    return res.json(db.prepare('SELECT * FROM articles ORDER BY updated_at DESC').all().map(serializeArticle));
+    const total = db.prepare(`SELECT COUNT(*) AS count FROM articles a ${where}`).get(...params).count;
+    const rows = db.prepare(`SELECT a.id, a.title, a.updated_at, length(a.content) AS content_length
+      FROM articles a ${where} ORDER BY a.updated_at DESC LIMIT ? OFFSET ?`)
+      .all(...params, limit, (page - 1) * limit);
+    const ids = rows.map((row) => row.id);
+    const tagsByArticle = new Map(ids.map((id) => [id, []]));
+    if (ids.length) {
+      const placeholders = ids.map(() => '?').join(',');
+      const tagRows = db.prepare(`SELECT at.article_id, t.id, t.name
+        FROM article_tags at JOIN tags t ON t.id = at.tag_id
+        WHERE at.article_id IN (${placeholders}) ORDER BY t.name COLLATE NOCASE`).all(...ids);
+      for (const row of tagRows) tagsByArticle.get(row.article_id).push({ id: row.id, name: row.name });
+    }
+    const untaggedTotal = db.prepare(`SELECT COUNT(*) AS count FROM articles a
+      WHERE NOT EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id)`).get().count;
+    const allTotal = db.prepare('SELECT COUNT(*) AS count FROM articles').get().count;
+    const tags = db.prepare(`SELECT t.id, t.name, t.created_at, t.updated_at,
+      COUNT(at.article_id) AS article_count
+      FROM tags t LEFT JOIN article_tags at ON at.tag_id = t.id
+      GROUP BY t.id ORDER BY t.name COLLATE NOCASE`).all();
+    return res.json({
+      items: rows.map((row) => ({ ...row, tags: tagsByArticle.get(row.id) || [] })),
+      tags,
+      total,
+      allTotal,
+      untaggedTotal,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/tags', (req, res) => {
+  try {
+    return res.json(db.prepare(`SELECT t.id, t.name, t.created_at, t.updated_at,
+      COUNT(at.article_id) AS article_count
+      FROM tags t LEFT JOIN article_tags at ON at.tag_id = t.id
+      GROUP BY t.id ORDER BY t.name COLLATE NOCASE`).all());
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to load tags.' });
+  }
+});
+
+app.get('/api/articles/:id/tags', (req, res) => {
+  try {
+    const article = db.prepare('SELECT id FROM articles WHERE id = ?').get(req.params.id);
+    if (!article) return res.status(404).json({ error: 'Article not found.' });
+    return res.json(db.prepare(`SELECT t.id, t.name, t.created_at, t.updated_at
+      FROM article_tags at JOIN tags t ON t.id = at.tag_id
+      WHERE at.article_id = ? ORDER BY t.name COLLATE NOCASE`).all(req.params.id));
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to load article tags.' });
+  }
+});
+
+app.post('/api/tags', (req, res) => {
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  if (!name) return res.status(400).json({ error: 'Tag name is required.' });
+  if (name.length > 80) return res.status(400).json({ error: 'Tag name is too long.' });
+  try {
+    const now = new Date().toISOString();
+    const result = db.prepare('INSERT INTO tags (name, created_at, updated_at) VALUES (?, ?, ?)').run(name, now, now);
+    return res.status(201).json(db.prepare('SELECT id, name, created_at, updated_at, 0 AS article_count FROM tags WHERE id = ?').get(result.lastInsertRowid));
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE')) return res.status(409).json({ error: 'That tag already exists.' });
+    return res.status(500).json({ error: 'Unable to create tag.' });
+  }
+});
+
+app.patch('/api/tags/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  if (!Number.isInteger(id) || id <= 0 || !name) return res.status(400).json({ error: 'Valid tag id and name are required.' });
+  if (name.length > 80) return res.status(400).json({ error: 'Tag name is too long.' });
+  try {
+    const result = db.prepare('UPDATE tags SET name = ?, updated_at = ? WHERE id = ?').run(name, new Date().toISOString(), id);
+    if (!result.changes) return res.status(404).json({ error: 'Tag not found.' });
+    return res.json(db.prepare(`SELECT t.id, t.name, t.created_at, t.updated_at, COUNT(at.article_id) AS article_count
+      FROM tags t LEFT JOIN article_tags at ON at.tag_id = t.id WHERE t.id = ? GROUP BY t.id`).get(id));
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE')) return res.status(409).json({ error: 'That tag already exists.' });
+    return res.status(500).json({ error: 'Unable to rename tag.' });
+  }
+});
+
+app.delete('/api/tags/:id', (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Valid tag id is required.' });
+  try {
+    const result = db.prepare('DELETE FROM tags WHERE id = ?').run(id);
+    return result.changes ? res.status(204).end() : res.status(404).json({ error: 'Tag not found.' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to delete tag.' });
+  }
+});
+
+app.post('/api/articles/:id/tags/:tagId', (req, res) => {
+  const articleId = String(req.params.id || '');
+  const tagId = Number(req.params.tagId);
+  if (!articleId || !Number.isInteger(tagId) || tagId <= 0) return res.status(400).json({ error: 'Valid article and tag are required.' });
+  try {
+    const article = db.prepare('SELECT id FROM articles WHERE id = ?').get(articleId);
+    const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
+    if (!article || !tag) return res.status(404).json({ error: 'Article or tag not found.' });
+    db.prepare('INSERT OR IGNORE INTO article_tags (article_id, tag_id, created_at) VALUES (?, ?, ?)').run(articleId, tagId, new Date().toISOString());
+    return res.status(204).end();
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to add tag to article.' });
+  }
+});
+
+app.delete('/api/articles/:id/tags/:tagId', (req, res) => {
+  const articleId = String(req.params.id || '');
+  const tagId = Number(req.params.tagId);
+  if (!articleId || !Number.isInteger(tagId) || tagId <= 0) return res.status(400).json({ error: 'Valid article and tag are required.' });
+  try {
+    db.prepare('DELETE FROM article_tags WHERE article_id = ? AND tag_id = ?').run(articleId, tagId);
+    return res.status(204).end();
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to remove tag from article.' });
+  }
+});
+
+app.get('/api/articles/:id', (req, res) => {
+  try {
+    const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
+    if (!article) return res.status(404).json({ error: 'Article not found.' });
+    const tags = db.prepare(`SELECT t.id, t.name FROM article_tags at
+      JOIN tags t ON t.id = at.tag_id WHERE at.article_id = ? ORDER BY t.name COLLATE NOCASE`).all(article.id);
+    return res.json({ ...serializeArticle(article), tags });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1031,8 +1184,22 @@ app.delete('/api/articles/:id/analysis', async (req, res) => {
 });
 
 app.get('/api/vocabulary', async (req, res) => {
+  const page = parseListNumber(req.query.page, 1, Number.MAX_SAFE_INTEGER);
+  const limit = parseListNumber(req.query.limit, 10);
+  const sort = req.query.sort === 'az' ? 'az' : 'recent';
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
+  const where = search ? 'WHERE LOWER(v.word) LIKE LOWER(?)' : '';
+  const params = search ? [`%${search}%`] : [];
+  const orderBy = sort === 'az' ? 'v.word COLLATE NOCASE ASC' : 'v.saved_at DESC';
+
   try {
-    return res.json(db.prepare('SELECT * FROM vocabulary ORDER BY saved_at DESC').all().map(serializeVocabulary));
+    const total = db.prepare(`SELECT COUNT(*) AS count FROM vocabulary v ${where}`).get(...params).count;
+    const rows = db.prepare(`SELECT v.*, a.title AS source_article_title
+      FROM vocabulary v LEFT JOIN articles a ON a.id = v.article_id
+      ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
+      .all(...params, limit, (page - 1) * limit)
+      .map(serializeVocabulary);
+    return res.json({ items: rows, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1065,9 +1232,10 @@ app.post('/api/vocabulary', async (req, res) => {
     db.prepare(`INSERT INTO vocabulary (id, word, definition, phonetic, part_of_speech, example, article_id, saved_at, next_review, review_count, ease_factor, interval, context_line, raw)
       VALUES (@id, @word, @definition, @phonetic, @part_of_speech, @example, @article_id, @saved_at, @next_review, @review_count, @ease_factor, @interval, @context_line, @raw)
       ON CONFLICT(word) DO UPDATE SET definition = excluded.definition, phonetic = excluded.phonetic,
-      part_of_speech = excluded.part_of_speech, example = excluded.example, article_id = excluded.article_id,
+      part_of_speech = excluded.part_of_speech, example = excluded.example,
       saved_at = excluded.saved_at, next_review = excluded.next_review, review_count = excluded.review_count,
-      ease_factor = excluded.ease_factor, interval = excluded.interval, context_line = excluded.context_line, raw = excluded.raw`).run(entry);
+      ease_factor = excluded.ease_factor, interval = excluded.interval, context_line = excluded.context_line,
+      raw = excluded.raw, article_id = COALESCE(vocabulary.article_id, excluded.article_id)`).run(entry);
     return res.status(201).json(serializeVocabulary(db.prepare('SELECT * FROM vocabulary WHERE word = ?').get(entry.word)));
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });

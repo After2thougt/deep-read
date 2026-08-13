@@ -10,14 +10,88 @@ function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   async function submit(event) {
-    event.preventDefault(); setError("");
-    const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ username, password }) });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) return setError(body.error || 'Login failed.');
-    onLogin(body.username);
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
+      });
+
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setError(body.error || "Login failed.");
+        return;
+      }
+
+      onLogin(body.username);
+    } catch {
+      setError("Unable to connect to the server.");
+    } finally {
+      setLoading(false);
+    }
   }
-  return <main className="auth-screen"><form className="auth-form" onSubmit={submit}><p className="eyebrow">DeepRead</p><h1>Sign in</h1><label className="input-label">Username<input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" required /></label><label className="input-label">Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required /></label>{error && <p className="error-message">{error}</p>}<button className="primary-button" type="submit">Sign in</button></form></main>;
+
+  return (
+    <main className="auth-screen">
+      <form className="auth-form" onSubmit={submit}>
+        <div className="auth-logo">
+          <BookOpen size={20} />
+        </div>
+
+        <h1>DeepRead</h1>
+
+        <p className="auth-subtitle">
+          Personal reading workspace
+        </p>
+
+        <div className="auth-fields">
+          <input
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            autoComplete="username"
+            placeholder="Username"
+            required
+            disabled={loading}
+          />
+
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            placeholder="Password"
+            required
+            disabled={loading}
+          />
+        </div>
+
+        {error && (
+          <p className="auth-error">
+            {error}
+          </p>
+        )}
+
+        <button
+          className="auth-submit"
+          type="submit"
+          disabled={loading}
+        >
+          {loading ? "Signing in..." : "Sign in"}
+        </button>
+      </form>
+    </main>
+  );
 }
 
 export default function App() {
@@ -59,7 +133,7 @@ export default function App() {
         <nav aria-label="Main navigation">
           <button className={page === "reader" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("reader")}>Reader</button>
           <button className={page === "articles" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("articles")}>My Articles</button>
-          <button className={page === "vocabulary" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("vocabulary")}>Vocabulary Bank</button>
+          <button className={page === "vocabulary" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("vocabulary")}>Vocabulary</button>
         </nav>
       </header>
       <MigrationBanner />

@@ -6,7 +6,9 @@ export function normalizeArticle(row) {
     title: row.title,
     content: row.content,
     highlights: row.highlights ?? [],
+    tags: Array.isArray(row.tags) ? row.tags : [],
     updatedAt: row.updated_at ?? row.updatedAt,
+    contentLength: row.content_length ?? row.contentLength,
   };
 }
 
@@ -34,5 +36,6 @@ export function normalizeVocabulary(row) {
     definitions: row.definitions,
     examples: row.examples,
     synonyms: row.synonyms,
+    sourceArticleTitle: row.source_article_title ?? row.sourceArticleTitle,
   };
 }
