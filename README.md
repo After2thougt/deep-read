@@ -1,11 +1,11 @@
-# Vocabulary Trainer
+# DeepRead
 
 React + Vite frontend with an Express backend for translation, dictionary lookup, AI analysis, and SQLite-backed article and vocabulary storage.
 
 ## Local development
 
 ```powershell
-cd D:\Projects\vocabulary-trainer
+cd <path-to-deepread>
 npm install
 npm --prefix backend install
 Copy-Item backend\.env.example .env
