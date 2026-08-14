@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { getWords } from "../utils/text";
+import { generateId } from "../utils/id";
 
 function splitParagraphs(text) {
   const parts = String(text || "").split(/(\r?\n\s*\r?\n)/);
@@ -288,7 +289,7 @@ export default function Reader({
     if (!selection) return;
 
     onSaveUnderline({
-      id: crypto.randomUUID(),
+      id: generateId("underline"),
       start: articleOffset + selection.start,
       end: articleOffset + selection.end,
       text: selection.text,

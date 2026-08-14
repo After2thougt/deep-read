@@ -4,6 +4,21 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const https = require("https");
 const crypto = require("crypto");
+
+function generateId(prefix = 'id') {
+  // Avoid crypto.randomUUID() because some runtimes/polyfills may not expose it.
+  // Node.js has crypto.randomBytes; use that first.
+  try {
+    const bytes = crypto.randomBytes(16);
+    // 32 hex chars + time prefix keeps it unique without relying on UUID APIs.
+    const rand = bytes.toString('hex');
+    return `${prefix}-${Date.now().toString(36)}-${rand}`;
+  } catch {
+    // Extremely unlikely fallback.
+    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
 const path = require("path");
 
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
@@ -1128,7 +1143,7 @@ app.post('/api/articles', async (req, res) => {
 
   try {
     const now = new Date().toISOString();
-    const article = { id: id || crypto.randomUUID(), title: title.trim(), content, highlights: JSON.stringify(highlights), created_at: now, updated_at: now };
+    const article = { id: id || generateId('article'), title: title.trim(), content, highlights: JSON.stringify(highlights), created_at: now, updated_at: now };
     db.prepare(`INSERT INTO articles (id, title, content, highlights, created_at, updated_at)
       VALUES (@id, @title, @content, @highlights, @created_at, @updated_at)
       ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,
@@ -1213,7 +1228,7 @@ app.post('/api/vocabulary', async (req, res) => {
 
   try {
     const entry = {
-      id: id || crypto.randomUUID(),
+      id: id || generateId('vocab'),
       word: word.trim().toLowerCase(),
       definition: typeof definition === 'string' ? definition : null,
       phonetic: typeof phonetic === 'string' ? phonetic : null,
@@ -1284,7 +1299,7 @@ app.post('/api/sync', async (req, res) => {
     if (Array.isArray(articles)) {
       for (const a of articles) {
         const article = {
-          id: a.id || crypto.randomUUID(),
+          id: a.id || generateId('article'),
           title: (a.title || 'Untitled article').trim(),
           content: a.content || '',
           highlights: JSON.stringify(a.highlights || []),
@@ -1302,7 +1317,7 @@ app.post('/api/sync', async (req, res) => {
     if (Array.isArray(vocabulary)) {
       for (const v of vocabulary) {
         const entry = {
-          id: v.id || crypto.randomUUID(),
+          id: v.id || generateId('vocab'),
           word: (v.word || '').trim().toLowerCase(),
           definition: v.definition || null,
           phonetic: v.phonetic || null,
