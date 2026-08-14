@@ -328,41 +328,61 @@ function StudyResults({
           )}
         </section>
 
-        <section className="panel-section">
-          <p className="eyebrow">Vocabulary analysis</p>
-          <h2>Vocabulary Analysis</h2>
+        <section className="panel-section vocabulary-analysis-panel">
+  <div className="panel-heading">
+    <div>
+      <p className="eyebrow">Vocabulary analysis</p>
+      <h2>Vocabulary Analysis</h2>
+    </div>
 
-          {normalized.vocabulary.length ? (
-            <div className="vocabulary-table-wrap">
-              <table className="vocabulary-table">
-                <thead>
-                  <tr>
-                    <th>Word</th>
-                    <th>POS</th>
-                    <th>Level</th>
-                    <th>Meaning</th>
-                    <th>Usage &amp; Nuance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {normalized.vocabulary.map((word, index) => (
-                    <tr key={`${word.word}-${index}`}>
-                      <td>{word.word}</td>
-                      <td>{word.partOfSpeech || "-"}</td>
-                      <td>{word.level || "Advanced"}</td>
-                      <td>{word.meaning || "-"}</td>
-                      <td>{word.usage || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+    
+  </div>
+
+  {normalized.vocabulary.length ? (
+    <div className="vocabulary-analysis-list">
+      {normalized.vocabulary.map((word, index) => (
+        <article
+          className="vocabulary-analysis-card"
+          key={`${word.word}-${index}`}
+        >
+          <div className="vocabulary-analysis-card__top">
+            <div className="vocabulary-analysis-card__word">
+              {word.word}
             </div>
-          ) : (
-            <p className="panel-empty">
-              No vocabulary analysis was returned.
-            </p>
+
+            <div className="vocabulary-analysis-card__meta">
+              {word.partOfSpeech && (
+                <span>{word.partOfSpeech}</span>
+              )}
+
+              {word.level && (
+                <span>{word.level}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="vocabulary-analysis-card__meaning">
+            {word.meaning || "-"}
+          </div>
+
+          {word.usage && (
+            <div className="vocabulary-analysis-card__usage">
+              <span className="vocabulary-analysis-card__label">
+                Usage &amp; Nuance
+              </span>
+
+              <p>{word.usage}</p>
+            </div>
           )}
-        </section>
+        </article>
+      ))}
+    </div>
+  ) : (
+    <p className="panel-empty">
+      No vocabulary analysis was returned.
+    </p>
+  )}
+</section>
 
         <section className="panel-section">
           <p className="eyebrow">Phrase study</p>

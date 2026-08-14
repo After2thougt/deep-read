@@ -4,6 +4,7 @@ import ReaderPage from "./pages/ReaderPage";
 import VocabularyPage from "./pages/VocabularyPage";
 import ArticlesPage from "./pages/ArticlesPage";
 import MigrationBanner from "./components/MigrationBanner";
+import { prefetchArticles } from "./api/articles";
 import "./index.css";
 
 function LoginScreen({ onLogin }) {
@@ -132,7 +133,7 @@ export default function App() {
         <h1><BookOpen /> Turn pages, Open minds.</h1>
         <nav aria-label="Main navigation">
           <button className={page === "reader" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("reader")}>Reader</button>
-          <button className={page === "articles" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("articles")}>My Articles</button>
+          <button className={page === "articles" ? "nav-button active" : "nav-button"} onMouseEnter={prefetchArticles} onFocus={prefetchArticles} onClick={() => navigateTo("articles")}>My Articles</button>
           <button className={page === "vocabulary" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("vocabulary")}>Vocabulary</button>
         </nav>
       </header>

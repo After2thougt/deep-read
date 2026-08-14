@@ -734,6 +734,7 @@ Mobile
   display: grid;
   gap: 22px;
   align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
 
   transition: grid-template-columns 0.22s ease;
 }
@@ -1150,18 +1151,126 @@ Mobile
   margin: 3px 0 0;
 }
 
-.vocabulary-table-wrap {
-  overflow-x: auto;
-  margin-top: 12px;
+/* =========================================================
+   Vocabulary Analysis
+========================================================= */
+
+.vocabulary-analysis-panel {
+  min-width: 0;
 }
 
-.vocabulary-table {
-  width: 100%;
+.vocabulary-analysis-list {
+  display: grid;
+  gap: 8px;
 
-  border-collapse: collapse;
+  margin-top: 12px;
+
+  min-width: 0;
+}
+
+.vocabulary-analysis-card {
+  min-width: 0;
+
+  padding: 11px 12px;
+
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+
+  background: #fff;
+}
+
+.vocabulary-analysis-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+
+  min-width: 0;
+}
+
+.vocabulary-analysis-card__word {
+  min-width: 0;
+
+  color: #1e3a5f;
+
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+
+  overflow-wrap: anywhere;
+}
+
+.vocabulary-analysis-card__meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+
+  max-width: 45%;
+
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.vocabulary-analysis-card__meta span {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 20px;
+  padding: 2px 6px;
+
+  border-radius: 5px;
+
+  color: #64748b;
+  background: #f1f5f9;
+
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 650;
+}
+
+.vocabulary-analysis-card__meaning {
+  margin-top: 7px;
+
+  color: #334155;
+
+  font-size: 13px;
+  line-height: 1.65;
+
+  overflow-wrap: anywhere;
+}
+
+.vocabulary-analysis-card__usage {
+  margin-top: 9px;
+  padding-top: 9px;
+
+  border-top: 1px solid #eef2f7;
+}
+
+.vocabulary-analysis-card__label {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: #94a3b8;
+
+  font-size: 10px;
+  line-height: 1.3;
+  font-weight: 700;
+
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.vocabulary-analysis-card__usage p {
+  margin: 0;
+
+  color: #64748b;
 
   font-size: 12.5px;
-  line-height: 1.6;
+  line-height: 1.7;
+
+  overflow-wrap: anywhere;
 }
 
 .vocabulary-table th,
@@ -1431,6 +1540,133 @@ Mobile
 .translation-results__actions,
 .translation-results__count {
   display: none;
+}
+
+/* =========================================================
+   Responsive / Overflow Safety
+   防止 Analysis 面板把整个页面撑出横向滚动
+========================================================= */
+
+.learning-layout,
+.learning-layout--study-open,
+.learning-layout--dictionary-compact {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.reader-column,
+.learning-panel {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.learning-panel {
+  overflow-x: hidden;
+}
+
+/* Analysis 内部所有主要内容允许收缩 */
+.study-section,
+.study-results,
+.panel-section,
+.hard-sentence-card,
+.sentence-analysis,
+.phrase-list,
+.phrase-analysis,
+.overview-panel {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 长英文、长单词、AI 返回的长字符串 */
+.hard-sentence-heading,
+.hard-sentence-heading strong,
+.sentence-analysis,
+.sentence-analysis p,
+.overview-panel,
+.overview-panel p,
+.key-points,
+.key-points li,
+.phrase-analysis,
+.phrase-analysis p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* Sentence Structure */
+.structure-group,
+.structure-flow,
+.structure-token {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.structure-token__text,
+.structure-token__type {
+  overflow-wrap: anywhere;
+}
+
+/* AI Analysis 中的表格只允许表格自己横向滚动，
+   不要把整个页面撑宽 */
+.vocabulary-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vocabulary-table {
+  min-width: 520px;
+  max-width: none;
+}
+
+/* Translation */
+.translation-list,
+.translation-item,
+.translation-item__content,
+.translation-block {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.translation-block p {
+  overflow-wrap: anywhere;
+}
+
+/* =========================================================
+   Learning Layout Responsive
+========================================================= */
+
+@media (max-width: 1000px) {
+  .learning-layout,
+  .learning-layout--study-open,
+  .learning-layout--dictionary-compact {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .learning-panel {
+    position: static;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+
+@media (min-width: 1001px) {
+  .learning-layout {
+    min-width: 0;
+  }
+
+  .reader-column,
+  .learning-panel {
+    min-width: 0;
+  }
 }
 
 /* =========================================================
@@ -1996,6 +2232,7 @@ Mobile
 .vocabulary-controls {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 10px;
   margin-top: 18px;
 }
@@ -2006,6 +2243,7 @@ Mobile
   gap: 9px;
 
   flex: 1;
+  min-width: 0;
 
   width: 100%;
   height: 42px;
@@ -2078,6 +2316,59 @@ Mobile
   border-radius: 8px;
 
   background: #fff;
+}
+
+.vocabulary-group-control {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.vocabulary-group-control select {
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid #dbe2ea;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+}
+
+.article-vocabulary-group {
+  margin-top: 22px;
+}
+
+.article-vocabulary-group__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.article-vocabulary-group__header strong {
+  min-width: 0;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.article-vocabulary-group__header span {
+  flex: 0 0 auto;
+  color: #94a3b8;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.article-vocabulary-group .vocabulary-list {
+  margin-top: 0;
 }
 
 .vocabulary-sort button {
@@ -2182,24 +2473,30 @@ Mobile
 }
 
 .list-pagination {
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important;
   align-items: center;
   justify-content: center;
   gap: 8px;
 
+  width: 100%;
   margin-top: 16px;
 
   color: #64748b;
-
   font-size: 13px;
 }
 
 .vocabulary-page-button {
-  display: flex;
+  display: inline-flex !important;
+  flex: 0 0 28px !important;
+
+  flex-direction: row !important;
   align-items: center;
   justify-content: center;
 
   width: 28px;
+  min-width: 28px;
+  max-width: 28px;
   height: 28px;
 
   padding: 0;
@@ -2212,6 +2509,7 @@ Mobile
 
   font-size: 20px;
   line-height: 1;
+  box-sizing: border-box;
 }
 
 .vocabulary-page-button:hover:not(:disabled) {
@@ -3060,12 +3358,13 @@ Mobile
 
 @media (max-width: 560px) {
   .vocabulary-controls {
-    align-items: stretch;
-    flex-direction: column;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 
-  .vocabulary-sort {
-    align-self: flex-start;
+  .vocabulary-search {
+    min-width: 180px;
   }
 }
 

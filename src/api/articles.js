@@ -30,6 +30,10 @@ export function clearArticleListCache() {
   articleListCache.clear();
 }
 
+export function prefetchArticles() {
+  return fetchArticles({ page: 1, limit: 10, tag: "all" }).catch(() => null);
+}
+
 export async function fetchArticle(id) {
   return normalizeArticle(await apiFetch(`/api/articles/${encodeURIComponent(id)}`));
 }
