@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FilePlus2, Pencil, Save, Upload } from "lucide-react";
 import { uploadArticleImage } from "../api/articles";
-import { initialEditorBlocks } from "./article-editor-draft";
+import { initialEditorBlocks, editorSourceSignature } from "./article-editor-draft";
+import useDraft from "../hooks/useDraft";
 import "./article-editor.css";
 
 export default function ArticleInput({
   title,
   article,
+  articleId,
   blocks: propsBlocks,
   onTitleChange,
   onArticleChange,
@@ -26,6 +28,9 @@ export default function ArticleInput({
   const isComposing = useRef(false);
   const prevArticleRef = useRef(article);
   const initializedRef = useRef(false);
+  const selectedImageEl = useRef(null);
+  const isReplacingRef = useRef(false);
+  const checkedIdsRef = useRef(new Set());
 
   /* ---------- helpers ---------- */
 
@@ -60,20 +65,54 @@ export default function ArticleInput({
       : [{ type: "text", content: "" }];
   }
 
+  function createImageWrapper(src) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "article-editor-image";
+    wrapper.setAttribute("contenteditable", "false");
+    wrapper.setAttribute("data-block-type", "image");
+    wrapper.setAttribute("data-image-src", src);
+
+    const img = document.createElement("img");
+    img.src = src;
+    img.setAttribute("src", src);
+    img.draggable = false;
+    wrapper.appendChild(img);
+
+    const actions = document.createElement("div");
+    actions.className = "article-editor-image-actions";
+
+    const replaceBtn = document.createElement("button");
+    replaceBtn.className = "article-editor-image-action";
+    replaceBtn.type = "button";
+    replaceBtn.textContent = "Replace";
+    replaceBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      replaceImageBlock(wrapper);
+    });
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "article-editor-image-action article-editor-image-remove";
+    removeBtn.type = "button";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeImageBlock(wrapper);
+    });
+
+    actions.appendChild(replaceBtn);
+    actions.appendChild(removeBtn);
+    wrapper.appendChild(actions);
+
+    return wrapper;
+  }
+
   function renderBlocksToDOM(blks) {
     if (!editorRef.current) return;
+    selectedImageEl.current = null;
     editorRef.current.innerHTML = "";
     for (const block of blks) {
       if (block.type === "image" && block.content) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "article-editor-image";
-        wrapper.setAttribute("contenteditable", "false");
-        wrapper.setAttribute("data-block-type", "image");
-        const img = document.createElement("img");
-        img.src = block.content;
-        img.draggable = false;
-        wrapper.appendChild(img);
-        editorRef.current.appendChild(wrapper);
+        editorRef.current.appendChild(createImageWrapper(block.content));
       } else if (block.type === "text") {
         const div = document.createElement("div");
         div.textContent = block.content || "";
@@ -87,9 +126,31 @@ export default function ArticleInput({
     }
   }
 
+  /* ---------- draft ---------- */
+
+  const { readDraft, saveDraft, clearDraft } = useDraft(articleId);
+
+  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
+
+  function handleRestoreDraft() {
+    const draft = readDraft();
+    if (!draft?.blocks?.length) return;
+    setBlocks(draft.blocks);
+    renderBlocksToDOM(draft.blocks);
+    if (draft.title && onTitleChange) onTitleChange(draft.title);
+    if (onBlocksChange) onBlocksChange(draft.blocks);
+    if (onArticleChange) onArticleChange(blocksToText(draft.blocks));
+    setShowRestorePrompt(false);
+  }
+
+  function handleIgnoreDraft() {
+    setShowRestorePrompt(false);
+    // Draft intentionally preserved in localStorage
+  }
+
   /* ---------- lifecycle ---------- */
 
-  // First mount: populate DOM from props
+  // First mount: populate DOM from props, then check for draft
   useEffect(() => {
     if (!initializedRef.current) {
       const initBlocks = initialEditorBlocks(article, propsBlocks);
@@ -99,6 +160,25 @@ export default function ArticleInput({
       prevArticleRef.current = article;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // After first mount: check if a newer draft exists for this article
+  useEffect(() => {
+    if (!initializedRef.current) return;
+    const idKey = articleId || "__new__";
+    if (checkedIdsRef.current.has(idKey)) return;
+    checkedIdsRef.current.add(idKey);
+
+    const draft = readDraft();
+    if (!draft?.blocks?.length) return;
+
+    const current = initialEditorBlocks(article, propsBlocks);
+    if (
+      editorSourceSignature(null, draft.blocks) !==
+      editorSourceSignature(null, current)
+    ) {
+      setShowRestorePrompt(true);
+    }
+  }, [articleId, readDraft, article, propsBlocks]);
 
   // When article identity changes (new article opened), re-initialise DOM
   useEffect(() => {
@@ -111,6 +191,7 @@ export default function ArticleInput({
       prevEmpty !== currEmpty ||
       (article && prevArticleRef.current !== article)
     ) {
+      selectedImageEl.current = null;
       const initBlocks = initialEditorBlocks(article, propsBlocks);
       setBlocks(initBlocks);
       renderBlocksToDOM(initBlocks);
@@ -122,6 +203,14 @@ export default function ArticleInput({
   useEffect(() => {
     if (!article) setIsCollapsed(false);
   }, [article]);
+
+  // Auto-save blocks + title to localStorage on every change
+  useEffect(() => {
+    if (blocks.some((b) => b.content?.trim())) {
+      saveDraft(blocks, title);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, title]);
 
   /* ---------- DOM events ---------- */
 
@@ -218,17 +307,10 @@ export default function ArticleInput({
       const result = await uploadArticleImage(file);
       const url = result?.url || result?.path || "";
 
-      const wrapper = document.createElement("div");
-      wrapper.className = "article-editor-image";
-      wrapper.setAttribute("contenteditable", "false");
-      wrapper.setAttribute("data-block-type", "image");
-      const img = document.createElement("img");
-      img.src = url;
-      img.draggable = false;
-      wrapper.appendChild(img);
+      const newWrapper = createImageWrapper(url);
 
       if (placeholder.parentNode) {
-        placeholder.replaceWith(wrapper);
+        placeholder.replaceWith(newWrapper);
       }
     } catch {
       placeholder.textContent = "Upload failed. Remove this block or try again.";
@@ -236,6 +318,104 @@ export default function ArticleInput({
     }
 
     handleInput();
+  }
+
+  /* ---------- image management ---------- */
+
+  function selectImageBlock(wrapper) {
+    const prev = selectedImageEl.current;
+    if (prev && prev !== wrapper) {
+      prev.classList.remove("is-selected");
+    }
+    if (wrapper.classList.contains("is-selected")) {
+      wrapper.classList.remove("is-selected");
+      selectedImageEl.current = null;
+    } else {
+      wrapper.classList.add("is-selected");
+      selectedImageEl.current = wrapper;
+    }
+  }
+
+  function deselectAllImages() {
+    const prev = selectedImageEl.current;
+    if (prev) {
+      prev.classList.remove("is-selected");
+      selectedImageEl.current = null;
+    }
+  }
+
+  function removeImageBlock(wrapper) {
+    if (wrapper?.parentNode) {
+      wrapper.remove();
+      deselectAllImages();
+      handleInput();
+    }
+  }
+
+  async function replaceImageBlock(wrapper) {
+    if (isReplacingRef.current) return;
+    isReplacingRef.current = true;
+
+    const replaceBtn = wrapper.querySelector(".article-editor-image-action");
+    const originalText = replaceBtn?.textContent || "Replace";
+    if (replaceBtn) {
+      replaceBtn.textContent = "Uploading\u2026";
+      replaceBtn.disabled = true;
+    }
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file || !wrapper?.parentNode) {
+        isReplacingRef.current = false;
+        if (replaceBtn) {
+          replaceBtn.textContent = originalText;
+          replaceBtn.disabled = false;
+        }
+        return;
+      }
+
+      const img = wrapper.querySelector("img");
+      const oldSrc = img?.getAttribute("src") || "";
+      if (img) img.style.opacity = "0.4";
+
+      try {
+        const result = await uploadArticleImage(file);
+        const url = result?.url || result?.path || "";
+        if (img && url) {
+          img.src = url;
+          img.setAttribute("src", url);
+          img.style.opacity = "";
+          wrapper.setAttribute("data-image-src", url);
+        }
+      } catch {
+        if (img) {
+          img.src = oldSrc;
+          img.setAttribute("src", oldSrc);
+          img.style.opacity = "";
+        }
+      }
+
+      isReplacingRef.current = false;
+      if (replaceBtn) {
+        replaceBtn.textContent = originalText;
+        replaceBtn.disabled = false;
+      }
+
+      handleInput();
+    };
+    input.click();
+  }
+
+  function handleEditorClick(e) {
+    const imageWrapper = e.target.closest(".article-editor-image");
+    if (imageWrapper && editorRef.current?.contains(imageWrapper)) {
+      selectImageBlock(imageWrapper);
+    } else {
+      deselectAllImages();
+    }
   }
 
   /* ---------- save ---------- */
@@ -250,6 +430,8 @@ export default function ArticleInput({
         content: blocksToText(currentBlocks),
         blocks: currentBlocks,
       });
+      clearDraft();
+      setShowRestorePrompt(false);
     } finally {
       setIsSaving(false);
     }
@@ -302,10 +484,11 @@ export default function ArticleInput({
           </button>
           <button
             className="primary-button save-article-button"
-            onClick={onSave}
+            onClick={handleSave}
+            disabled={isSaving}
             type="button"
           >
-            <Save size={18} /> Save article
+            <Save size={18} /> {isSaving ? "Saving..." : "Save article"}
           </button>
         </div>
       </section>
@@ -318,6 +501,29 @@ export default function ArticleInput({
 
   return (
     <section className="article-input">
+      {showRestorePrompt && (
+        <div className="draft-restore-banner">
+          <span className="draft-restore-message">
+            ⚠️ Unsaved draft found for this article.
+          </span>
+          <div className="draft-restore-actions">
+            <button
+              className="primary-button"
+              type="button"
+              onClick={handleRestoreDraft}
+            >
+              Restore
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleIgnoreDraft}
+            >
+              Ignore
+            </button>
+          </div>
+        </div>
+      )}
       <div className="article-actions">
         <label className="upload-button">
           <Upload size={18} /> Upload TXT
@@ -385,6 +591,7 @@ export default function ArticleInput({
           isComposing.current = false;
           handleInput();
         }}
+        onClick={handleEditorClick}
       />
 
       {saveMessage && <p className="save-message">{saveMessage}</p>}

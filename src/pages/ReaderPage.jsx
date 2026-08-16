@@ -144,6 +144,43 @@ function normalizeAnalysis(value) {
 
 const PAGE_MAX_CHARACTERS = 1800;
 
+function splitBlockPages(blocks) {
+  const result = [];
+  let current = { blocks: [], text: "" };
+  let sourceOffset = 0;
+  const flush = () => {
+    if (current.blocks.length) result.push(current);
+    current = { blocks: [], text: "" };
+  };
+
+  for (const block of blocks) {
+    if (!block || !["text", "image"].includes(block.type)) continue;
+
+    if (block.type === "image") {
+      // Images are complete, non-text blocks. Keep them in the current
+      // content flow without contributing to the page character limit.
+      current.blocks.push(block);
+      continue;
+    }
+
+    const chunks = splitPageText(block.content);
+    for (const chunk of chunks) {
+      if (current.text && current.text.length + chunk.length > PAGE_MAX_CHARACTERS) flush();
+      if (chunk) {
+        current.blocks.push({ ...block, type: "text", content: chunk, textOffset: sourceOffset });
+        current.text += chunk;
+        sourceOffset += chunk.length;
+      }
+      if (current.text.length >= PAGE_MAX_CHARACTERS) flush();
+    }
+  }
+
+  flush();
+  return result.length
+    ? result
+    : [{ blocks: [{ type: "text", content: "" }], text: "" }];
+}
+
 function splitPageText(text) {
   const paragraphs = String(text || "").split(/(\r?\n\s*\r?\n)/);
   const pages = [];
@@ -433,6 +470,8 @@ export default function ReaderPage({
   onTitleChange,
   onArticleSaved,
   onNewArticle,
+  blocks = [],
+  onBlocksChange,
 }) {
   const [selectedWord, setSelectedWord] = useState(null);
   const [wordStatus, setWordStatus] = useState("idle");
@@ -464,12 +503,21 @@ export default function ReaderPage({
 
   const readerPageRef = useRef(null);
 
-  const pages = useMemo(() => splitPageText(article), [article]);
+  const hasBlocks = blocks.some((block) => block.type === "image");
+  const blockPages = useMemo(() => hasBlocks ? splitBlockPages(blocks) : [], [blocks, hasBlocks]);
+  const pages = useMemo(() => hasBlocks ? blockPages.map((page) => page.text) : splitPageText(article), [article, blockPages, hasBlocks]);
   const pageContent = pages[currentPage - 1] || "";
+  const pageBlocks = hasBlocks ? (blockPages[currentPage - 1]?.blocks || []) : null;
 
-  const pageOffset = pages
-    .slice(0, currentPage - 1)
-    .reduce((total, page) => total + page.length, 0);
+  const pageOffset = hasBlocks
+    ? blockPages
+      .slice(0, currentPage - 1)
+      .reduce((total, page) => total + page.blocks
+        .filter((block) => block.type === "text")
+        .reduce((sum, block) => sum + block.content.length, 0), 0)
+    : pages
+      .slice(0, currentPage - 1)
+      .reduce((total, page) => total + page.length, 0);
 
   const dictionaryExpanded =
     analyzing ||
@@ -502,7 +550,7 @@ export default function ReaderPage({
     setCurrentPage((page) => Math.min(page, pages.length));
     setTranslations(null);
     setAnalysis(null);
-  }, [article, pages.length]);
+  }, [article, blocks, pages.length]);
 
   function scrollReaderToTop() {
     requestAnimationFrame(() => {
@@ -569,15 +617,18 @@ export default function ReaderPage({
     changePage(target);
   }
 
-  async function saveCurrentArticle() {
+  async function saveCurrentArticle(draft = {}) {
     try {
       setSaveMessage("");
 
       const savedArticle = await saveArticle({
         id: articleId,
         title: articleTitle,
-        content: article,
+        content: typeof draft.content === "string" ? draft.content : article,
         highlights,
+        blocks: Array.isArray(draft.blocks)
+          ? draft.blocks
+          : (blocks.length ? blocks : undefined),
       });
 
       onArticleSaved(savedArticle);
@@ -876,6 +927,7 @@ export default function ReaderPage({
       ref={readerPageRef}
     >
       <ArticleInput
+        articleId={articleId}
         title={articleTitle}
         article={article}
         onTitleChange={onTitleChange}
@@ -889,6 +941,8 @@ export default function ReaderPage({
           setSaveMessage("");
         }}
         saveMessage={saveMessage}
+        blocks={blocks}
+        onBlocksChange={onBlocksChange}
       />
 
       {(translateError || analysisError) && (
@@ -927,6 +981,7 @@ export default function ReaderPage({
         <div className="reader-column">
           <Reader
             article={pageContent}
+            blocks={pageBlocks}
             articleOffset={pageOffset}
             pageEnd={pageOffset + pageContent.length}
             highlights={highlights}
