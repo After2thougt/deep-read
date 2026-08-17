@@ -5,6 +5,7 @@ export function normalizeArticle(row) {
     id: row.id,
     title: row.title,
     content: row.content,
+    blocks: Array.isArray(row.blocks) ? row.blocks : [],
     highlights: row.highlights ?? [],
     tags: Array.isArray(row.tags) ? row.tags : [],
     updatedAt: row.updated_at ?? row.updatedAt,

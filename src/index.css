@@ -396,6 +396,21 @@ textarea:focus {
   display: block;
 }
 
+.article-image-block {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.article-image {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: 600px;
+  object-fit: contain;
+  margin: 16px auto;
+}
+
 /* =========================================================
    Words
 ========================================================= */
@@ -3397,6 +3412,19 @@ Mobile
 
   .delete-modal-actions {
     flex-direction: column;
+  }
+}
+
+/* =========================================================
+Mobile — Article Images
+========================================================= */
+
+@media (max-width: 768px) {
+  .article-image {
+    max-width: 100%;
+    max-height: 400px;
+    height: auto;
+    object-fit: contain;
   }
 }
 

@@ -26,11 +26,11 @@ export default function ArticleInput({
   const editorRef = useRef(null);
   const inputTimer = useRef(null);
   const isComposing = useRef(false);
-  const prevArticleRef = useRef(article);
   const initializedRef = useRef(false);
   const selectedImageEl = useRef(null);
   const isReplacingRef = useRef(false);
   const checkedIdsRef = useRef(new Set());
+  const lastRenderedArticleIdRef = useRef(null);
 
   /* ---------- helpers ---------- */
 
@@ -43,26 +43,115 @@ export default function ArticleInput({
 
   function serializeDOMToBlocks() {
     if (!editorRef.current) return blocks;
+    // Use querySelectorAll to survive browser DOM restructuring inside contentEditable
+    const imageWrappers = Array.from(
+      editorRef.current.querySelectorAll(".article-editor-image")
+    );
+    const imagePositions = new Map();
+    for (const wrapper of imageWrappers) {
+      const pos = childNodeIndexOf(editorRef.current, wrapper);
+      if (pos >= 0) imagePositions.set(pos, wrapper);
+    }
+
     const nodes = Array.from(editorRef.current.childNodes);
     const result = [];
-    for (const node of nodes) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent || "";
-        if (text.trim()) result.push({ type: "text", content: text });
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        if (node.classList?.contains("article-editor-image")) {
-          const img = node.querySelector("img");
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      // Image block – detected via class match (handles both direct children
+      // and wrappers buried by browser quirks)
+      if (node.nodeType === Node.ELEMENT_NODE && node.classList?.contains("article-editor-image")) {
+        const img = node.querySelector("img");
+        const src = img?.getAttribute("src") || "";
+        if (src) result.push({ type: "image", content: src });
+        continue;
+      }
+      // If an image wrapper exists deeper in this child (browser wrapping), extract it
+      if (imagePositions.has(i)) {
+        const wrapper = imagePositions.get(i);
+        const img = wrapper.querySelector("img");
+        const src = img?.getAttribute("src") || "";
+        if (src) result.push({ type: "image", content: src });
+        continue;
+      }
+      // Also check whether this node CONTAINS an image wrapper as a descendant
+      if (node.nodeType === Node.ELEMENT_NODE && !node.classList?.contains("article-editor-image")) {
+        const innerImage = node.querySelector(".article-editor-image");
+        if (innerImage) {
+          const img = innerImage.querySelector("img");
           const src = img?.getAttribute("src") || "";
           if (src) result.push({ type: "image", content: src });
-        } else {
-          const text = node.innerText || node.textContent || "";
-          if (text.trim()) result.push({ type: "text", content: text });
+          continue;
         }
       }
+      if (node.nodeType === Node.TEXT_NODE) {
+        result.push({ type: "text", content: node.textContent || "" });
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        result.push({ type: "text", content: node.innerText || node.textContent || "" });
+      }
     }
-    return result.length
-      ? result
-      : [{ type: "text", content: "" }];
+    return compactBlocks(result);
+  }
+
+  /** Merge runs of consecutive empty text blocks into a single empty block
+   *  so the editor stays compact and serialised payloads are minimal. */
+  function compactBlocks(blks) {
+    const out = [];
+    for (let i = 0; i < blks.length; i++) {
+      const b = blks[i];
+      if (b.type === "text" && (b.content || "").trim() === "") {
+        const prev = out[out.length - 1];
+        if (prev?.type === "text" && (prev.content || "").trim() === "") continue;
+        out.push(b);
+      } else {
+        out.push(b);
+      }
+    }
+    return out.length ? out : [{ type: "text", content: "" }];
+  }
+
+  /** Returns the index of `descendant` among the childNodes of `parent`,
+   *  walking up through intermediate ancestors. */
+  function childNodeIndexOf(parent, descendant) {
+    let el = descendant;
+    while (el && el.parentNode !== parent) {
+      el = el.parentNode;
+    }
+    if (!el || el.parentNode !== parent) return -1;
+    return Array.from(parent.childNodes).indexOf(el);
+  }
+
+  /** Create an editable text block with a <br> anchor so the cursor
+   *  reliably lands inside contentEditable. */
+  function createTextBlock(content) {
+    const div = document.createElement("div");
+    div.className = "article-editor-text";
+    if (content) {
+      div.textContent = content;
+    } else {
+      div.appendChild(document.createElement("br"));
+    }
+    return div;
+  }
+
+  /** Place the selection at the start of `block`. */
+  function placeCursorInBlock(block) {
+    const sel = window.getSelection();
+    if (!sel || !block) return;
+    const range = document.createRange();
+    range.selectNodeContents(block);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  /** Ensure the editor's last child is an editable text block so the user
+   *  can always type after the final image. */
+  function ensureTrailingTextBlock() {
+    if (!editorRef.current) return;
+    const last = editorRef.current.lastChild;
+    if (!last || last.classList?.contains("article-editor-image")) {
+      editorRef.current.appendChild(createTextBlock());
+    }
   }
 
   function createImageWrapper(src) {
@@ -114,16 +203,10 @@ export default function ArticleInput({
       if (block.type === "image" && block.content) {
         editorRef.current.appendChild(createImageWrapper(block.content));
       } else if (block.type === "text") {
-        const div = document.createElement("div");
-        div.textContent = block.content || "";
-        editorRef.current.appendChild(div);
+        editorRef.current.appendChild(createTextBlock(block.content));
       }
     }
-    // Ensure at least one editable text block
-    if (!editorRef.current.childNodes.length) {
-      const div = document.createElement("div");
-      editorRef.current.appendChild(div);
-    }
+    ensureTrailingTextBlock();
   }
 
   /* ---------- draft ---------- */
@@ -157,7 +240,7 @@ export default function ArticleInput({
       setBlocks(initBlocks);
       renderBlocksToDOM(initBlocks);
       initializedRef.current = true;
-      prevArticleRef.current = article;
+      lastRenderedArticleIdRef.current = articleId ?? "__new__";
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -180,29 +263,38 @@ export default function ArticleInput({
     }
   }, [articleId, readDraft, article, propsBlocks]);
 
-  // When article identity changes (new article opened), re-initialise DOM
+  // When article identity changes (new article opened), re-initialise DOM.
+  // Uses articleId (identity) not article (content) so typing never triggers this.
   useEffect(() => {
     if (!initializedRef.current || !editorRef.current) return;
 
-    const prevEmpty = !prevArticleRef.current?.trim();
-    const currEmpty = !article?.trim();
+    const currentId = articleId ?? "__new__";
+    if (currentId === lastRenderedArticleIdRef.current) return;
 
-    if (
-      prevEmpty !== currEmpty ||
-      (article && prevArticleRef.current !== article)
-    ) {
-      selectedImageEl.current = null;
-      const initBlocks = initialEditorBlocks(article, propsBlocks);
-      setBlocks(initBlocks);
-      renderBlocksToDOM(initBlocks);
-      prevArticleRef.current = article;
-    }
-  }, [article]); // eslint-disable-line react-hooks/exhaustive-deps
+    selectedImageEl.current = null;
+    const initBlocks = initialEditorBlocks(article, propsBlocks);
+    setBlocks(initBlocks);
+    renderBlocksToDOM(initBlocks);
+    lastRenderedArticleIdRef.current = currentId;
+  }, [articleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Propagate isCollapsed based on article existence
   useEffect(() => {
     if (!article) setIsCollapsed(false);
   }, [article]);
+
+  // When the editor transitions from collapsed → expanded the contentEditable
+  // DOM element mounts for the first time.  If the mount effect (#1) already
+  // ran before the DOM existed, populate it now with the current blocks.
+  // This is deliberately a single-effect fix — it does NOT re-render on every
+  // blocks change, which would reset the cursor while typing.
+  useEffect(() => {
+    if (isCollapsed) return;
+    if (!editorRef.current) return;
+    if (editorRef.current.hasChildNodes()) return;
+    renderBlocksToDOM(blocks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCollapsed]);
 
   // Auto-save blocks + title to localStorage on every change
   useEffect(() => {
@@ -213,6 +305,18 @@ export default function ArticleInput({
   }, [blocks, title]);
 
   /* ---------- DOM events ---------- */
+
+  /** Immediately serialise DOM → blocks and propagate to parent.
+   *  Used after image operations so the Reader updates without the 300 ms
+   *  typing debounce. */
+  function syncNow() {
+    clearTimeout(inputTimer.current);
+    const newBlocks = serializeDOMToBlocks();
+    console.log("[ArticleInput] syncNow – editor blocks", newBlocks);
+    setBlocks(newBlocks);
+    if (onBlocksChange) onBlocksChange(newBlocks);
+    if (onArticleChange) onArticleChange(blocksToText(newBlocks));
+  }
 
   function handleInput() {
     if (isComposing.current) return;
@@ -279,45 +383,125 @@ export default function ArticleInput({
     placeholder.style.cssText =
       "padding:16px 12px;color:#64748b;font-style:italic;text-align:center;";
 
-    // New empty text block so user can keep typing after the image
-    const nextDiv = document.createElement("div");
-    nextDiv.textContent = "";
+    // Text anchor that will sit after the image.
+    // May be reassigned if an existing empty block can be reused.
+    let textAnchor = createTextBlock();
 
     if (
       range &&
       editorRef.current &&
       editorRef.current.contains(range.commonAncestorContainer)
     ) {
-      range.collapse(false);
-      range.insertNode(nextDiv);
-      range.insertNode(placeholder);
-    } else {
-      editorRef.current.appendChild(placeholder);
-      editorRef.current.appendChild(nextDiv);
-    }
+      // Normalise to editorRef's direct-child level so we always insert
+      // image + text anchor as top-level siblings (never inside a text block).
+      let cursorChild = range.commonAncestorContainer;
+      while (cursorChild && cursorChild.parentNode !== editorRef.current) {
+        cursorChild = cursorChild.parentNode;
+      }
 
-    // Move caret into the fresh text block
-    const newRange = document.createRange();
-    newRange.setStart(nextDiv, 0);
-    newRange.collapse(true);
-    sel?.removeAllRanges();
-    sel?.addRange(newRange);
+      const isEmpty = (el) =>
+        el?.classList?.contains("article-editor-text") &&
+        (el.innerText || el.textContent || "").trim() === "";
+
+      const thisBlockEmpty =
+        cursorChild &&
+        cursorChild.parentNode === editorRef.current &&
+        isEmpty(cursorChild);
+
+      const nextBlockEmpty =
+        cursorChild &&
+        cursorChild.parentNode === editorRef.current &&
+        isEmpty(cursorChild.nextSibling);
+
+      // NEW: If cursor is inside a non-empty text block and not at the very end,
+      // split the text content so the image is placed at the exact cursor position
+      // (e.g. "Hello |world" → [Hello][image][world]), rather than after the
+      // entire paragraph.
+      let didSplit = false;
+      if (
+        cursorChild?.classList?.contains("article-editor-text") &&
+        range
+      ) {
+        const afterRange = document.createRange();
+        afterRange.setStart(range.startContainer, range.startOffset);
+        afterRange.setEnd(cursorChild, cursorChild.childNodes.length);
+        const afterText = afterRange.toString();
+
+        if (afterText) {
+          const beforeRange = document.createRange();
+          beforeRange.selectNodeContents(cursorChild);
+          beforeRange.setEnd(range.startContainer, range.startOffset);
+          const beforeText = beforeRange.toString();
+
+          // Replace current text block with the part before the cursor
+          cursorChild.innerHTML = "";
+          if (beforeText) {
+            cursorChild.textContent = beforeText;
+          } else {
+            cursorChild.appendChild(document.createElement("br"));
+          }
+
+          // textAnchor now holds the part after the cursor
+          textAnchor = createTextBlock(afterText);
+          didSplit = true;
+        }
+      }
+
+      if (cursorChild && cursorChild.parentNode === editorRef.current) {
+        if (didSplit) {
+          // Text was split — insert placeholder + textAnchor after cursorChild
+          const ref = cursorChild.nextSibling;
+          editorRef.current.insertBefore(placeholder, ref);
+          editorRef.current.insertBefore(textAnchor, ref);
+        } else if (nextBlockEmpty) {
+          // Reuse the next empty block instead of creating a new anchor.
+          textAnchor = cursorChild.nextSibling;
+          editorRef.current.insertBefore(placeholder, textAnchor);
+        } else if (thisBlockEmpty) {
+          // Cursor is already in an empty block — reuse it.
+          textAnchor = cursorChild;
+          editorRef.current.insertBefore(placeholder, cursorChild);
+        } else {
+          const ref = cursorChild.nextSibling;
+          editorRef.current.insertBefore(placeholder, ref);
+          editorRef.current.insertBefore(textAnchor, ref);
+        }
+      } else {
+        editorRef.current.appendChild(placeholder);
+        editorRef.current.appendChild(textAnchor);
+      }
+    } else {
+      // No selection – append to end.  Reuse trailing empty block if present.
+      const last = editorRef.current?.lastChild;
+      if (
+        last?.classList?.contains("article-editor-text") &&
+        (last.innerText || last.textContent || "").trim() === ""
+      ) {
+        textAnchor = last;
+        editorRef.current.insertBefore(placeholder, last);
+      } else {
+        editorRef.current.appendChild(placeholder);
+        editorRef.current.appendChild(textAnchor);
+      }
+    }
 
     try {
       const result = await uploadArticleImage(file);
       const url = result?.url || result?.path || "";
-
       const newWrapper = createImageWrapper(url);
 
       if (placeholder.parentNode) {
         placeholder.replaceWith(newWrapper);
       }
+
+      // Place cursor in the text anchor so the user can type after the image
+      placeCursorInBlock(textAnchor);
     } catch {
       placeholder.textContent = "Upload failed. Remove this block or try again.";
       placeholder.style.color = "#b91c1c";
     }
 
-    handleInput();
+    syncNow();
   }
 
   /* ---------- image management ---------- */
@@ -346,9 +530,22 @@ export default function ArticleInput({
 
   function removeImageBlock(wrapper) {
     if (wrapper?.parentNode) {
+      const prev = wrapper.previousSibling;
+      const next = wrapper.nextSibling;
       wrapper.remove();
       deselectAllImages();
-      handleInput();
+
+      // When both neighbours are empty text blocks, remove one so we
+      // don't accumulate redundant anchors.
+      const isEmpty = (el) =>
+        el?.classList?.contains("article-editor-text") &&
+        (el.innerText || el.textContent || "").trim() === "";
+      if (isEmpty(prev) && isEmpty(next)) {
+        next.remove();
+      }
+
+      ensureTrailingTextBlock();
+      syncNow();
     }
   }
 
@@ -404,7 +601,7 @@ export default function ArticleInput({
         replaceBtn.disabled = false;
       }
 
-      handleInput();
+      syncNow();
     };
     input.click();
   }
@@ -424,6 +621,7 @@ export default function ArticleInput({
     setIsSaving(true);
     const currentBlocks = serializeDOMToBlocks();
     setBlocks(currentBlocks);
+    console.log("[ArticleInput] handleSave – save payload", { content: blocksToText(currentBlocks), blocks: currentBlocks });
 
     try {
       await onSave({
@@ -432,6 +630,7 @@ export default function ArticleInput({
       });
       clearDraft();
       setShowRestorePrompt(false);
+      setIsCollapsed(true);
     } finally {
       setIsSaving(false);
     }

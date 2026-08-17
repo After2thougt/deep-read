@@ -102,6 +102,7 @@ export default function App() {
   const [articleTitle, setArticleTitle] = useState("");
   const [articleId, setArticleId] = useState(null);
   const [highlights, setHighlights] = useState([]);
+  const [articleBlocks, setArticleBlocks] = useState([]);
 
   useEffect(() => { fetch('/api/auth/me', { credentials: 'include' }).then((response) => setAuth({ loading: false, authenticated: response.ok })).catch(() => setAuth({ loading: false, authenticated: false })); }, []);
   if (auth.loading) return <main className="auth-screen"><p>Loading...</p></main>;
@@ -117,6 +118,7 @@ export default function App() {
     setArticleTitle(savedArticle.title);
     setArticle(savedArticle.content);
     setHighlights(savedArticle.highlights || []);
+    setArticleBlocks(savedArticle.blocks || []);
     navigateTo("reader");
   }
 
@@ -125,6 +127,7 @@ export default function App() {
     setArticleTitle("");
     setArticle("");
     setHighlights([]);
+    setArticleBlocks([]);
   }
 
   return (
@@ -144,6 +147,8 @@ export default function App() {
           articleId={articleId}
           articleTitle={articleTitle}
           highlights={highlights}
+          blocks={articleBlocks}
+          onBlocksChange={setArticleBlocks}
           initialPage={articleId ? Number(localStorage.getItem(`vocabulary-trainer:article-page:${articleId}`) || 1) : 1}
           onArticleChange={setArticle}
           onTitleChange={setArticleTitle}

@@ -67,6 +67,7 @@ function getTextPosition(container, offset, root) {
 
 export default function Reader({
   article,
+  blocks = null,
   articleOffset = 0,
   pageEnd = Infinity,
   highlights,
@@ -105,7 +106,11 @@ export default function Reader({
     };
   });
 
-  const paragraphs = useMemo(() => splitParagraphs(article), [article]);
+  const contentBlocks = Array.isArray(blocks) && blocks.length
+    ? blocks
+    : [{ type: "text", content: String(article || "") }];
+
+  console.log("[Reader] rendering – article.blocks (prop)", blocks, "contentBlocks", contentBlocks);
 
   const pageHighlights = useMemo(
     () =>
@@ -379,34 +384,44 @@ export default function Reader({
         onMouseUp={() => window.setTimeout(handleSelection, 0)}
         onTouchEnd={() => window.setTimeout(handleSelection, 0)}
       >
-        {!paragraphs.length ? (
+        {!contentBlocks.some((block) => block.type === "text" && block.content) && !contentBlocks.some((block) => block.type === "image") ? (
           <p className="empty-reader">
             Paste an English article above to start reading.
           </p>
         ) : (
-          paragraphs.map((paragraph, paragraphIndex) => {
-            let tokenOffset = paragraph.start;
+          (() => {
+            let contentOffset = 0;
+            return contentBlocks.map((block, blockIndex) => {
+              if (block.type === "image") {
+                return (
+                  <div className="article-image-block" key={block.id || `${block.content}-${blockIndex}`}>
+                    <img className="article-image" src={block.content} alt="" />
+                  </div>
+                );
+              }
 
-            return (
-              <div
-                className="article-paragraph"
-                key={`${paragraph.start}-${paragraphIndex}`}
-              >
-                <div className="paragraph-body">
-                  {getWords(paragraph.text).map((token, tokenIndex) => {
-                    const tokenStart = tokenOffset;
-                    tokenOffset += token.length;
+              const textParagraphs = splitParagraphs(block.content);
+              const blockStart = Number.isFinite(block.textOffset)
+                ? block.textOffset
+                : articleOffset + contentOffset;
+              contentOffset += String(block.content || "").length;
 
-                    return renderToken(
-                      token,
-                      tokenStart,
-                      `${paragraphIndex}-${tokenIndex}`
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })
+              return textParagraphs.map((paragraph, paragraphIndex) => {
+                let tokenOffset = blockStart + paragraph.start;
+                return (
+                  <div className="article-paragraph" key={`${block.id || blockIndex}-${paragraph.start}-${paragraphIndex}`}>
+                    <div className="paragraph-body">
+                      {getWords(paragraph.text).map((token, tokenIndex) => {
+                        const tokenStart = tokenOffset;
+                        tokenOffset += token.length;
+                        return renderToken(token, tokenStart, `${blockIndex}-${paragraphIndex}-${tokenIndex}`);
+                      })}
+                    </div>
+                  </div>
+                );
+              });
+            });
+          })()
         )}
       </section>
 
