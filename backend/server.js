@@ -1154,14 +1154,39 @@ function parseListNumber(value, fallback, max = 50) {
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
 }
 
+function resolveSort(sort) {
+  switch (sort) {
+    case 'created_desc': return 'a.created_at DESC';
+    case 'title_asc':   return 'a.title COLLATE NOCASE ASC';
+    case 'words_desc':  return 'length(a.content) DESC';
+    default:            return 'a.updated_at DESC'; // recently updated (backward compatible)
+  }
+}
+
 app.get('/api/articles', async (req, res) => {
   const page = parseListNumber(req.query.page, 1, Number.MAX_SAFE_INTEGER);
   const limit = parseListNumber(req.query.limit, 10);
   const tag = typeof req.query.tag === 'string' ? req.query.tag : 'all';
+  const title = (typeof req.query.title === 'string' && req.query.title.trim()) ? req.query.title.trim() : '';
+  const tagSearch = (typeof req.query.tagSearch === 'string' && req.query.tagSearch.trim()) ? req.query.tagSearch.trim() : '';
+  const sort = resolveSort(req.query.sort);
+  const isSearching = title || tagSearch;
   const params = [];
   let where = '';
 
-  if (tag === 'untagged') {
+  if (isSearching) {
+    const clauses = [];
+    if (title) {
+      clauses.push('a.title LIKE ?');
+      params.push(`%${title}%`);
+    }
+    if (tagSearch) {
+      clauses.push(`EXISTS (SELECT 1 FROM article_tags at JOIN tags t ON t.id = at.tag_id
+        WHERE at.article_id = a.id AND t.name LIKE ?)`);
+      params.push(`%${tagSearch}%`);
+    }
+    where = `WHERE ${clauses.join(' OR ')}`;
+  } else if (tag === 'untagged') {
     where = 'WHERE NOT EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id)';
   } else if (tag !== 'all') {
     const tagId = Number(tag);
@@ -1172,8 +1197,8 @@ app.get('/api/articles', async (req, res) => {
 
   try {
     const total = db.prepare(`SELECT COUNT(*) AS count FROM articles a ${where}`).get(...params).count;
-    const rows = db.prepare(`SELECT a.id, a.title, a.updated_at, length(a.content) AS content_length
-      FROM articles a ${where} ORDER BY a.updated_at DESC LIMIT ? OFFSET ?`)
+    const rows = db.prepare(`SELECT a.id, a.title,  a.created_at, a.updated_at, length(a.content) AS content_length
+      FROM articles a ${where} ORDER BY ${sort} LIMIT ? OFFSET ?`)
       .all(...params, limit, (page - 1) * limit);
     const ids = rows.map((row) => row.id);
     const tagsByArticle = new Map(ids.map((id) => [id, []]));

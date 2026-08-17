@@ -5,8 +5,11 @@ const pendingArticleLists = new Map();
 const articleListCache = new Map();
 let pendingTags = null;
 
-export async function fetchArticles({ page = 1, limit = 10, tag = "all", force = false } = {}) {
+export async function fetchArticles({ page = 1, limit = 10, tag = "all", force = false, title = "", tagSearch = "", sort = "" } = {}) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit), tag: String(tag) });
+  if (title) params.set("title", title);
+  if (tagSearch) params.set("tagSearch", tagSearch);
+  if (sort) params.set("sort", sort);
   const url = `/api/articles?${params}`;
   if (!force && articleListCache.has(url)) return articleListCache.get(url);
   if (!pendingArticleLists.has(url)) {

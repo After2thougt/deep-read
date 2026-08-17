@@ -15,6 +15,7 @@ import { analyzeArticle, clearArticleAnalysis } from "../api/analysis";
 import ArticleInput from "../components/ArticleInput";
 import DictionaryCard from "../components/DictionaryCard";
 import Reader from "../components/Reader";
+import ConfirmModal from "../components/ConfirmModal";
 
 function structureTokens(value) {
   return String(value || "")
@@ -528,6 +529,8 @@ export default function ReaderPage({
         (translations && !translationCollapsed)
     );
 
+    
+
   useEffect(() => {
     if (articleId) {
       localStorage.setItem(
@@ -675,10 +678,20 @@ export default function ReaderPage({
       ),
     });
 
+  
+
     onArticleSaved(savedArticle);
   } catch (err) {
     console.error("Unable to remove underline:", err);
   }
+}
+
+async function confirmRemoveUnderline() {
+  if (!deleteUnderlineTarget) return;
+
+  await removeUnderline(deleteUnderlineTarget);
+
+  setDeleteUnderlineTarget(null);
 }
 
   async function updateUnderline(underlineId, changes) {
@@ -1014,6 +1027,7 @@ export default function ReaderPage({
             onAnalyzeArticle={handleAnalyze}
             translating={translating}
             analyzing={analyzing}
+          
           />
 
           <nav
@@ -1175,7 +1189,9 @@ export default function ReaderPage({
           </div>
         </article>
       ))}
-    </div>
+      </div>
+      
+
   </section>
 )}
 
@@ -1234,6 +1250,8 @@ export default function ReaderPage({
           </section>
         </aside>
       </div>
+      
     </div>
+    
   );
 }

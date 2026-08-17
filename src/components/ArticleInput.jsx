@@ -672,14 +672,14 @@ export default function ArticleInput({
             onClick={() => setIsCollapsed(false)}
             type="button"
           >
-            <Pencil size={18} /> Edit article
+            <Pencil size={18} /> Edit 
           </button>
           <button
             className="secondary-button"
             onClick={startNewArticle}
             type="button"
           >
-            <FilePlus2 size={18} /> New article
+            <FilePlus2 size={18} /> New 
           </button>
           <button
             className="primary-button save-article-button"
@@ -687,7 +687,7 @@ export default function ArticleInput({
             disabled={isSaving}
             type="button"
           >
-            <Save size={18} /> {isSaving ? "Saving..." : "Save article"}
+            <Save size={18} /> {isSaving ? "Saving..." : "Save "}
           </button>
         </div>
       </section>
@@ -754,7 +754,7 @@ export default function ArticleInput({
           type="button"
           disabled={isSaving || !hasContent}
         >
-          <Save size={18} /> {isSaving ? "Saving..." : "Save article"}
+          <Save size={18} /> {isSaving ? "Saving..." : "Save "}
         </button>
       </div>
 
