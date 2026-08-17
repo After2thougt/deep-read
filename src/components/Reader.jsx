@@ -401,9 +401,11 @@ export default function Reader({
               }
 
               const textParagraphs = splitParagraphs(block.content);
+              // blockStart must be page-local (relative to pageContent),
+              // not absolute within the full article.
               const blockStart = Number.isFinite(block.textOffset)
-                ? block.textOffset
-                : articleOffset + contentOffset;
+                ? block.textOffset - articleOffset
+                : contentOffset;
               contentOffset += String(block.content || "").length;
 
               return textParagraphs.map((paragraph, paragraphIndex) => {
