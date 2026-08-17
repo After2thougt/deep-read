@@ -72,6 +72,10 @@ function structureGroups(item) {
 }
 
 function normalizeAnalysis(value) {
+  console.log('[normalizeAnalysis] input type:', typeof value,
+    'isNull:', value === null,
+    'keys:', value && typeof value === 'object' ? Object.keys(value).join(',') : 'N/A',
+    'summary type:', typeof value?.summary);
   const payload = value && typeof value === "object" ? value : {};
 
   const displayText = (input) => {
@@ -442,10 +446,7 @@ function StudyResults({
                   <p>
                     <strong>Usage:</strong> {phrase.usage || "-"}
                   </p>
-                  <p>
-                    <strong>Example:</strong>{" "}
-                    <em>{phrase.example || "-"}</em>
-                  </p>
+                 
                 </article>
               ))}
             </div>
@@ -546,11 +547,16 @@ export default function ReaderPage({
     setPageJump(String(currentPage));
   }, [currentPage]);
 
+  // Clear analysis/translations when article text or page count changes.
+  // blocks is intentionally NOT in dependencies: adding a highlight saves the
+  // full article (which returns a new blocks array via the API) but the block
+  // content is unchanged — only highlights changed.  Resetting the sidebars
+  // on every highlight save would close them for the user.
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, pages.length));
     setTranslations(null);
     setAnalysis(null);
-  }, [article, blocks, pages.length]);
+  }, [article, pages.length]);
 
   function scrollReaderToTop() {
     requestAnimationFrame(() => {
@@ -800,6 +806,14 @@ export default function ReaderPage({
         pageNumber: currentPage,
       }
     );
+
+    console.log('[handleAnalyze] RESULT:',
+      'type:', typeof result,
+      'keys:', result && typeof result === 'object' ? Object.keys(result) : 'N/A',
+      'summary:', typeof result?.summary === 'string' ? result.summary.slice(0,60) : result?.summary,
+      'hardSentences.len:', result?.hardSentences?.length,
+      'vocab.len:', result?.vocabularyAnalysis?.length,
+      'phrases.len:', result?.phraseCollocations?.length);
 
     if (
       analysisRequestGeneration.current ===

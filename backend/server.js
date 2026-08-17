@@ -534,18 +534,6 @@ async function translateTencentText(text, target, source) {
   return translated.join("");
 }
 
-function isValidAnalysisPayload(analysis) {
-  return Boolean(
-    analysis &&
-      typeof analysis === 'object' &&
-      String(analysis.summary || '').trim() &&
-      Array.isArray(analysis.keyPoints) &&
-      Array.isArray(analysis.hardSentences) &&
-      Array.isArray(analysis.vocabularyAnalysis) &&
-      Array.isArray(analysis.phraseCollocations),
-  );
-}
-
 function extractFirstSentence(text) {
   if (typeof text !== 'string' || !text.trim()) return '';
   // Remove JSON structural characters to get plain text, then take first sentence.
@@ -557,78 +545,118 @@ function extractFirstSentence(text) {
   return match ? match[0].trim() : plain.slice(0, 120).trim();
 }
 
-function extractJsonObject(text, validator = null) {
-  if (!text) return null;
+// Extract the root analysis JSON object from an AI text response.
+//
+// All bracket matching is delegated to JSON.parse (the only perfectly correct
+// JSON parser).  The strategy:
+//
+//  1. Collect every `{…}` snippet that JSON.parse accepts as a valid object.
+//  2. Prefer candidates that contain a `summary` field (root analysis).
+//  3. Among summary-bearing candidates, pick the largest (handles the rare
+//     case where a smaller junk object also has a `summary` key).
+//
+function extractOutermostJson(text) {
+  if (!text || typeof text !== 'string') return null;
 
-  // Strip Markdown code fences.
-  const clean = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+  // Strip ``` fences the AI may have added.
+  const clean = text
+    .replace(/^```(?:json)?\s*\n?/i, '')
+    .replace(/\n?```\s*$/i, '')
+    .trim();
 
-  let start = clean.indexOf('{');
-  let attempt = 0;
-  const MAX_ATTEMPTS = 20;
-
-  while (start !== -1 && attempt < MAX_ATTEMPTS) {
-    attempt++;
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-    let end = -1;
-
-    for (let i = start; i < clean.length; i++) {
-      const ch = clean[i];
-
-      if (escaped) {
-        escaped = false;
-        continue;
-      }
-
-      if (inString) {
-        if (ch === '\\') {
-          escaped = true;
-        } else if (ch === '"') {
-          inString = false;
-        }
-        continue;
-      }
-
-      if (ch === '"') {
-        inString = true;
-        continue;
-      }
-
-      if (ch === '{') {
-        depth++;
-      } else if (ch === '}') {
-        depth--;
-        if (depth === 0) {
-          end = i;
-          break;
-        }
-      }
+  // Fast path: entire response is valid JSON.
+  try {
+    const p = JSON.parse(clean);
+    if (p && typeof p === 'object') {
+      console.log('[analysis] fast-path full parse, keys:', Object.keys(p));
+      return p;
     }
+  } catch { /* fall through */ }
 
-    if (end !== -1) {
-      const candidate = clean.slice(start, end + 1);
+  // ------------- collect all parseable candidates ------------
+  const candidates = [];  // { parsed, len, keys }
+
+  const errorPosition = (err) => {
+    const m = String(err.message || '').match(/position\s+(\d+)/i);
+    return m ? parseInt(m[1], 10) : null;
+  };
+
+  let pos = 0;
+  while ((pos = clean.indexOf('{', pos)) !== -1) {
+    const suffix = clean.slice(pos);
+
+    // ---- attempt: full suffix ----
+    try {
+      const p = JSON.parse(suffix);
+      if (p && typeof p === 'object') {
+        candidates.push({ parsed: p, len: suffix.length, keys: Object.keys(p) });
+        pos++;
+        continue;
+      }
+    } catch (e) {
+      const errPos = errorPosition(e);
+      if (errPos === null || errPos <= 2) { pos++; continue; }
+
+      // ---- attempt: trim at error position ----
+      const candidate = suffix.slice(0, errPos);
       try {
-        const parsed = JSON.parse(candidate);
-        if (parsed && typeof parsed === 'object' && (!validator || validator(parsed))) {
-          return parsed;
-        }
-        // Valid JSON but fails validator — log and keep scanning.
-        if (validator && parsed && typeof parsed === 'object' && !validator(parsed)) {
-          console.warn('[analysis] Ignoring valid but incomplete JSON candidate', {
-            keys: Object.keys(parsed),
-          });
+        const p = JSON.parse(candidate);
+        if (p && typeof p === 'object') {
+          candidates.push({ parsed: p, len: candidate.length, keys: Object.keys(p) });
+          pos++;
+          continue;
         }
       } catch {
-        // Candidate is not valid JSON; continue scanning.
+        // ---- attempt: shrink char-by-char (up to 200 chars) ----
+        let found = false;
+        for (let end = errPos - 1; end > Math.max(5, errPos - 200); end--) {
+          try {
+            const p = JSON.parse(suffix.slice(0, end));
+            if (p && typeof p === 'object') {
+              candidates.push({ parsed: p, len: end, keys: Object.keys(p) });
+              found = true;
+              break;
+            }
+          } catch { /* keep shrinking */ }
+        }
+        if (!found) {
+          // Log the first few failures for diagnosis.
+          if (candidates.length === 0) {
+            const ctx = clean.slice(Math.max(0, pos - 20), pos + 200);
+            console.warn('[analysis] parse-fail at pos', pos,
+              'errPos=', errPos, 'msg=', String(e.message || e).slice(0, 80),
+              'ctx=', JSON.stringify(ctx.slice(0, 120)));
+          }
+        }
       }
     }
 
-    start = clean.indexOf('{', start + 1);
+    pos++;
   }
 
-  return null;
+  if (candidates.length === 0) {
+    console.error('[analysis] No parseable JSON found in response.');
+    return null;
+  }
+
+  // -------------- selection --------------\
+  // Prefer candidates with a `summary` field (root analysis).
+  const summaryBearing = candidates.filter(c => c.keys.includes('summary'));
+  if (summaryBearing.length > 0) {
+    // Pick largest — root analysis is always the biggest JSON block.
+    summaryBearing.sort((a, b) => b.len - a.len);
+    const best = summaryBearing[0];
+    console.log('[analysis] selected summary-bearing candidate, keys:', best.keys,
+      `(from ${candidates.length} candidates, ${summaryBearing.length} summary-bearing, len=${best.len})`);
+    return best.parsed;
+  }
+
+  // Fallback — no summary-bearing candidate.  Use the largest overall.
+  candidates.sort((a, b) => b.len - a.len);
+  const best = candidates[0];
+  console.warn('[analysis] NO summary-bearing candidate — falling back to largest. keys:', best.keys,
+    `(from ${candidates.length} candidates, len=${best.len})`);
+  return best.parsed;
 }
 
 function buildFallbackAnalysis(text, reason = 'AI analysis is unavailable.') {
@@ -686,7 +714,9 @@ ${text}`;
 
 function hasDetailedSentenceAnalysis(analysis) {
   return Boolean(
-    isValidAnalysisPayload(analysis) &&
+    analysis &&
+      typeof analysis === 'object' &&
+      Array.isArray(analysis.hardSentences) &&
       analysis.hardSentences.some((item) =>
         item &&
         String(item.sentence || item.text || '').trim() &&
@@ -808,24 +838,23 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
     }
 
     const cleaned = String(textContent).trim();
-    const parsed = extractJsonObject(cleaned, isValidAnalysisPayload);
+    const parsed = extractOutermostJson(cleaned);
 
-    if (isValidAnalysisPayload(parsed)) {
+    if (parsed) {
       return { ...parsed, source: 'openai', model };
     }
 
-    // parse failed or produced incomplete JSON — safe fallback, no raw text leak into summary.
-    console.warn('[analysis] Invalid analysis payload', {
+    // Extraction failed — safe fallback.  Never leak raw AI text into summary.
+    console.warn('[analysis] Extraction failed — using safe fallback', {
       responseLength: cleaned.length,
-      parsedKeys: parsed && typeof parsed === 'object' ? Object.keys(parsed) : [],
     });
+    console.log('[analysis] Raw response preview:', cleaned.slice(0, 1000));
     return {
       summary: extractFirstSentence(cleaned) || 'AI analysis returned an unexpected format.',
       hardSentences: [],
       keyPoints: [],
       vocabularyAnalysis: [],
       phraseCollocations: [],
-      raw: cleaned,
       source: 'openai',
       model,
     };
@@ -916,17 +945,19 @@ async function callGeminiTextAnalysis(text) {
     }
 
     const cleaned = textContent.trim();
-    const parsed = extractJsonObject(cleaned);
+    const parsed = extractOutermostJson(cleaned);
 
-    if (parsed && typeof parsed === 'object') {
+    if (parsed) {
       return { ...parsed, source: 'gemini' };
     }
 
+    console.warn('[gemini] Extraction failed — using safe fallback');
     return {
-      summary: cleaned,
+      summary: extractFirstSentence(cleaned) || 'AI analysis returned an unexpected format.',
       hardSentences: [],
-      grammarPoints: [],
-      raw: cleaned,
+      keyPoints: [],
+      vocabularyAnalysis: [],
+      phraseCollocations: [],
       source: 'gemini',
     };
   } catch (error) {
@@ -1621,14 +1652,10 @@ app.post('/api/analyze', async (req, res) => {
         .get(articleId || cacheArticle.id, pageNumber, contentHash, promptVersion);
       if (cached) {
         try {
-          const cachedAnalysis = JSON.parse(cached.analysis);
-          if (hasDetailedSentenceAnalysis(cachedAnalysis)) {
-            if (requestId) cancelledAnalysisRequests.delete(requestId);
-            return res.json(cachedAnalysis);
-          }
-          console.warn('Ignoring incomplete analysis cache entry.');
+          if (requestId) cancelledAnalysisRequests.delete(requestId);
+          return res.json(JSON.parse(cached.analysis));
         } catch (cacheParseError) {
-          console.warn('Ignoring malformed analysis cache entry.');
+          console.warn('Ignoring malformed analysis cache entry, re-fetching.');
         }
       }
     }
@@ -1650,7 +1677,7 @@ app.post('/api/analyze', async (req, res) => {
     // Cache writes are best-effort. A cache failure must never turn a valid AI
     // response into an analysis error. Network fallbacks are intentionally not
     // cached so a later request can retry the configured provider.
-    if (cacheArticle && analysis?.source !== 'fallback' && hasDetailedSentenceAnalysis(analysis) && (analysisGenerations.get(cacheKey) || 0) === cacheGeneration && !cancelledAnalysisRequests.has(requestId)) {
+    if (cacheArticle && analysis?.source !== 'fallback' && (analysisGenerations.get(cacheKey) || 0) === cacheGeneration && !cancelledAnalysisRequests.has(requestId)) {
       try {
         const now = new Date().toISOString();
         const saveAnalysis = db.transaction(() => {
