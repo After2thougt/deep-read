@@ -40,6 +40,17 @@ db.exec(`
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS article_tags_tag_idx ON article_tags (tag_id, article_id);
+  CREATE TABLE IF NOT EXISTS article_blocks (
+    id TEXT PRIMARY KEY,
+    article_id TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('text', 'image')),
+    content TEXT NOT NULL,
+    sort_order INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS article_blocks_article_order_idx
+    ON article_blocks (article_id, sort_order);
   CREATE TABLE IF NOT EXISTS vocabulary (
     id TEXT PRIMARY KEY,
     word TEXT NOT NULL UNIQUE COLLATE NOCASE,

@@ -38,14 +38,28 @@ export async function fetchArticle(id) {
   return normalizeArticle(await apiFetch(`/api/articles/${encodeURIComponent(id)}`));
 }
 
-export async function saveArticle({ id, title, content, highlights = [] }) {
+export async function saveArticle({ id, title, content, highlights = [], blocks }) {
   const row = await apiFetch("/api/articles", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, title, content, highlights }),
+    body: JSON.stringify({ id, title, content, highlights, ...(Array.isArray(blocks) ? { blocks } : {}) }),
   });
 
   return normalizeArticle(row);
+}
+
+export async function uploadArticleImage(file) {
+  const data = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Unable to read image.'));
+    reader.readAsDataURL(file);
+  });
+  return apiFetch('/api/articles/images', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data, mimeType: file.type }),
+  });
 }
 
 export async function removeArticle(id) {

@@ -20,6 +20,53 @@ function generateId(prefix = 'id') {
 }
 
 const path = require("path");
+const fs = require("fs");
+
+const uploadsRoot = path.resolve(__dirname, "..", "uploads", "articles");
+fs.mkdirSync(uploadsRoot, { recursive: true });
+
+function normalizeArticleBlocks(articleId, blocks) {
+  if (!Array.isArray(blocks) || !blocks.length) {
+    const article = db.prepare('SELECT content FROM articles WHERE id = ?').get(articleId);
+    return article ? [{ type: 'text', content: article.content }] : [];
+  }
+  return blocks
+    .filter((block) => block && (block.type === 'text' || block.type === 'image') && typeof block.content === 'string')
+    .map((block) => ({ id: block.id || generateId('block'), type: block.type, content: block.content, sort_order: Number.isFinite(Number(block.sort_order)) ? Number(block.sort_order) : 0 }));
+}
+
+function getArticleBlocks(articleId) {
+  const rows = db.prepare('SELECT id, type, content, sort_order, created_at FROM article_blocks WHERE article_id = ? ORDER BY sort_order ASC, rowid ASC').all(articleId);
+  if (rows.length) return rows;
+  const article = db.prepare('SELECT content FROM articles WHERE id = ?').get(articleId);
+  return article ? [{ type: 'text', content: article.content, sort_order: 0 }] : [];
+}
+
+function removeArticleImageIfUnused(imagePath, excludedArticleId) {
+  const normalizedPath = String(imagePath || '');
+  const relative = normalizedPath.startsWith('/uploads/articles/')
+    ? normalizedPath.slice('/uploads/articles/'.length)
+    : '';
+  if (!relative || !/^[A-Za-z0-9._-]+$/.test(relative)) return false;
+
+  const referencedElsewhere = db.prepare(`SELECT 1 FROM article_blocks
+    WHERE type = 'image' AND content = ? AND article_id != ? LIMIT 1`)
+    .get(normalizedPath, excludedArticleId);
+  if (referencedElsewhere) return false;
+
+  try {
+    fs.unlinkSync(path.join(uploadsRoot, relative));
+    return true;
+  } catch (error) {
+    if (error.code !== 'ENOENT') console.warn('Unable to remove article image:', error.message);
+    return false;
+  }
+}
+
+function removeArticleImages(articleId) {
+  const rows = db.prepare("SELECT content FROM article_blocks WHERE article_id = ? AND type = 'image'").all(articleId);
+  for (const row of rows) removeArticleImageIfUnused(row.content, articleId);
+}
 
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 dotenv.config({ path: path.resolve(__dirname, ".env") });
@@ -44,7 +91,8 @@ if (process.env.NODE_ENV === 'production' && (!process.env.AUTH_USERNAME || !pro
 }
 const sessionSecret = String(process.env.AUTH_SESSION_SECRET || 'development-session-secret');
 app.use(cors(allowedOrigin ? { origin: allowedOrigin, credentials: true } : (process.env.NODE_ENV === 'production' ? { origin: false } : undefined)));
-app.use(express.json());
+app.use(express.json({ limit: '12mb' }));
+app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
 
 const sessions = new Map();
 const loginAttempts = new Map();
@@ -486,15 +534,101 @@ async function translateTencentText(text, target, source) {
   return translated.join("");
 }
 
-function extractJsonObject(text) {
-  const jsonMatch = text.match(/\{[\s\S]*\}/m);
-  if (!jsonMatch) return null;
+function isValidAnalysisPayload(analysis) {
+  return Boolean(
+    analysis &&
+      typeof analysis === 'object' &&
+      String(analysis.summary || '').trim() &&
+      Array.isArray(analysis.keyPoints) &&
+      Array.isArray(analysis.hardSentences) &&
+      Array.isArray(analysis.vocabularyAnalysis) &&
+      Array.isArray(analysis.phraseCollocations),
+  );
+}
 
-  try {
-    return JSON.parse(jsonMatch[0]);
-  } catch {
-    return null;
+function extractFirstSentence(text) {
+  if (typeof text !== 'string' || !text.trim()) return '';
+  // Remove JSON structural characters to get plain text, then take first sentence.
+  const plain = text
+    .replace(/[{}\[\]"\\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const match = plain.match(/^[^.!?]*[.!?]/);
+  return match ? match[0].trim() : plain.slice(0, 120).trim();
+}
+
+function extractJsonObject(text, validator = null) {
+  if (!text) return null;
+
+  // Strip Markdown code fences.
+  const clean = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+
+  let start = clean.indexOf('{');
+  let attempt = 0;
+  const MAX_ATTEMPTS = 20;
+
+  while (start !== -1 && attempt < MAX_ATTEMPTS) {
+    attempt++;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let end = -1;
+
+    for (let i = start; i < clean.length; i++) {
+      const ch = clean[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (inString) {
+        if (ch === '\\') {
+          escaped = true;
+        } else if (ch === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (ch === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (ch === '{') {
+        depth++;
+      } else if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+
+    if (end !== -1) {
+      const candidate = clean.slice(start, end + 1);
+      try {
+        const parsed = JSON.parse(candidate);
+        if (parsed && typeof parsed === 'object' && (!validator || validator(parsed))) {
+          return parsed;
+        }
+        // Valid JSON but fails validator — log and keep scanning.
+        if (validator && parsed && typeof parsed === 'object' && !validator(parsed)) {
+          console.warn('[analysis] Ignoring valid but incomplete JSON candidate', {
+            keys: Object.keys(parsed),
+          });
+        }
+      } catch {
+        // Candidate is not valid JSON; continue scanning.
+      }
+    }
+
+    start = clean.indexOf('{', start + 1);
   }
+
+  return null;
 }
 
 function buildFallbackAnalysis(text, reason = 'AI analysis is unavailable.') {
@@ -509,6 +643,7 @@ function buildFallbackAnalysis(text, reason = 'AI analysis is unavailable.') {
       sentence,
       explanation: 'This sentence may contain complex structure; focus on subject-verb agreement and clause ordering.',
     })),
+    keyPoints: [],
     grammarPoints: [
       {
         point: 'sentence structure',
@@ -519,6 +654,8 @@ function buildFallbackAnalysis(text, reason = 'AI analysis is unavailable.') {
         detail: 'Check whether the sentence describes past events or general truths.',
       },
     ],
+    vocabularyAnalysis: [],
+    phraseCollocations: [],
     raw: 'AI analysis is unavailable. Returning a lightweight fallback summary and grammar guidance.',
     source: 'fallback',
     fallbackReason: reason,
@@ -549,8 +686,7 @@ ${text}`;
 
 function hasDetailedSentenceAnalysis(analysis) {
   return Boolean(
-    analysis &&
-      Array.isArray(analysis.hardSentences) &&
+    isValidAnalysisPayload(analysis) &&
       analysis.hardSentences.some((item) =>
         item &&
         String(item.sentence || item.text || '').trim() &&
@@ -672,16 +808,23 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
     }
 
     const cleaned = String(textContent).trim();
-    const parsed = extractJsonObject(cleaned);
+    const parsed = extractJsonObject(cleaned, isValidAnalysisPayload);
 
-    if (parsed && typeof parsed === 'object') {
+    if (isValidAnalysisPayload(parsed)) {
       return { ...parsed, source: 'openai', model };
     }
 
+    // parse failed or produced incomplete JSON — safe fallback, no raw text leak into summary.
+    console.warn('[analysis] Invalid analysis payload', {
+      responseLength: cleaned.length,
+      parsedKeys: parsed && typeof parsed === 'object' ? Object.keys(parsed) : [],
+    });
     return {
-      summary: cleaned,
+      summary: extractFirstSentence(cleaned) || 'AI analysis returned an unexpected format.',
       hardSentences: [],
-      grammarPoints: [],
+      keyPoints: [],
+      vocabularyAnalysis: [],
+      phraseCollocations: [],
       raw: cleaned,
       source: 'openai',
       model,
@@ -1123,20 +1266,40 @@ app.delete('/api/articles/:id/tags/:tagId', (req, res) => {
   }
 });
 
+app.post('/api/articles/images', (req, res) => {
+  const { data, mimeType } = req.body || {};
+  const allowed = new Map([
+    ['image/jpeg', 'jpg'],
+    ['image/png', 'png'],
+    ['image/gif', 'gif'],
+    ['image/webp', 'webp'],
+  ]);
+  const extension = allowed.get(mimeType);
+  if (!extension || typeof data !== 'string') return res.status(400).json({ error: 'Only JPEG, PNG, GIF, and WebP images are allowed.' });
+  const match = data.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match || match[1] !== mimeType) return res.status(400).json({ error: 'Invalid image data.' });
+  let buffer;
+  try { buffer = Buffer.from(match[2], 'base64'); } catch { return res.status(400).json({ error: 'Invalid image data.' }); }
+  if (!buffer.length || buffer.length > 8 * 1024 * 1024) return res.status(413).json({ error: 'Image must be smaller than 8 MB.' });
+  const fileName = `${generateId('image')}.${extension}`;
+  fs.writeFileSync(path.join(uploadsRoot, fileName), buffer, { flag: 'wx' });
+  return res.status(201).json({ path: `/uploads/articles/${fileName}`, url: `/uploads/articles/${fileName}` });
+});
+
 app.get('/api/articles/:id', (req, res) => {
   try {
     const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
     if (!article) return res.status(404).json({ error: 'Article not found.' });
     const tags = db.prepare(`SELECT t.id, t.name FROM article_tags at
       JOIN tags t ON t.id = at.tag_id WHERE at.article_id = ? ORDER BY t.name COLLATE NOCASE`).all(article.id);
-    return res.json({ ...serializeArticle(article), tags });
+    return res.json({ ...serializeArticle(article), tags, blocks: getArticleBlocks(article.id).map(({ id, type, content, sort_order }) => ({ id, type, content, sort_order })) });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 app.post('/api/articles', async (req, res) => {
-  const { id, title, content, highlights = [] } = req.body || {};
+  const { id, title, content, highlights = [], blocks } = req.body || {};
   if (typeof title !== 'string' || !title.trim() || typeof content !== 'string') {
     return res.status(400).json({ error: 'Article title and content are required.' });
   }
@@ -1148,7 +1311,18 @@ app.post('/api/articles', async (req, res) => {
       VALUES (@id, @title, @content, @highlights, @created_at, @updated_at)
       ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,
       highlights = excluded.highlights, updated_at = excluded.updated_at`).run(article);
-    return res.status(201).json(serializeArticle(db.prepare('SELECT * FROM articles WHERE id = ?').get(article.id)));
+    if (Array.isArray(blocks)) {
+      const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
+      const previousImages = db.prepare("SELECT content FROM article_blocks WHERE article_id = ? AND type = 'image'").all(article.id);
+      db.prepare('DELETE FROM article_blocks WHERE article_id = ?').run(article.id);
+      const insertBlock = db.prepare('INSERT INTO article_blocks (id, article_id, type, content, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+      normalizedBlocks.forEach((block, index) => insertBlock.run(block.id, article.id, block.type, block.content, index, now));
+      const nextImages = new Set(normalizedBlocks.filter((block) => block.type === 'image').map((block) => block.content));
+      for (const row of previousImages) {
+        if (!nextImages.has(row.content)) removeArticleImageIfUnused(row.content, article.id);
+      }
+    }
+    return res.status(201).json({ ...serializeArticle(db.prepare('SELECT * FROM articles WHERE id = ?').get(article.id)), blocks: getArticleBlocks(article.id).map(({ id, type, content, sort_order }) => ({ id, type, content, sort_order })) });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -1161,6 +1335,7 @@ app.delete('/api/articles/:id', async (req, res) => {
   }
 
   try {
+    removeArticleImages(id);
     db.prepare('DELETE FROM articles WHERE id = ?').run(id);
     return res.status(204).end();
   } catch (error) {
@@ -1491,6 +1666,11 @@ app.post('/api/analyze', async (req, res) => {
         console.warn('Analysis cache save failed; returning the AI result.');
       }
     }
+
+    console.log('[api/analyze] returning analysis keys:', Object.keys(analysis || {}),
+      'hardSentences.length:', analysis?.hardSentences?.length,
+      'vocabularyAnalysis.length:', analysis?.vocabularyAnalysis?.length,
+      'phraseCollocations.length:', analysis?.phraseCollocations?.length);
 
     return res.json(analysis);
   } catch (error) {

@@ -104,7 +104,8 @@ export default function ArticlesPage({ onOpenArticle }) {
     </div><button className="tag-tool-button" type="button" onClick={() => setManaging((current) => !current)}><Pencil size={15} />Edit tags</button></div>
     {error && <p className="error-message">{error}</p>}
     {loading && !articles.length && <p className="side-message">Loading articles...</p>}
-    {!loading && !articles.length && <p className="empty-vocabulary">{total ? "No articles match this tag." : "No saved articles yet. Upload a TXT file or paste an article in Reader."}</p>}
+    {!loading && !articles.length && <p className="empty-vocabulary">{total ? "No articles match this tag." : "No saved articles yet."}</p>}
+
     {articles.length > 0 && <div className="article-list">{articles.map((article) => <article className="article-list-item" key={article.id}>
       <button className="article-open-button" onClick={() => openArticle(article)}><BookOpen size={20} /><span><strong>{article.title}</strong><small>{Number(article.contentLength || 0).toLocaleString()} characters · Updated {new Date(article.updatedAt).toLocaleDateString()}</small></span></button>
       <button className="icon-button" onClick={() => setArticleToDelete(article)} aria-label={`Delete ${article.title}`}><Trash2 size={18} /></button>

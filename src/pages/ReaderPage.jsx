@@ -621,7 +621,7 @@ export default function ReaderPage({
     try {
       setSaveMessage("");
 
-      const savedArticle = await saveArticle({
+      const payload = {
         id: articleId,
         title: articleTitle,
         content: typeof draft.content === "string" ? draft.content : article,
@@ -629,7 +629,10 @@ export default function ReaderPage({
         blocks: Array.isArray(draft.blocks)
           ? draft.blocks
           : (blocks.length ? blocks : undefined),
-      });
+      };
+      console.log("[ReaderPage] saveCurrentArticle – save payload", payload);
+
+      const savedArticle = await saveArticle(payload);
 
       onArticleSaved(savedArticle);
       setSaveMessage("Article saved in your library.");
@@ -785,6 +788,10 @@ export default function ReaderPage({
   setAnalysisError("");
 
   try {
+    console.log("[handleAnalyze] article.trim() length:", article.trim().length);
+    console.log("[handleAnalyze] pageContent length:", pageContent.length);
+    console.log("[handleAnalyze] pageContent preview:", pageContent.slice(0, 500));
+
     const result = await analyzeArticle(
       pageContent,
       requestId,
