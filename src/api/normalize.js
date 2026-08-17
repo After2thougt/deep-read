@@ -1,4 +1,5 @@
 export function normalizeArticle(row) {
+  
   if (!row) return row;
 
   return {
@@ -9,6 +10,7 @@ export function normalizeArticle(row) {
     highlights: row.highlights ?? [],
     tags: Array.isArray(row.tags) ? row.tags : [],
     updatedAt: row.updated_at ?? row.updatedAt,
+    createdAt: row.created_at ?? row.createdAt,
     contentLength: row.content_length ?? row.contentLength,
   };
 }
