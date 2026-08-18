@@ -14,7 +14,7 @@ export default function ArticleInput({
   onArticleChange,
   onBlocksChange,
   onSave,
-  onNew,
+  onNewArticle,
   saveMessage,
 }) {
   const [isCollapsed, setIsCollapsed] = useState(() => Boolean(article));
@@ -649,10 +649,10 @@ export default function ArticleInput({
     event.target.value = "";
   }
 
-  function startNewArticle() {
-    onNew();
-    setIsCollapsed(false);
-  }
+    function startNewArticle() {
+      onNewArticle?.();
+      setIsCollapsed(false);
+    }
 
   /* ---------- collapsed view ---------- */
 

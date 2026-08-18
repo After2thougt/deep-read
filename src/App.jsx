@@ -1,11 +1,23 @@
 import { useEffect, useState } from "react";
 import { BookOpen } from "lucide-react";
+
 import ReaderPage from "./pages/ReaderPage";
 import VocabularyPage from "./pages/VocabularyPage";
 import ArticlesPage from "./pages/ArticlesPage";
+import HomePage from "./pages/HomePage";
 import MigrationBanner from "./components/MigrationBanner";
-import { prefetchArticles } from "./api/articles";
+import { fetchVocabulary } from "./api/vocabulary";
+
+import {
+  fetchArticles,
+  fetchArticle,
+  prefetchArticles,
+    clearArticleListCache,
+
+} from "./api/articles";
+
 import "./index.css";
+
 
 function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -15,6 +27,7 @@ function LoginScreen({ onLogin }) {
 
   async function submit(event) {
     event.preventDefault();
+
     setError("");
     setLoading(true);
 
@@ -25,7 +38,10 @@ function LoginScreen({ onLogin }) {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username,
+          password,
+        }),
       });
 
       const body = await response.json().catch(() => ({}));
@@ -95,67 +111,462 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+
 export default function App() {
-  const [auth, setAuth] = useState({ loading: true, authenticated: false });
-  const [page, setPage] = useState(() => localStorage.getItem("vocabulary-trainer:last-page") || "reader");
+  /*
+   * =====================================================
+   * AUTH
+   * =====================================================
+   */
+
+  const [auth, setAuth] = useState({
+    loading: true,
+    authenticated: false,
+  });
+
+
+  /*
+   * =====================================================
+   * PAGE
+   * =====================================================
+   *
+   * home
+   * reader
+   * articles
+   * vocabulary
+   */
+
+  const [page, setPage] = useState(
+    () =>
+      localStorage.getItem(
+        "vocabulary-trainer:last-page"
+      ) || "home"
+  );
+
+
+
+  /*
+   * =====================================================
+   * CURRENT ARTICLE
+   * =====================================================
+   *
+   * 当前 Reader 正在编辑的文章
+   */
+
   const [article, setArticle] = useState("");
   const [articleTitle, setArticleTitle] = useState("");
   const [articleId, setArticleId] = useState(null);
   const [highlights, setHighlights] = useState([]);
   const [articleBlocks, setArticleBlocks] = useState([]);
 
-  useEffect(() => { fetch('/api/auth/me', { credentials: 'include' }).then((response) => setAuth({ loading: false, authenticated: response.ok })).catch(() => setAuth({ loading: false, authenticated: false })); }, []);
-  if (auth.loading) return <main className="auth-screen"><p>Loading...</p></main>;
-  if (!auth.authenticated) return <LoginScreen onLogin={() => setAuth({ loading: false, authenticated: true })} />;
+
+
+  /*
+   * =====================================================
+   * HOME ARTICLES
+   * =====================================================
+   *
+   * HomePage 的 Reading Room 使用这些文章
+   */
+
+  const [homeArticles, setHomeArticles] = useState([]);
+  const [homeWords, setHomeWords] = useState([]);
+  const [articleListVersion, setArticleListVersion] = useState(0);
+
+  function handleArticleSaved(savedArticle) {
+  clearArticleListCache();
+  setArticleListVersion((value) => value + 1);
+  openArticle(savedArticle);
+}
+
+
+  /*
+   * =====================================================
+   * LOGIN CHECK
+   * =====================================================
+   *
+   * 页面第一次加载时检查当前 session。
+   */
+
+  useEffect(() => {
+    fetch("/api/auth/me", {
+      credentials: "include",
+    })
+      .then((response) => {
+        setAuth({
+          loading: false,
+          authenticated: response.ok,
+        });
+      })
+      .catch(() => {
+        setAuth({
+          loading: false,
+          authenticated: false,
+        });
+      });
+  }, []);
+
+
+  /*
+   * =====================================================
+   * LOAD HOME ARTICLES
+   * =====================================================
+   *
+   * 登录成功后加载文章列表。
+   *
+   * HomePage 会从这些文章中选择历史文章进行推荐。
+   */
+
+useEffect(() => {
+  if (!auth.authenticated) {
+    return;
+  }
+
+  fetchArticles({
+    page: 1,
+    limit: 100,
+    tag: "all",
+  })
+    .then((result) => {
+
+       console.log("HOME ARTICLES RESULT:", result);
+  console.log("HOME ARTICLES ITEMS:", result.items);
+      setHomeArticles(result.items || []);
+    })
+    .catch((error) => {
+      console.error(
+        "Failed to load home articles:",
+        error
+      );
+
+      setHomeArticles([]);
+    });
+}, [auth.authenticated]);
+
+useEffect(() => {
+  if (!auth.authenticated) {
+    return;
+  }
+
+  fetchVocabulary({
+    page: 1,
+    limit: 5,
+    sort: "recent",
+  })
+    .then((result) => {
+      setHomeWords(result.items || []);
+    })
+    .catch((error) => {
+      console.error(
+        "Failed to load home vocabulary:",
+        error
+      );
+
+      setHomeWords([]);
+    });
+}, [auth.authenticated]);
+
+
+  /*
+   * =====================================================
+   * LOADING
+   * =====================================================
+   */
+
+  if (auth.loading) {
+    return (
+      <main className="auth-screen">
+        <p>Loading...</p>
+      </main>
+    );
+  }
+
+
+  /*
+   * =====================================================
+   * LOGIN
+   * =====================================================
+   */
+
+  if (!auth.authenticated) {
+    return (
+      <LoginScreen
+        onLogin={() =>
+          setAuth({
+            loading: false,
+            authenticated: true,
+          })
+        }
+      />
+    );
+  }
+
+
+  /*
+   * =====================================================
+   * PAGE NAVIGATION
+   * =====================================================
+   */
 
   function navigateTo(nextPage) {
-    localStorage.setItem("vocabulary-trainer:last-page", nextPage);
+    localStorage.setItem(
+      "vocabulary-trainer:last-page",
+      nextPage
+    );
+
     setPage(nextPage);
   }
 
-  function openArticle(savedArticle) {
+
+  /*
+   * =====================================================
+   * OPEN ARTICLE
+   * =====================================================
+   *
+   * Home → Reader
+   * My Articles → Reader
+   */
+async function openArticle(savedArticle) {
+  try {
+    const fullArticle = await fetchArticle(savedArticle.id);
+
+    setArticleId(fullArticle.id);
+    setArticleTitle(fullArticle.title || "");
+    setArticle(fullArticle.content || "");
+    setHighlights(fullArticle.highlights || []);
+    setArticleBlocks(fullArticle.blocks || []);
+
+    navigateTo("reader");
+  } catch (error) {
+    console.error("Failed to open article:", error);
+
     setArticleId(savedArticle.id);
-    setArticleTitle(savedArticle.title);
-    setArticle(savedArticle.content);
+    setArticleTitle(savedArticle.title || "");
+    setArticle(savedArticle.content || "");
     setHighlights(savedArticle.highlights || []);
     setArticleBlocks(savedArticle.blocks || []);
+
     navigateTo("reader");
   }
+}
 
-  function newArticle() {
-    setArticleId(null);
-    setArticleTitle("");
-    setArticle("");
-    setHighlights([]);
-    setArticleBlocks([]);
-  }
+  /*
+   * =====================================================
+   * NEW ARTICLE
+   * =====================================================
+   *
+   * 新文章直接进入 Reader。
+   */
+
+function newArticle() {
+  setArticleId(null);
+  setArticleTitle("");
+  setArticle("");
+  setHighlights([]);
+  setArticleBlocks([]);
+
+ 
+  navigateTo("reader");
+}
+
+
+  /*
+   * =====================================================
+   * APP
+   * =====================================================
+   */
 
   return (
     <div className="app">
+
+      {/* =================================================
+          HEADER
+          ================================================= */}
+
       <header className="app-header">
-        <h1><BookOpen /> Turn pages, Open minds.</h1>
+
+        <h1>
+          <BookOpen />
+          Turn pages, Open minds.
+        </h1>
+
         <nav aria-label="Main navigation">
-          <button className={page === "reader" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("reader")}>Reader</button>
-          <button className={page === "articles" ? "nav-button active" : "nav-button"} onMouseEnter={prefetchArticles} onFocus={prefetchArticles} onClick={() => navigateTo("articles")}>My Articles</button>
-          <button className={page === "vocabulary" ? "nav-button active" : "nav-button"} onClick={() => navigateTo("vocabulary")}>Vocabulary</button>
+
+          {/* HOME */}
+
+          <button
+            className={
+              page === "home"
+                ? "nav-button active"
+                : "nav-button"
+            }
+            onClick={() => navigateTo("home")}
+          >
+            Home
+          </button>
+
+
+          {/* READER */}
+
+          <button
+            className={
+              page === "reader"
+                ? "nav-button active"
+                : "nav-button"
+            }
+            onClick={() => navigateTo("reader")}
+          >
+            Reader
+          </button>
+
+
+          {/* MY ARTICLES */}
+
+          <button
+            className={
+              page === "articles"
+                ? "nav-button active"
+                : "nav-button"
+            }
+            onMouseEnter={prefetchArticles}
+            onFocus={prefetchArticles}
+            onClick={() => navigateTo("articles")}
+          >
+            My Articles
+          </button>
+
+
+          {/* VOCABULARY */}
+
+          <button
+            className={
+              page === "vocabulary"
+                ? "nav-button active"
+                : "nav-button"
+            }
+            onClick={() => navigateTo("vocabulary")}
+          >
+            Vocabulary
+          </button>
+
         </nav>
+
       </header>
+
+
+      {/* =================================================
+          MIGRATION
+          ================================================= */}
+
       <MigrationBanner />
-      {page === "reader" ? (
-        <ReaderPage
-          article={article}
-          articleId={articleId}
-          articleTitle={articleTitle}
-          highlights={highlights}
-          blocks={articleBlocks}
-          onBlocksChange={setArticleBlocks}
-          initialPage={articleId ? Number(localStorage.getItem(`vocabulary-trainer:article-page:${articleId}`) || 1) : 1}
-          onArticleChange={setArticle}
-          onTitleChange={setArticleTitle}
-          onArticleSaved={openArticle}
+
+
+      {/* =================================================
+          HOME
+          =================================================
+          
+          Home 只负责展示文章。
+
+          点击文章：
+              Home → Reader
+
+          新文章：
+              Home → Reader
+          ================================================= */}
+
+      {page === "home" && (
+        <HomePage
+          articles={homeArticles}
+          words={homeWords}
+          onOpenArticle={openArticle}
           onNewArticle={newArticle}
-        />
-      ) : page === "articles" ? <ArticlesPage onOpenArticle={openArticle} /> : <VocabularyPage />}
+          onOpenVocabulary={() =>
+            navigateTo("vocabulary")
+    }
+  />
+)}
+
+
+      {/* =================================================
+          READER
+          =================================================
+          
+          Reader 是真正的文章工作区。
+
+          包含：
+
+          ArticleInput
+          Reading Room
+          Dictionary
+          Translation
+          AI Analysis
+          ================================================= */}
+
+      {page === "reader" && (
+  <ReaderPage
+   
+    article={article}
+    articleId={articleId}
+    articleTitle={articleTitle}
+    highlights={highlights}
+    blocks={articleBlocks}
+
+    onBlocksChange={setArticleBlocks}
+
+    initialPage={
+      articleId
+        ? Number(
+            localStorage.getItem(
+              `vocabulary-trainer:article-page:${articleId}`
+            ) || 1
+          )
+        : 1
+    }
+
+    onArticleChange={setArticle}
+    onTitleChange={setArticleTitle}
+
+    onArticleSaved={handleArticleSaved}
+
+    onNewArticle={newArticle}
+  />
+)}
+
+
+      {/* =================================================
+          MY ARTICLES
+          ================================================= */}
+
+      {page === "articles" && (
+          <ArticlesPage
+            onOpenArticle={openArticle}
+            refreshVersion={articleListVersion}
+          />
+        )}
+
+
+      {/* =================================================
+          VOCABULARY
+          ================================================= */}
+
+      {page === "vocabulary" && (
+        <VocabularyPage />
+      )}
+
+
+      <footer className="app-footer">
+        <div className="app-footer__brand">
+          <strong>DeepRead</strong>
+          <span>Personal Reading Workspace</span>
+        </div>
+
+        <div className="app-footer__meta">
+          <span>© 2026 DeepRead</span>
+          <span>Turn pages, Open minds.</span>
+        </div>
+      </footer>
+
     </div>
   );
 }
+

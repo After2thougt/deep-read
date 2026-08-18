@@ -48,7 +48,10 @@ function TagPill({ tag, active, onClick, onPrefetch, managing, onRename, onDelet
   </div>;
 }
 
-export default function ArticlesPage({ onOpenArticle }) {
+export default function ArticlesPage({
+  onOpenArticle,
+  refreshVersion = 0,
+}) {
   const [articles, setArticles] = useState([]);
   const [tags, setTags] = useState([]);
   const [selectedTag, setSelectedTag] = useState("all");
@@ -84,7 +87,9 @@ export default function ArticlesPage({ onOpenArticle }) {
     } finally { setLoading(false); }
   }, [page, selectedTag, searchQuery, sort]);
 
-  useEffect(() => { loadArticles(); }, [loadArticles]);
+  useEffect(() => {
+  loadArticles();
+}, [loadArticles, refreshVersion]);
   function prefetchTag(tag) {
     fetchArticles({ page: 1, limit: PAGE_SIZE, tag }).catch(() => {});
   }
