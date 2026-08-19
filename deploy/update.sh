@@ -128,7 +128,7 @@ DUPLICATES=$(pm2 list 2>/dev/null | grep -c "deepread" || true)
 if [ "$DUPLICATES" -gt 1 ]; then
   warn "Multiple PM2 processes named 'deepread' detected. Cleaning up..."
   pm2 delete deepread 2>/dev/null || true
-  pm2 start "${APP_DIR}/deploy/ecosystem.config.js"
+  pm2 start "${APP_DIR}/deploy/ecosystem.config.cjs"
   pm2 save
   info "Restarted exactly one instance."
 elif [ "$DUPLICATES" = "1" ]; then
@@ -136,7 +136,7 @@ elif [ "$DUPLICATES" = "1" ]; then
   info "Restarted deepread."
 else
   warn "No PM2 process found. Starting..."
-  pm2 start "${APP_DIR}/deploy/ecosystem.config.js"
+  pm2 start "${APP_DIR}/deploy/ecosystem.config.cjs"
   pm2 save
   info "Started deepread."
 fi
@@ -187,7 +187,7 @@ if pm2 env deepread 2>/dev/null | grep -q "DATABASE_PATH=${DB_PATH}"; then
   info "PM2 process DATABASE_PATH matches expected: $DB_PATH ✅"
 else
   warn "PM2 process does NOT report expected DATABASE_PATH=$DB_PATH"
-  warn "Check deploy/ecosystem.config.js"
+  warn "Check deploy/ecosystem.config.cjs"
 fi
 
 # Verify the actual database file is at the expected location
