@@ -1,53 +1,78 @@
 #!/usr/bin/env bash
-# DeepRead — Production database backup
-# Safe to run while the application is running (uses better-sqlite3 .backup()).
-# Usage: ./deploy/backup-db.sh
+# DeepRead Database Backup
+# Run as: ubuntu user (NOT root)
+# Usage: bash deploy/backup-db.sh
 set -euo pipefail
 
-APP_DIR="/opt/deepread/app"
-DB_PATH="${DATABASE_PATH:-/data/deepread/app.db}"
-BACKUP_ROOT="/data/deepread/backups"
-STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-BACKUP_FILE="${BACKUP_ROOT}/app-${STAMP}.db"
-KEEP_DAYS="${BACKUP_KEEP_DAYS:-30}"
-
-echo "==> DeepRead database backup"
-
-# Verify production database exists
-if [ ! -f "$DB_PATH" ]; then
-  echo "[ERROR] Database not found at $DB_PATH"
+# ============================================================
+# ROOT/PM2 SAFETY CHECK
+# ============================================================
+if [ "$(id -u)" -eq 0 ]; then
+  echo "[ERROR] Do NOT run as root. Run as ubuntu user."
   exit 1
 fi
 
-mkdir -p "$BACKUP_ROOT"
+# ============================================================
+# CONFIGURATION
+# ============================================================
+DATA_DIR="/data/deepread"
+DB_PATH="${DATA_DIR}/app.db"
+BACKUP_DIR="${DATA_DIR}/backups"
+KEEP_COUNT=30
 
-# Use the application's own backup script (better-sqlite3 .backup via Node.js)
-cd "$APP_DIR"
-if node -e "
-  const { db } = require('./backend/db');
-  db.backup('$BACKUP_FILE')
-    .then(() => { console.log('Backup complete.'); process.exit(0); })
-    .catch((e) => { console.error(e); process.exit(1); });
-" 2>&1; then
-  echo "[OK] Backup created: $BACKUP_FILE"
+# ============================================================
+# COLORS & LOGGING
+# ============================================================
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-  # Report sizes
-  ORIG_SIZE=$(stat --printf="%s" "$DB_PATH" 2>/dev/null || stat -f%z "$DB_PATH" 2>/dev/null || echo "?")
-  BACKUP_SIZE=$(stat --printf="%s" "$BACKUP_FILE" 2>/dev/null || stat -f%z "$BACKUP_FILE" 2>/dev/null || echo "?")
-  echo "     Original: ${ORIG_SIZE} bytes"
-  echo "     Backup:   ${BACKUP_SIZE} bytes"
+info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+step()  { echo -e "\n${BLUE}==== $* ====${NC}"; }
 
-  # Purge old backups (> KEEP_DAYS)
-  if [ "$KEEP_DAYS" -gt 0 ] 2>/dev/null; then
-    echo "     Purging backups older than ${KEEP_DAYS} days..."
-    find "$BACKUP_ROOT" -name 'app-*.db' -type f -mtime +"$KEEP_DAYS" -delete 2>/dev/null || true
-    find "$BACKUP_ROOT" -name 'app-*.db' -type f | wc -l | xargs echo "     Remaining backups:"
-  fi
-else
-  echo "[WARN] better-sqlite3 .backup() failed. Falling back to file copy backup."
-  echo "       (You should stop the application for file-copy backups to avoid corruption.)"
-  cp "$DB_PATH" "$BACKUP_FILE"
-  echo "[OK] Copy backup created: $BACKUP_FILE"
-fi
+# ============================================================
+# PRE-FLIGHT
+# ============================================================
+echo "============================================================"
+echo "  DeepRead Database Backup"
+echo "============================================================"
 
-echo "==> Done"
+[ -f "$DB_PATH" ] || error "Database not found: $DB_PATH"
+
+# ============================================================
+# BACKUP (SQLite hot backup - supports WAL mode)
+# ============================================================
+step "Creating backup"
+
+mkdir -p "$BACKUP_DIR"
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+DEST="${BACKUP_DIR}/app-${TS}.db"
+
+info "Backing up (online, non-blocking, WAL-safe)..."
+sqlite3 "$DB_PATH" ".backup '$DEST'"
+
+# Verify backup integrity
+sqlite3 "$DEST" "PRAGMA integrity_check;" | grep -q "ok" || error "Backup verification failed"
+
+SIZE=$(du -h "$DEST" | cut -f1)
+info "Backup created: $DEST ($SIZE)"
+
+# ============================================================
+# CLEANUP OLD BACKUPS (keep latest KEEP_COUNT)
+# ============================================================
+step "Cleaning old backups (keep latest $KEEP_COUNT)"
+
+cd "$BACKUP_DIR"
+REMOVED=$(ls -t app-*.db 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | wc -l)
+ls -t app-*.db 2>/dev/null | tail -n +$((KEEP_COUNT + 1)) | xargs -r rm -f
+info "Removed $REMOVED old backup(s), keeping latest $KEEP_COUNT"
+
+echo ""
+echo "============================================================"
+info "BACKUP COMPLETE"
+echo "============================================================"
+ls -lh "$BACKUP_DIR"/app-*.db 2>/dev/null | head -5

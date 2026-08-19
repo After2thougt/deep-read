@@ -1,76 +1,108 @@
 #!/usr/bin/env bash
-# DeepRead — Production database restore
-# Usage: ./deploy/restore-db.sh /path/to/backup.db
-# The application MUST be stopped before running this script.
+# DeepRead Database Restore
+# Run as: ubuntu user (NOT root)
+# Usage: bash deploy/restore-db.sh [backup-file]
 set -euo pipefail
 
-APP_DIR="/opt/deepread/app"
-DB_PATH="${DATABASE_PATH:-/data/deepread/app.db}"
-BACKUP_INPUT="${1:-}"
+# ============================================================
+# CONFIGURATION
+# ============================================================
+DATA_DIR="/data/deepread"
+DB_PATH="${DATA_DIR}/app.db"
+BACKUP_DIR="${DATA_DIR}/backups"
+PM2_NAME="deepread"
+BACKUP_FILE="${1:-}"
 
-if [ -z "$BACKUP_INPUT" ]; then
-  echo "Usage: $0 /path/to/backup.db"
-  echo ""
+# ============================================================
+# COLORS & LOGGING
+# ============================================================
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+step()  { echo -e "\n${BLUE}==== $* ====${NC}"; }
+
+# ============================================================
+# PRE-FLIGHT
+# ============================================================
+echo "============================================================"
+echo "  DeepRead Database Restore"
+echo "============================================================"
+
+if [ "$(id -u)" = "0" ]; then
+  error "Do NOT run as root. Run as ubuntu user."
+fi
+
+# Select backup file
+if [ -z "$BACKUP_FILE" ]; then
+  step "Select backup to restore"
+  mapfile -t BACKUPS < <(ls -t "$BACKUP_DIR"/app-*.db 2>/dev/null)
+  [ ${#BACKUPS[@]} -eq 0 ] && error "No backups found in $BACKUP_DIR"
+
   echo "Available backups:"
-  find /data/deepread/backups -name 'app-*.db' -type f | sort -r | head -20
-  exit 1
+  for i in "${!BACKUPS[@]}"; do
+    SIZE=$(du -h "${BACKUPS[i]}" | cut -f1)
+    echo "  [$((i+1))] ${BACKUPS[i]} ($SIZE)"
+  done
+  read -rp "Enter number to restore: " IDX
+  [[ "$IDX" =~ ^[0-9]+$ ]] && [ "$IDX" -ge 1 ] && [ "$IDX" -le ${#BACKUPS[@]} ] || error "Invalid selection"
+  BACKUP_FILE="${BACKUPS[$((IDX-1))]}"
+else
+  [ -f "$BACKUP_FILE" ] || [ -f "${BACKUP_DIR}/${BACKUP_FILE}" ] || error "Backup file not found: $BACKUP_FILE"
+  [ -f "$BACKUP_FILE" ] || BACKUP_FILE="${BACKUP_DIR}/${BACKUP_FILE}"
 fi
 
-if [ ! -f "$BACKUP_INPUT" ]; then
-  echo "[ERROR] Backup file not found: $BACKUP_INPUT"
-  exit 1
-fi
-
-echo "==> DeepRead database restore"
-echo "    Source:      $BACKUP_INPUT"
-echo "    Destination: $DB_PATH"
-echo ""
-
-# Verify PM2 is stopped
-if pm2 list 2>/dev/null | grep -q deepread; then
-  echo "[ERROR] DeepRead PM2 process is still running."
-  echo "        Stop it first: pm2 stop deepread"
-  exit 1
-fi
-
-# Verify destination exists (should not restore to nothing)
-if [ ! -f "$DB_PATH" ]; then
-  echo "[WARN] Production database does not exist at $DB_PATH"
-  echo "       This is expected only for first-time recovery."
-fi
-
-echo "[WARN] This will REPLACE the production database."
-echo ""
+warn "============================================================"
+warn "  RESTORE WILL OVERWRITE CURRENT DATABASE"
+warn "  Source: $BACKUP_FILE"
+warn "  Target: $DB_PATH"
+warn "============================================================"
 read -rp "Type 'yes' to confirm: " CONFIRM
-if [ "$CONFIRM" != "yes" ]; then
-  echo "Aborted."
-  exit 0
-fi
+[ "$CONFIRM" = "yes" ] || error "Restore cancelled"
 
-# Pre-restore safety backup of current database
+# ============================================================
+# RESTORE
+# ============================================================
+step "1/5 Stopping application"
+pm2 stop "$PM2_NAME"
+sleep 2
+
+step "2/5 Backing up current database (pre-restore)"
 if [ -f "$DB_PATH" ]; then
-  PRE_STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-  SAFETY_BACKUP="/data/deepread/backups/pre-restore-${PRE_STAMP}.db"
-  mkdir -p "$(dirname "$SAFETY_BACKUP")"
-  cp "$DB_PATH" "$SAFETY_BACKUP"
-  echo "[OK] Pre-restore safety backup: $SAFETY_BACKUP"
+  TS=$(date -u +%Y%m%dT%H%M%SZ)
+  PRE_RESTORE="${BACKUP_DIR}/app-pre-restore-${TS}.db"
+  cp "$DB_PATH" "$PRE_RESTORE"
+  info "Current database backed up to: $PRE_RESTORE"
 fi
 
-# Copy the backup over the production database
-cp "$BACKUP_INPUT" "$DB_PATH"
-echo "[OK] Database restored from: $BACKUP_INPUT"
+step "3/5 Restoring from backup"
+cp "$BACKUP_FILE" "$DB_PATH"
+rm -f "${DB_PATH}-wal" "${DB_PATH}-shm"
+info "Database restored from: $BACKUP_FILE"
 
-# Remove stale WAL/SHM files — SQLite will recreate on next start
-for SIDECAR in "${DB_PATH}-wal" "${DB_PATH}-shm"; do
-  if [ -f "$SIDECAR" ]; then
-    rm -f "$SIDECAR"
-    echo "[OK] Removed stale sidecar: $(basename "$SIDECAR")"
-  fi
-done
+step "4/5 Verifying restored database"
+sqlite3 "$DB_PATH" "PRAGMA integrity_check;" | grep -q "ok" || error "Restored database integrity check failed"
+info "Integrity check passed"
+
+step "5/5 Starting application"
+pm2 start "$PM2_NAME"
+sleep 3
+
+# Health check
+info "Running health check..."
+if curl -sf http://127.0.0.1:3000/api/health >/dev/null; then
+  HEALTH=$(curl -s http://127.0.0.1:3000/api/health)
+  info "Health API: $HEALTH"
+else
+  error "Health check failed after restore. Check: pm2 logs $PM2_NAME"
+fi
 
 echo ""
-echo "==> Database restored successfully."
-echo "    To complete the restore, restart the application:"
-echo "      pm2 start deepread"
-echo "    Then verify:"
-echo "      curl http://127.0.0.1:3000/api/health"
+echo "============================================================"
+info "RESTORE COMPLETE"
+echo "============================================================"

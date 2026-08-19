@@ -1,210 +1,137 @@
 #!/usr/bin/env bash
-# DeepRead — Production update
-# Usage: ./deploy/update.sh [branch]
+# DeepRead Production Update
+# Run as: ubuntu user (NOT root)
+# Usage: bash deploy/update.sh [branch]
 set -euo pipefail
 
-APP_DIR="/opt/deepread/app"
-DATA_DIR="/data/deepread"
-DB_PATH="${DATA_DIR}/app.db"
-ENV_FILE="${APP_DIR}/.env"
-BRANCH="${1:-main}"
+# ============================================================
+# ROOT/PM2 SAFETY CHECK
+# ============================================================
+if [ "$(id -u)" -eq 0 ]; then
+  echo "[ERROR] Do NOT run as root. Run as ubuntu user."
+  exit 1
+fi
 
+# ============================================================
+# CONFIGURATION
+# ============================================================
+APP_DIR="/opt/deepread/app"
+PM2_NAME="deepread"
+BRANCH="${1:-main}"
+HEALTH_ENDPOINT="http://127.0.0.1:3000/api/health"
+
+# ============================================================
+# COLORS & LOGGING
+# ============================================================
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
 info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+step()  { echo -e "\n${BLUE}==== $* ====${NC}"; }
 
-# ================================================================
-# PREFLIGHT
-# ================================================================
+# ============================================================
+# PRE-FLIGHT
+# ============================================================
 echo "============================================================"
-echo "  DeepRead Production Update"
+echo "  DeepRead Update: $BRANCH"
 echo "============================================================"
-echo ""
-
-# 1. Verify repository exists
-if [ ! -d "${APP_DIR}/.git" ]; then
-  error "Repository not found at $APP_DIR. Run ./deploy/install.sh first."
-fi
-
-# 2. Verify .env exists
-if [ ! -f "$ENV_FILE" ]; then
-  error ".env not found at $ENV_FILE. Run ./deploy/install.sh first."
-fi
-
-# 3. Verify we're not root
-if [ "$(id -u)" = "0" ]; then
-  error "Do NOT run this script as root."
-fi
 
 cd "$APP_DIR"
 
-# ================================================================
-# STEP 1 — Backup database
-# ================================================================
-echo ""
-echo "[1/7] Backing up production database..."
-if [ -f "$DB_PATH" ]; then
-  ./deploy/backup-db.sh
-else
-  warn "No database found at $DB_PATH — skipping backup."
+# ============================================================
+# STEP 1: GIT PULL (verify clean working tree)
+# ============================================================
+step "1/6 Git pull"
+
+info "Fetching origin..."
+git fetch origin
+
+info "Checking working tree..."
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  error "Working tree has uncommitted changes. Commit or stash first."
 fi
 
-# ================================================================
-# STEP 2 — Fetch remote changes
-# ================================================================
-echo ""
-echo "[2/7] Fetching remote changes..."
+info "Pulling $BRANCH (fast-forward only)..."
+git pull --ff-only origin "$BRANCH"
 
-git fetch origin "$BRANCH" || error "git fetch failed."
+CURRENT_COMMIT=$(git rev-parse --short HEAD)
+info "Updated to: $CURRENT_COMMIT"
 
-# Check local modifications
-LOCAL_CHANGES=$(git status --porcelain | grep -v '^??' || true)
-if [ -n "$LOCAL_CHANGES" ]; then
-  warn "Local modifications detected:"
-  echo "$LOCAL_CHANGES" | head -20
-  echo ""
-  if [ -n "${DEEPREAD_ALLOW_LOCAL_OVERWRITE:-}" ]; then
-    warn "DEEPREAD_ALLOW_LOCAL_OVERWRITE is set — proceeding."
-  else
-    error "Refusing to overwrite local modifications.
-  Commit or stash them, or re-run with DEEPREAD_ALLOW_LOCAL_OVERWRITE=1"
-  fi
-fi
+# ============================================================
+# STEP 2: DEPENDENCIES
+# ============================================================
+step "2/6 Installing dependencies"
 
-# Detect remote state
-BEHIND=$(git rev-list --count HEAD..origin/"$BRANCH" 2>/dev/null || echo "0")
-AHEAD=$(git rev-list --count origin/"$BRANCH"..HEAD 2>/dev/null || echo "0")
+info "Root npm ci..."
+npm ci
 
-if [ "$BEHIND" = "0" ] && [ "$AHEAD" = "0" ]; then
-  info "Already up to date. Nothing to pull."
-  UP_TO_DATE=1
-else
-  info "Remote: $BEHIND commits ahead, local: $AHEAD commits ahead."
-fi
-
-if [ "${UP_TO_DATE:-0}" != "1" ]; then
-  # Merge (not reset)
-  git merge origin/"$BRANCH" --no-edit || error "git merge failed."
-  info "Merged origin/$BRANCH."
-fi
-
-# ================================================================
-# STEP 3 — Install dependencies
-# ================================================================
-echo ""
-echo "[3/7] Installing dependencies..."
-
-npm ci || warn "npm ci failed — falling back to npm install"
 if [ -f backend/package.json ]; then
-  (cd backend && npm ci) || warn "backend npm ci failed — fallback: cd backend && npm install"
+  info "Backend npm ci..."
+  (cd backend && npm ci)
 fi
 
-# ================================================================
-# STEP 4 — Build frontend
-# ================================================================
-echo ""
-echo "[4/7] Building frontend (this invalidates stale CSS/JS)..."
+# ============================================================
+# STEP 3: DATABASE MIGRATIONS
+# ============================================================
+step "3/6 Running database migrations"
+if [ -f "${APP_DIR}/deploy/migrate.sh" ]; then
+  bash "${APP_DIR}/deploy/migrate.sh"
+else
+  warn "No migrate.sh found, skipping migrations"
+fi
+
+# ============================================================
+# STEP 4: FRONTEND BUILD
+# ============================================================
+step "4/6 Building frontend"
 
 npm run build
+[ -f dist/index.html ] || error "Frontend build failed: dist/index.html missing"
+ASSET_COUNT=$(find dist/assets -type f 2>/dev/null | wc -l)
+info "Build complete: $ASSET_COUNT assets"
 
-if [ ! -f dist/index.html ]; then
-  error "Build failed — dist/index.html missing."
-fi
-info "Frontend built."
+# ============================================================
+# STEP 5: PM2 RELOAD (zero-downtime)
+# ============================================================
+step "5/6 Reloading PM2"
 
-# ================================================================
-# STEP 5 — Restart PM2 (exactly one instance)
-# ================================================================
-echo ""
-echo "[5/7] Restarting DeepRead PM2 process..."
-
-# Ensure no duplicate processes
-DUPLICATES=$(pm2 list 2>/dev/null | grep -c "deepread" || true)
-if [ "$DUPLICATES" -gt 1 ]; then
-  warn "Multiple PM2 processes named 'deepread' detected. Cleaning up..."
-  pm2 delete deepread 2>/dev/null || true
-  pm2 start "${APP_DIR}/deploy/ecosystem.config.cjs"
-  pm2 save
-  info "Restarted exactly one instance."
-elif [ "$DUPLICATES" = "1" ]; then
-  pm2 restart deepread --update-env
-  info "Restarted deepread."
-else
-  warn "No PM2 process found. Starting..."
-  pm2 start "${APP_DIR}/deploy/ecosystem.config.cjs"
-  pm2 save
-  info "Started deepread."
-fi
-
-# Wait for boot
+pm2 reload "$PM2_NAME" --update-env
 sleep 3
 
-# ================================================================
-# STEP 6 — Verify health endpoint
-# ================================================================
-echo ""
-echo "[6/7] Running verification..."
+# ============================================================
+# STEP 6: HEALTH CHECKS
+# ============================================================
+step "6/6 Health checks"
 
-# 6a. API health
-if curl -sf http://127.0.0.1:3000/api/health > /dev/null 2>&1; then
-  HEALTH=$(curl -s http://127.0.0.1:3000/api/health)
-  info "Health: $HEALTH"
+# PM2 status
+if pm2 show "$PM2_NAME" 2>/dev/null | grep -q "online"; then
+  info "PM2 process: ONLINE"
 else
-  error "Health check FAILED. Rolling back changes may be required: pm2 logs deepread"
+  error "PM2 process not online. Check: pm2 logs $PM2_NAME"
 fi
 
-# 6b. Frontend HTML
+# Health API
+if curl -sf "$HEALTH_ENDPOINT" >/dev/null; then
+  HEALTH=$(curl -s "$HEALTH_ENDPOINT")
+  info "Health API: $HEALTH"
+else
+  error "Health API failed. Check: pm2 logs $PM2_NAME"
+fi
+
+# Frontend
 if curl -sf http://127.0.0.1:3000/ | grep -q '<!doctype html>'; then
-  info "Frontend: index.html served."
+  info "Frontend: OK"
 else
-  error "Frontend not served."
-fi
-
-# 6c. Verify assets exist
-if [ -d dist/assets ] && [ "$(find dist/assets -type f | wc -l)" -gt 0 ]; then
-  info "Assets: $(find dist/assets -type f | wc -l) files in dist/assets."
-else
-  warn "No assets found in dist/assets — verify build."
-fi
-
-# ================================================================
-# STEP 7 — Verify DATABASE_PATH
-# ================================================================
-echo ""
-echo "[7/7] Verifying production DATABASE_PATH..."
-
-# Read from .env
-ENV_DBPATH=$(grep '^DATABASE_PATH=' "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
-info ".env DATABASE_PATH=$ENV_DBPATH"
-
-# Verify against process env via PM2
-if pm2 env deepread 2>/dev/null | grep -q "DATABASE_PATH=${DB_PATH}"; then
-  info "PM2 process DATABASE_PATH matches expected: $DB_PATH ✅"
-else
-  warn "PM2 process does NOT report expected DATABASE_PATH=$DB_PATH"
-  warn "Check deploy/ecosystem.config.cjs"
-fi
-
-# Verify the actual database file is at the expected location
-if [ -f "$DB_PATH" ]; then
-  DB_SIZE=$(stat --printf="%s" "$DB_PATH" 2>/dev/null || stat -f%z "$DB_PATH" 2>/dev/null || echo "?")
-  info "Database exists at: $DB_PATH (${DB_SIZE} bytes)"
-else
-  warn "Database file not found at $DB_PATH — first start may create it."
+  error "Frontend not served correctly"
 fi
 
 echo ""
 echo "============================================================"
-echo "  UPDATE COMPLETE"
+info "UPDATE COMPLETE: $CURRENT_COMMIT"
 echo "============================================================"
-echo ""
-echo "  The production database at $DB_PATH was NOT modified."
-echo "  Pre-update backup was saved to /data/deepread/backups/."
-echo ""
-echo "  Verify in browser: your-domain.com"
-echo "============================================================"
+pm2 status

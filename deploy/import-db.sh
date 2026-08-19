@@ -1,274 +1,194 @@
 #!/usr/bin/env bash
-# DeepRead — Import an external SQLite database into production
-# This REPLACES the production database with the provided file.
-# The application MUST be stopped before running this script.
-# Usage: sudo ./deploy/import-db.sh /path/to/source.db
-
+# DeepRead Database Import
+# Run as: ubuntu user (NOT root)
+# Usage: bash deploy/import-db.sh /path/to/source.db
 set -euo pipefail
 
-PM2_STOPPED=false
-DB_PATH="/data/deepread/app.db"
-IMPORT_FILE="${1:-}"
-
-cleanup() {
-  if [ "$PM2_STOPPED" = true ]; then
-    echo "[INFO] Import failed or interrupted. Restarting DeepRead..."
-    pm2 restart deepread || true
-  fi
-}
-
-trap cleanup EXIT
-
-
-if [ -z "$IMPORT_FILE" ]; then
-  echo "Usage: $0 /path/to/source.db"
+# ============================================================
+# ROOT/PM2 SAFETY CHECK
+# ============================================================
+if [ "$(id -u)" -eq 0 ]; then
+  echo "[ERROR] Do NOT run as root. Run as ubuntu user. PM2 must be managed by ubuntu."
   exit 1
 fi
 
-if [ ! -f "$IMPORT_FILE" ]; then
-  echo "[ERROR] Source database not found: $IMPORT_FILE"
-  exit 1
-fi
+# ============================================================
+# CONFIGURATION
+# ============================================================
+SRC_DB="${1:-}"
+APP_DIR="/opt/deepread/app"
+DATA_DIR="/data/deepread"
+DB_PATH="${DATA_DIR}/app.db"
+BACKUP_DIR="${DATA_DIR}/backups"
+LOG_DIR="${DATA_DIR}/logs"
+PM2_NAME="deepread"
 
+# Required tables to verify
+REQUIRED_TABLES=("articles" "article_blocks" "vocabulary")
 
-echo "==> DeepRead database import"
-echo "    Source:      $IMPORT_FILE"
-echo "    Destination: $DB_PATH"
-echo ""
+# ============================================================
+# COLORS & LOGGING
+# ============================================================
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
+info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
+step()  { echo -e "\n${BLUE}==== $* ====${NC}"; }
 
-# ----- Stop application -----
-if pm2 list 2>/dev/null | grep -q "deepread"; then
-  echo "[INFO] Stopping DeepRead..."
-  pm2 stop deepread
-  PM2_STOPPED=true
-fi
+# ============================================================
+# PRE-FLIGHT
+# ============================================================
+echo "============================================================"
+echo "  DeepRead Database Import"
+echo "============================================================"
 
+[ -z "$SRC_DB" ] && error "Usage: bash deploy/import-db.sh /path/to/source.db"
+[ -f "$SRC_DB" ] || error "Source database not found: $SRC_DB"
 
-# ----- STEP 1: Validate SQLite database -----
-echo "[1/6] Validating source database..."
+# ============================================================
+# STEP 1: VALIDATE SOURCE DATABASE
+# ============================================================
+step "1/8 Validating source database"
 
+info "Checking SQLite integrity..."
+sqlite3 "$SRC_DB" "PRAGMA integrity_check;" | grep -q "ok" || error "Source database integrity check failed"
 
-SQLITE_HEADER=$(head -c 16 "$IMPORT_FILE" 2>/dev/null || true)
-
-if [[ "$SQLITE_HEADER" != SQLite\ format\ 3* ]]; then
-  echo "[ERROR] Source file is NOT a valid SQLite database."
-  echo "        First 16 bytes:"
-  echo "$SQLITE_HEADER" | xxd | head -1
-  exit 1
-fi
-
-
-TABLE_COUNT=$(sqlite3 "$IMPORT_FILE" \
-  "SELECT COUNT(*) FROM sqlite_master WHERE type='table';" \
-  2>/dev/null || echo "FAIL")
-
-
-if [ "$TABLE_COUNT" = "FAIL" ]; then
-  echo "[ERROR] Cannot read source database."
-  exit 1
-fi
-
-
-REQUIRED_TABLES=(
-  "articles"
-  "article_blocks"
-  "vocabulary"
-)
-
-
-MISSING=()
-
-for TABLE in "${REQUIRED_TABLES[@]}"; do
-  EXISTS=$(sqlite3 "$IMPORT_FILE" \
-    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='$TABLE';" \
-    2>/dev/null || echo "0")
-
-  if [ "$EXISTS" = "0" ]; then
-    MISSING+=("$TABLE")
-  fi
+info "Checking required tables..."
+TABLES=$(sqlite3 "$SRC_DB" ".tables")
+for table in "${REQUIRED_TABLES[@]}"; do
+  echo "$TABLES" | grep -qw "$table" || error "Required table missing: $table"
+  info "  ✓ $table"
 done
 
+# Count records for info
+ARTICLE_COUNT=$(sqlite3 "$SRC_DB" "SELECT COUNT(*) FROM articles;")
+VOCAB_COUNT=$(sqlite3 "$SRC_DB" "SELECT COUNT(*) FROM vocabulary;")
+info "Source DB stats: articles=$ARTICLE_COUNT, vocabulary=$VOCAB_COUNT"
 
-if [ ${#MISSING[@]} -gt 0 ]; then
-  echo "[WARN] Missing expected tables:"
-  for TABLE in "${MISSING[@]}"; do
-    echo "       - $TABLE"
-  done
-  echo ""
-fi
+# ============================================================
+# STEP 2: CONFIRMATION
+# ============================================================
+step "2/8 Confirmation"
 
-
-ARTICLE_COUNT=$(sqlite3 "$IMPORT_FILE" \
-  "SELECT COUNT(*) FROM articles;" \
-  2>/dev/null || echo "?")
-
-echo "    Valid SQLite."
-echo "    Tables: ${TABLE_COUNT}"
-echo "    Articles: ${ARTICLE_COUNT}"
-
-
-# ----- STEP 2: Backup production database -----
+warn "This will REPLACE the production database:"
+warn "  Target: $DB_PATH"
+warn "  Source: $SRC_DB"
+warn "  Current data will be backed up, then overwritten."
 echo ""
-echo "[2/6] Backing up current production database..."
+read -rp "Type 'yes' to confirm import: " CONFIRM
+[ "$CONFIRM" = "yes" ] || error "Import cancelled by user"
 
+# ============================================================
+# STEP 3: STOP PM2
+# ============================================================
+step "3/8 Stopping application"
 
-SAFETY_BACKUP=""
+pm2 stop "$PM2_NAME"
+sleep 2
+
+# ============================================================
+# STEP 4: BACKUP CURRENT DATABASE
+# ============================================================
+step "4/8 Backing up current database"
 
 if [ -f "$DB_PATH" ]; then
-
-  STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-
-  SAFETY_BACKUP="/data/deepread/backups/pre-import-${STAMP}.db"
-
-  mkdir -p "$(dirname "$SAFETY_BACKUP")"
-
-  cp "$DB_PATH" "$SAFETY_BACKUP"
-
-  echo "    Backup:"
-  echo "    $SAFETY_BACKUP"
-
+  TS=$(date -u +%Y%m%dT%H%M%SZ)
+  mkdir -p "$BACKUP_DIR"
+  BACKUP_FILE="${BACKUP_DIR}/app-pre-import-${TS}.db"
+  # Use SQLite backup for consistency (supports WAL mode)
+  sqlite3 "$DB_PATH" ".backup '$BACKUP_FILE'"
+  info "Current database backed up to: $BACKUP_FILE"
 else
-
-  echo "    No existing database."
-
+  warn "No existing database to backup"
 fi
 
+# ============================================================
+# STEP 5: SAFE DATABASE REPLACEMENT (atomic via mv)
+# ============================================================
+step "5/8 Importing new database safely"
 
+# Copy to temporary file first
+TEMP_DB="${DB_PATH}.new"
+cp "$SRC_DB" "$TEMP_DB"
+info "Copied source to temporary file: $TEMP_DB"
 
-# ----- STEP 3: Confirmation -----
-echo ""
-echo "[3/6] Confirmation"
-echo ""
+# Verify integrity of temp file
+info "Verifying temporary database integrity..."
+sqlite3 "$TEMP_DB" "PRAGMA integrity_check;" | grep -q "ok" || {
+  rm -f "$TEMP_DB"
+  error "Temporary database integrity check failed. Original database untouched."
+}
 
-echo "    This will replace:"
-echo "    $DB_PATH"
+# Verify required tables exist in temp file
+TABLES=$(sqlite3 "$TEMP_DB" ".tables")
+for table in "${REQUIRED_TABLES[@]}"; do
+  echo "$TABLES" | grep -qw "$table" || {
+    rm -f "$TEMP_DB"
+    error "Required table missing in temp DB: $table"
+  }
+done
+info "Temporary database validation passed"
 
-echo ""
+# Atomic replace using mv (guarantees original untouched on failure)
+mv "$TEMP_DB" "$DB_PATH"
+info "Database atomically replaced: $DB_PATH"
 
-echo "    With:"
-echo "    $IMPORT_FILE"
+# ============================================================
+# STEP 6: CLEAN WAL/SHM
+# ============================================================
+step "6/8 Cleaning WAL/SHM files"
 
-echo ""
-
-read -rp "    Type 'IMPORT' to proceed: " CONFIRM
-
-
-if [ "$CONFIRM" != "IMPORT" ]; then
-
-  echo "    Aborted."
-
-  exit 0
-
-fi
-
-
-
-# ----- STEP 4: Replace database -----
-echo ""
-echo "[4/6] Copying database..."
-
-
-mkdir -p "$(dirname "$DB_PATH")"
-
-cp "$IMPORT_FILE" "$DB_PATH"
-
-
-echo "    Done:"
-echo "    $DB_PATH"
-
-
-
-# ----- STEP 5: Remove SQLite WAL files -----
-echo ""
-echo "[5/6] Cleaning WAL/SHM files..."
-
-
-for SIDECAR in \
-  "${DB_PATH}-wal" \
-  "${DB_PATH}-shm"
-do
-
-  if [ -f "$SIDECAR" ]; then
-
-    rm -f "$SIDECAR"
-
-    echo "    Removed:"
-    echo "    $(basename "$SIDECAR")"
-
+for f in "${DB_PATH}-wal" "${DB_PATH}-shm"; do
+  if [ -f "$f" ]; then
+    rm -f "$f"
+    info "Removed: $f"
   fi
-
 done
 
+# ============================================================
+# STEP 7: VERIFY FINAL DATABASE
+# ============================================================
+step "7/8 Verifying final database"
 
-echo "    Done."
+info "Verifying imported database..."
+sqlite3 "$DB_PATH" "PRAGMA integrity_check;" | grep -q "ok" || error "Imported database integrity check failed"
 
+# Verify tables still exist
+TABLES=$(sqlite3 "$DB_PATH" ".tables")
+for table in "${REQUIRED_TABLES[@]}"; do
+  echo "$TABLES" | grep -qw "$table" || error "Required table missing after import: $table"
+done
 
+# ============================================================
+# STEP 8: RESTART PM2 & HEALTH CHECK
+# ============================================================
+step "8/8 Restarting application and health check"
 
-# ----- STEP 6: Verify database -----
-echo ""
-echo "[6/6] Verifying database..."
-
-
-VERIFY_COUNT=$(sqlite3 "$DB_PATH" \
-  "SELECT COUNT(*) FROM articles;" \
-  2>/dev/null || echo "FAIL")
-
-
-if [ "$VERIFY_COUNT" = "FAIL" ]; then
-
-  echo "[ERROR] Imported database verification failed."
-
-  exit 1
-
-fi
-
-
-echo "    Database readable."
-echo "    Articles: $VERIFY_COUNT"
-
-
-
-# ----- Restart application -----
-echo ""
-echo "    Restarting DeepRead..."
-
-
-pm2 restart deepread
-
-PM2_STOPPED=false
-
-
+info "Starting PM2..."
+pm2 start "$PM2_NAME"
 sleep 3
 
-
-
-# ----- Health check -----
-echo ""
-echo "    Health check..."
-
-
-if curl -sf http://127.0.0.1:3000/api/health > /dev/null 2>&1; then
-
-  echo "    [OK] Application responding."
-
+# Health check
+info "Running health check..."
+if curl -sf http://127.0.0.1:3000/api/health >/dev/null; then
+  HEALTH=$(curl -s http://127.0.0.1:3000/api/health)
+  info "Health API: $HEALTH"
 else
-
-  echo "    [WARN] Health check failed."
-  echo "    Run:"
-  echo "    pm2 logs deepread"
-
+  error "Health check failed after import. Check: pm2 logs $PM2_NAME"
 fi
 
-
-
-echo ""
-echo "==> Import complete."
-
-if [ -n "$SAFETY_BACKUP" ]; then
-  echo "    Previous database:"
-  echo "    $SAFETY_BACKUP"
-fi
+# Final stats
+NEW_ARTICLE_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM articles;")
+NEW_VOCAB_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM vocabulary;")
+info "Import complete ✓"
+info "New database stats: articles=$NEW_ARTICLE_COUNT, vocabulary=$NEW_VOCAB_COUNT"
 
 echo ""
-echo "    Verify your website."
+echo "============================================================"
+info "DATABASE IMPORT SUCCESSFUL"
+echo "============================================================"
