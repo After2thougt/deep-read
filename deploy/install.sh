@@ -4,7 +4,7 @@
 # Usage: ./deploy/install.sh
 set -euo pipefail
 
-REPO_URL="${DEEPREAD_REPO:-https://github.com/After2thougt/deep-read.git}"
+REPO_URL="${DEEPREAD_REPO:-git@github.com:After2thougt/deep-read.git}"
 BRANCH="${DEEPREAD_BRANCH:-main}"
 APP_DIR="/opt/deepread/app"
 DATA_DIR="/data/deepread"
@@ -156,10 +156,52 @@ info "Created: $APP_DIR"
 info "Created: $DATA_DIR (database, backups, uploads)"
 
 # ================================================================
+# GitHub SSH Authentication Check
+# ================================================================
+check_github_ssh() {
+  info "Checking GitHub SSH authentication..."
+
+  # GitHub SSH test returns exit code 1 on success (authenticated but no shell access)
+  # We capture output and check for success message
+  # Use set +e / set -e to preserve exit code (|| true loses it)
+  local ssh_output
+  set +e
+  ssh_output=$(ssh -T git@github.com 2>&1)
+  local exit_code=$?
+  set -e
+
+  # GitHub returns:
+  # - exit 1 with "successfully authenticated" on success
+  # - exit 255 with "Permission denied" on failure
+  if [[ $exit_code -eq 1 ]] && [[ "$ssh_output" == *"successfully authenticated"* ]]; then
+    info "GitHub SSH authentication verified."
+    return 0
+  fi
+
+  error "GitHub SSH authentication failed.
+
+  Cannot access git@github.com. SSH key not configured or not added to GitHub.
+
+  To fix this:
+    1. Generate an SSH key (if you don't have one):
+       ssh-keygen -t ed25519 -C \"your-email@example.com\"
+    2. View your public key:
+       cat ~/.ssh/id_ed25519.pub
+    3. Add it to GitHub:
+       Go to: https://github.com/settings/keys
+       Click 'New SSH key', paste the public key, and save
+    4. Test again:
+       ssh -T git@github.com"
+}
+
+# ================================================================
 # STEP 5 — Clone repository
 # ================================================================
 echo ""
 echo "[5/10] Cloning repository..."
+
+# Verify GitHub SSH access before cloning
+check_github_ssh
 
 if [ -d "${APP_DIR}/.git" ]; then
   warn "$APP_DIR already contains a Git repository."
