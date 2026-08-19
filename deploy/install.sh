@@ -345,7 +345,7 @@ info "Nginx configured and reloaded."
 echo ""
 echo "[10/10] Starting DeepRead with PM2..."
 
-pm2 start "${APP_DIR}/deploy/ecosystem.config.js"
+pm2 start "${APP_DIR}/deploy/ecosystem.config.cjs"
 pm2 save
 
 # Ensure PM2 starts on boot
