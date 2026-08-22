@@ -243,13 +243,17 @@ export default function HomePage({
 
 
         <div className="home-hero__visual">
+          <img
+            src="/home-visual.png"
+            className="home-hero__image light-image"
+            alt="DeepRead"
+          />
 
-           <img
-          src="/home-visual.png"
-          alt="DeepRead"
-          className="home-hero__image"
-  />
-
+          <img
+            src="/home-visual-dark.png"
+            className="home-hero__image dark-image"
+            alt=""
+          />
         </div>
 
       </section>
