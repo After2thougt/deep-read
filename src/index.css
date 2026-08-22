@@ -5445,7 +5445,7 @@ Dictionary Empty State
 }
 
 [data-theme="dark"] .selection-tool-button {
-  color: var(--text-inverse);
+  color: #fff;
 }
 
 [data-theme="dark"] .selection-tool-button:hover {
