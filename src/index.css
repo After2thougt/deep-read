@@ -1355,6 +1355,10 @@ Mobile
   gap: 7px;
 }
 
+[data-theme="dark"] .phrase-analysis {
+  background: #1e293b;
+}
+
 .vocabulary-analysis > div,
 .phrase-analysis {
   padding: 9px;
