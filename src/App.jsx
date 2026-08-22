@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookOpen } from "lucide-react";
 
 import ReaderPage from "./pages/ReaderPage";
@@ -172,11 +172,52 @@ export default function App() {
    * 当前 Reader 正在编辑的文章
    */
 
+  // Persist only the current article ID to localStorage.
+  // On refresh, we restore the ID and re-fetch the article from the backend.
+  const [articleId, setArticleId] = useState(() => {
+    try {
+      return localStorage.getItem("deepread:current-article-id") || null;
+    } catch {
+      return null;
+    }
+  });
+
   const [article, setArticle] = useState("");
   const [articleTitle, setArticleTitle] = useState("");
-  const [articleId, setArticleId] = useState(null);
   const [highlights, setHighlights] = useState([]);
   const [articleBlocks, setArticleBlocks] = useState([]);
+
+  // Track whether we've already restored the article on initial load
+  const articleRestoredRef = useRef(false);
+
+  // Restore article from backend when articleId is loaded from localStorage on initial mount
+  useEffect(() => {
+    if (!articleId || articleRestoredRef.current) return;
+
+    articleRestoredRef.current = true;
+
+    fetchArticle(articleId)
+      .then((fullArticle) => {
+        setArticleTitle(fullArticle.title || "");
+        setArticle(fullArticle.content || "");
+        setHighlights(fullArticle.highlights || []);
+        setArticleBlocks(fullArticle.blocks || []);
+      })
+      .catch((error) => {
+        console.error("Failed to restore article:", error);
+        // If restore fails, clear the invalid ID
+        setArticleId(null);
+      });
+  }, [articleId]);
+
+  // Persist articleId to localStorage
+  useEffect(() => {
+    if (articleId) {
+      localStorage.setItem("deepread:current-article-id", articleId);
+    } else {
+      localStorage.removeItem("deepread:current-article-id");
+    }
+  }, [articleId]);
 
 
 
