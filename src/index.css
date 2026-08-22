@@ -632,16 +632,21 @@ textarea:focus {
   color: #1e293b;
 }
 
+/* Wavy underline using SVG background for consistent cross-browser/OS rendering */
 .underline-wavy {
-  text-decoration-line: underline;
-  text-decoration-style: wavy;
-  text-decoration-color: #eab308;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 4px;
+  text-decoration: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 6' preserveAspectRatio='none'><path d='M0,3 Q25,0 50,3 T100,3' stroke='%23eab308' stroke-width='1.5' fill='none'/></svg>");
+  background-repeat: repeat-x;
+  background-position: left bottom 2px;
+  background-size: 50px 6px;
+  padding-bottom: 4px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
-.highlight-text {
-  text-decoration: none;
+/* Dark mode */
+[data-theme="dark"] .underline-wavy {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 6' preserveAspectRatio='none'><path d='M0,3 Q25,0 50,3 T100,3' stroke='%233b82f6' stroke-width='1.5' fill='none'/></svg>");
 }
 
 /* =========================================================
@@ -6205,9 +6210,7 @@ Dictionary Empty State
   color: var(--text-primary);
 }
 
-[data-theme="dark"] .underline-wavy {
-  text-decoration-color: var(--accent-color);
-}
+
 
 [data-theme="dark"] .word {
   color: var(--accent-color);

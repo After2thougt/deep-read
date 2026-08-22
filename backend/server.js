@@ -855,7 +855,7 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
       keyPoints: [],
       vocabularyAnalysis: [],
       phraseCollocations: [],
-      source: 'openai',
+      source: 'fallback',
       model,
     };
   } catch (error) {
@@ -958,7 +958,7 @@ async function callGeminiTextAnalysis(text) {
       keyPoints: [],
       vocabularyAnalysis: [],
       phraseCollocations: [],
-      source: 'gemini',
+      source: 'fallback',
     };
   } catch (error) {
     const message = String(error.message || '');
@@ -1702,7 +1702,14 @@ app.post('/api/analyze', async (req, res) => {
     // Cache writes are best-effort. A cache failure must never turn a valid AI
     // response into an analysis error. Network fallbacks are intentionally not
     // cached so a later request can retry the configured provider.
-    if (cacheArticle && analysis?.source !== 'fallback' && (analysisGenerations.get(cacheKey) || 0) === cacheGeneration && !cancelledAnalysisRequests.has(requestId)) {
+    // Validate that analysis has meaningful content before caching
+    const hasMeaningfulContent = analysis &&
+      typeof analysis.summary === 'string' && analysis.summary.trim().length > 0 &&
+      Array.isArray(analysis.hardSentences) && analysis.hardSentences.length > 0 &&
+      Array.isArray(analysis.vocabularyAnalysis) && analysis.vocabularyAnalysis.length > 0 &&
+      Array.isArray(analysis.phraseCollocations) && analysis.phraseCollocations.length > 0;
+
+    if (cacheArticle && analysis?.source !== 'fallback' && hasMeaningfulContent && (analysisGenerations.get(cacheKey) || 0) === cacheGeneration && !cancelledAnalysisRequests.has(requestId)) {
       try {
         const now = new Date().toISOString();
         const saveAnalysis = db.transaction(() => {
