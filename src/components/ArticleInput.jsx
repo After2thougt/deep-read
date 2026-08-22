@@ -17,7 +17,17 @@ export default function ArticleInput({
   onNewArticle,
   saveMessage,
 }) {
-  const [isCollapsed, setIsCollapsed] = useState(() => Boolean(article));
+  // View mode is per-article. New articles default to edit mode.
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (!articleId) return false; // new article -> edit mode
+    try {
+      const saved = localStorage.getItem(`deepread:reader-view-mode:${articleId}`);
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return true; // existing article -> reading mode
+  });
   const [blocks, setBlocks] = useState(() =>
     initialEditorBlocks(article, propsBlocks)
   );
@@ -279,9 +289,11 @@ export default function ArticleInput({
   }, [articleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Propagate isCollapsed based on article existence
+  // Only auto-expand for NEW articles (no articleId).
+  // Existing articles keep their persisted view mode (or default reading mode).
   useEffect(() => {
-    if (!article) setIsCollapsed(false);
-  }, [article]);
+    if (!articleId && !article) setIsCollapsed(false);
+  }, [article, articleId]);
 
   // When the editor transitions from collapsed → expanded the contentEditable
   // DOM element mounts for the first time.  If the mount effect (#1) already
@@ -295,6 +307,15 @@ export default function ArticleInput({
     renderBlocksToDOM(blocks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCollapsed]);
+
+  // Persist view mode (collapsed/expanded) to localStorage per article
+  // Only persist for saved articles (with articleId)
+  useEffect(() => {
+    if (!articleId) return;
+    try {
+      localStorage.setItem(`deepread:reader-view-mode:${articleId}`, JSON.stringify(isCollapsed));
+    } catch {}
+  }, [isCollapsed, articleId]);
 
   // Auto-save blocks + title to localStorage on every change
   useEffect(() => {
