@@ -7,6 +7,8 @@ import {
   Languages,
   Sparkles,
   Trash2,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 import { getWords } from "../utils/text";
@@ -98,13 +100,15 @@ function getTextPosition(container, offset, root) {
     return null;
   }
 
-  return start + (textNode ? offset : 0);
+  return start + offset;
 }
 
 
 export default function Reader({
   article,
   blocks = null,
+  fontSize = 18,
+  setFontSize,
   articleOffset = 0,
   pageEnd = Infinity,
   highlights = [],
@@ -116,15 +120,20 @@ export default function Reader({
   onAnalyzeArticle,
   translating = false,
   analyzing = false,
+  theme = "light",
+  setTheme,
 }) {
 
   const contentRef = useRef(null);
+  const fontControlRef = useRef(null);
   const selectionToolbarRef = useRef(null);
   const toolbarRef = useRef(null);
   const dragStateRef = useRef(null);
 
 
   const [selection, setSelection] = useState(null);
+  const [showFontControl, setShowFontControl] = useState(false);
+
 
   const [
     editingNoteId,
@@ -210,6 +219,37 @@ export default function Reader({
     ]
   );
 
+  useEffect(() => {
+
+  function handleClickOutside(event) {
+
+    if (
+      !fontControlRef.current?.contains(
+        event.target
+      )
+    ) {
+      setShowFontControl(false);
+    }
+
+  }
+
+
+  document.addEventListener(
+    "mousedown",
+    handleClickOutside
+  );
+
+
+  return () => {
+
+    document.removeEventListener(
+      "mousedown",
+      handleClickOutside
+    );
+
+  };
+
+}, []);
 
 
   useEffect(() => {
@@ -713,7 +753,8 @@ export default function Reader({
               }
 
               data-text-start={
-                tokenStart + boundary
+                tokenStart +
+                boundary
               }
 
               key={`${key}-${boundary}`}
@@ -797,13 +838,64 @@ export default function Reader({
             Reading room
           </p>
         </div>
+        <div
+  className="font-control"
+  ref={fontControlRef}
+>
+
+  <button
+  className="font-toggle-button"
+  type="button"
+  onClick={() =>
+    setShowFontControl(v => !v)
+  }
+>
+  Aa
+</button>
+
+  <button
+    className="theme-toggle-button"
+    type="button"
+    onClick={() => setTheme(t => t === "dark" ? "light" : "dark")}
+    aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+  >
+    {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+  </button>
+
+
+  {showFontControl && (
+    <div className="font-popover">
+
+      <div className="font-popover-header">
+        <span>A</span>
+        <span>{fontSize}px</span>
       </div>
 
+
+      <input
+        type="range"
+        min="12"
+        max="32"
+        step="1"
+        value={fontSize}
+        onChange={(event) =>
+          setFontSize(
+            Number(event.target.value)
+          )
+        }
+      />
+
+    </div>
+  )}
+
+</div>
+      </div>
 
       <section
         className="content"
         aria-label="Article reader"
         ref={contentRef}
+        
         onMouseUp={() =>
           window.setTimeout(
             handleSelection,
@@ -914,37 +1006,35 @@ export default function Reader({
                         }
                       >
 
-                        <div className="paragraph-body">
-
-                          {
-                            getWords(
-                              paragraph.text
-                            )
-                            .map(
-                              (
-                                token,
-                                tokenIndex
-                              )=>{
+                        <div
+                            className="paragraph-body"
+                            style={{
+                              fontSize: `${fontSize || 18}px`,
+                            }}
+                          >
+                            {(() => {
+                              let cursor = 0;
+                              return getWords(paragraph.text).map((token, tokenIndex) => {
+                                const tokenRelativeStart =
+                                  paragraph.text.indexOf(token, cursor);
+                                cursor =
+                                  tokenRelativeStart >= 0
+                                    ? tokenRelativeStart + token.length
+                                    : cursor + token.length;
 
                                 const tokenStart =
-                                  tokenOffset;
-
-
-                                tokenOffset +=
-                                  token.length;
-
+                                  blockStart +
+                                  paragraph.start +
+                                  tokenRelativeStart;
 
                                 return renderToken(
                                   token,
                                   tokenStart,
                                   `${blockIndex}-${paragraphIndex}-${tokenIndex}`
                                 );
-
-                              }
-                            )
-                          }
-
-                        </div>
+                              });
+                            })()}
+                          </div>
 
                       </div>
 

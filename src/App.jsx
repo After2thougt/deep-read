@@ -127,6 +127,25 @@ export default function App() {
 
   /*
    * =====================================================
+   * THEME
+   * =====================================================
+   */
+
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem("deepread-theme") || "light";
+    } catch {
+      return "light";
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("deepread-theme", theme);
+  }, [theme]);
+
+  /*
+   * =====================================================
    * PAGE
    * =====================================================
    *
@@ -529,6 +548,9 @@ function newArticle() {
     onArticleSaved={handleArticleSaved}
 
     onNewArticle={newArticle}
+
+    theme={theme}
+    setTheme={setTheme}
   />
 )}
 
