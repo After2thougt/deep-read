@@ -131,3 +131,48 @@
     object-fit: contain;
   }
 }
+
+
+/* Dark Mode for article-rich-editor */
+[data-theme="dark"] .article-rich-editor {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .article-rich-editor:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.12);
+}
+
+[data-theme="dark"] .article-rich-editor:empty::before {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .article-editor-image.is-selected {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+}
+
+[data-theme="dark"] .article-editor-image-action {
+  background: rgba(var(--text-primary-rgb), 0.86);
+  color: var(--text-inverse);
+}
+
+[data-theme="dark"] .article-editor-image-action:hover {
+  background: var(--text-primary);
+}
+
+[data-theme="dark"] .article-editor-image-remove:hover {
+  background: var(--text-danger);
+}
+
+[data-theme="dark"] .article-editor-status {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .draft-restore-banner {
+  border-color: var(--text-warning);
+  background: var(--bg-warning);
+  color: var(--text-warning);
+}

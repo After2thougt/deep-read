@@ -342,7 +342,7 @@ function splitPageText(text) {
 
     const sentences =
       part.match(
-        /[^.!?]+[.!?]+|[^.!?]+$/g
+        /(?<!Mr|Mrs|Dr|U\.S)\.(?=\s+[A-Z])/ 
       ) || [part];
 
     for (const sentence of sentences) {
@@ -858,6 +858,9 @@ export default function ReaderPage({
 
   blocks = [],
   onBlocksChange,
+
+  theme,
+  setTheme,
 }) {
   const [selectedWord, setSelectedWord] =
     useState(null);
@@ -903,6 +906,42 @@ export default function ReaderPage({
 
   const [analyzing, setAnalyzing] =
     useState(false);
+
+  const [fontSize, setFontSize] =
+  useState(() => {
+    return Number(
+      localStorage.getItem(
+        "reader-font-size"
+      )
+    ) || 18;
+  });
+
+
+useEffect(() => {
+  localStorage.setItem(
+    "reader-font-size",
+    String(fontSize)
+  );
+}, [fontSize]);
+
+
+function increaseFont() {
+  setFontSize((size) =>
+    Math.min(size + 2, 32)
+  );
+}
+
+
+function decreaseFont() {
+  setFontSize((size) =>
+    Math.max(size - 2, 12)
+  );
+}
+
+
+function resetFont() {
+  setFontSize(18);
+}
 
   const [
     studyResultsCollapsed,
@@ -1550,6 +1589,8 @@ export default function ReaderPage({
         article={article}
         title={articleTitle}
         articleId={articleId}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
         blocks={blocks}
         onArticleChange={
           onArticleChange
@@ -1566,6 +1607,8 @@ export default function ReaderPage({
               onNewArticle();
             }
           }}
+        theme={theme}
+        setTheme={setTheme}
       />
 
       {/* Save message */}
@@ -1574,6 +1617,8 @@ export default function ReaderPage({
           {saveMessage}
         </div>
       )}
+
+      
 
       {/* =========================================
           Translation / Analysis Error
@@ -1622,6 +1667,8 @@ export default function ReaderPage({
         <div className="reader-column">
           <Reader
             article={pageContent}
+             fontSize={fontSize}
+             setFontSize={setFontSize}
             blocks={pageBlocks}
             articleOffset={pageOffset}
             pageEnd={
@@ -1653,7 +1700,11 @@ export default function ReaderPage({
             analyzing={
               analyzing
             }
+            theme={theme}
+            setTheme={setTheme}
           />
+
+          
 
           {/* =====================================
               Pagination

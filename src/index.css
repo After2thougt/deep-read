@@ -2,8 +2,83 @@
   font-family: Inter, Arial, sans-serif;
   color: #1e293b;
   background: #f5f6f8;
-}
 
+  /* Light theme color variables */
+  --bg-page: #f5f6f8;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --bg-input: #ffffff;
+  --bg-accent: #eff6ff;
+  --bg-accent-hover: #dbeafe;
+  --bg-danger: #fef2f2;
+  --bg-danger-hover: #fee2e2;
+  --bg-success: #f0fdf4;
+  --bg-warning: #fefce8;
+
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+  --text-accent: #2563eb;
+  --text-danger: #dc2626;
+  --text-success: #16a34a;
+  --text-warning: #a16207;
+
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --border-focus: #93c5fd;
+  --border-accent: #bfdbfe;
+  --border-danger: #fecaca;
+
+  --accent-color: #2563eb;
+  --accent-hover: #1d4ed8;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.12);
+  --shadow-xl: 0 20px 50px rgba(15, 23, 42, 0.18);
+}
+/* Dark theme variables */
+[data-theme="dark"] {
+  --bg-page: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-card: #1e293b;
+  --bg-hover: #334155;
+  --bg-input: #1e293b;
+  --bg-accent: #1e3a5f;
+  --bg-accent-hover: #1e40af;
+  --bg-danger: #7f1d1d;
+  --bg-danger-hover: #991b1b;
+  --bg-success: #14532d;
+  --bg-warning: #78350f;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-inverse: #0f172a;
+  --text-accent: #60a5fa;
+  --text-danger: #f87171;
+  --text-success: #4ade80;
+  --text-warning: #fbbf24;
+
+  --border-color: #334155;
+  --border-hover: #475569;
+  --border-focus: #60a5fa;
+  --border-accent: #1e3a5f;
+  --border-danger: #7f1d1d;
+
+  --accent-color: #d4d7dc;
+  --accent-hover: #60a5fa;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.6);
+
+  color: var(--text-primary);
+  background: var(--bg-page);
+}
 * {
   box-sizing: border-box;
 }
@@ -102,6 +177,99 @@ nav {
   background: #b6bccc;
   color: #fff;
 }
+
+/* =========================================================
+   Font Control (Aa button + Theme toggle)
+======================================================= */
+
+.font-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.font-toggle-button,
+.theme-toggle-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  border-radius: 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+
+.font-toggle-button:hover,
+.theme-toggle-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.font-toggle-button:active,
+.theme-toggle-button:active {
+  transform: scale(0.96);
+}
+
+.font-toggle-button:focus-visible,
+.theme-toggle-button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.font-popover {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  width: 200px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  animation: fontPopoverIn 0.18s ease;
+}
+
+.font-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.font-popover-header span:first-child {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.font-popover input[type="range"] {
+  width: 100%;
+  cursor: pointer;
+  accent-color: var(--accent-color);
+}
+
+@keyframes fontPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 
 /* =========================================================
    Layout
@@ -226,6 +394,11 @@ nav {
   padding: 8px;
   border-radius: 8px;
   color: #b91c1c;
+}
+
+.icon-button svg {
+  display: block;
+  flex-shrink: 0;
 }
 
 .icon-button:hover {
@@ -879,11 +1052,19 @@ Mobile
   background: #eaf2ff;
 }
 
+[data-theme="dark"] .icon-text-button:hover {   
+  background: var(--bg-accent);   
+  color: var(--text-accent); }
+
 .icon-text-button.danger:hover,
 .icon-text-button.danger:focus-visible {
   color: #b91c1c;
   background: #fef2f2;
 }
+
+[data-theme="dark"] .icon-text-button.danger:hover {   
+  background: var(--bg-accent);   
+  color: var(--text-accent); }
 
 .result-count {
   display: grid;
@@ -3429,6 +3610,14 @@ Mobile
   color: #dc2626;
 }
 
+.delete-modal-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+
 .delete-modal h3 {
   margin: 0 0 8px;
 
@@ -4685,8 +4874,1346 @@ Dictionary Empty State
   }
 }
 
+
+
+/* =========================================================
+   Additional Dark Mode - Dictionary, ArticleInput, Tag Toolbar
+======================================================= */
+
+/* Dictionary - word row (layout only, but ensure text colors) */
+[data-theme="dark"] .dictionary-word-row {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .dictionary-word-row h3,
+[data-theme="dark"] .dictionary-word-row .word {
+  color: var(--text-primary);
+}
+
+/* ArticleInput - title input focus */
+[data-theme="dark"] .title-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+/* ArticleInput - textarea focus (already has dark mode but ensure) */
+[data-theme="dark"] .article-input textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+/* Tag Toolbar - tag-pill */
+[data-theme="dark"] .tag-pill {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .tag-pill:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .tag-pill:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+/* Tag Toolbar - tag-filter */
+[data-theme="dark"] .tag-filter {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .tag-filter:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .tag-filter.is-active {
+  background: var(--bg-accent);
+  border-color: var(--accent-color);
+  color: var(--text-accent);
+}
+
+/* Tag Toolbar - tag-filter-scroll */
+[data-theme="dark"] .tag-filter-scroll {
+  scrollbar-color: var(--border-color) transparent;
+}
+
+[data-theme="dark"] .tag-filter-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="dark"] .tag-filter-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+/* Tag Toolbar - tag-tool-button hover (ensure dark mode) */
+[data-theme="dark"] .tag-tool-button:hover {
+  background: var(--bg-accent);
+  border-color: var(--border-accent);
+  color: var(--text-accent);
+}
+
+/* Tag Toolbar - tag-option hover (ensure dark mode) */
+[data-theme="dark"] .tag-option:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .tag-option.is-selected {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+}
+
+/* Tag Toolbar - tag-delete-button hover */
+[data-theme="dark"] .tag-delete-button:hover {
+  background: var(--bg-danger);
+  color: var(--text-danger);
+}
+
+/* Tag Toolbar - tag-manager-header text */
+[data-theme="dark"] .tag-manager-header h3,
+[data-theme="dark"] .tag-manager-header strong {
+  color: var(--text-primary);
+}
+
+/* Dictionary - word title in dictionary card */
+[data-theme="dark"] .dictionary-title h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .dictionary-title .word {
+  color: var(--text-primary);
+}
+
+/* ArticleInput - upload button (secondary button variant) */
+[data-theme="dark"] .upload-button {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .upload-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+/* ArticleInput - new article button */
+[data-theme="dark"] .new-article-button,
+[data-theme="dark"] .article-input .primary-button {
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+[data-theme="dark"] .new-article-button:hover,
+[data-theme="dark"] .article-input .primary-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+/* Tag popover - tag option empty state */
+[data-theme="dark"] .tag-option-empty {
+  border-color: var(--text-muted);
+}
+
+/* Tag popover - tag create row */
+[data-theme="dark"] .tag-create-row {
+  border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .tag-create-row input {
+  background: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .tag-create-row input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+[data-theme="dark"] .tag-create-row .secondary-button {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .tag-create-row .secondary-button:hover {
+  background: var(--bg-hover);
+}
+
 @media (max-width: 600px) {
   .home-vocabulary-grid {
     grid-template-columns: 1fr;
   }
   }
+
+/* =========================================================
+   Dark Mode - Component Styles
+======================================================= */
+
+/* Reader */
+[data-theme="dark"] .reader,
+[data-theme="dark"] .dictionary,
+[data-theme="dark"] .vocabulary-page,
+[data-theme="dark"] .article-input,
+[data-theme="dark"] .panel-section,
+[data-theme="dark"] .reading-surface {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .reading-surface {
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .content {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .article-paragraph::before {
+  color: var(--text-muted);
+}
+
+/* Article Input */
+[data-theme="dark"] .article-input {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .article-meta {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .title-input,
+[data-theme="dark"] .article-input textarea {
+  background: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .title-input:focus,
+[data-theme="dark"] .article-input textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+[data-theme="dark"] .upload-button,
+[data-theme="dark"] .secondary-button {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .upload-button:hover,
+[data-theme="dark"] .secondary-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+[data-theme="dark"] .save-message {
+  color: var(--text-success);
+}
+
+/* Dictionary Card */
+[data-theme="dark"] .dictionary {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .dictionary-title h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .phonetic {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .part-of-speech {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+}
+
+[data-theme="dark"] .dictionary-definition {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .dictionary .example {
+  background: var(--bg-hover);
+  border-left-color: var(--border-accent);
+}
+
+[data-theme="dark"] .dictionary-attribution {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .pronunciation-button {
+  background: var(--bg-accent);
+  border-color: var(--border-accent);
+  color: var(--text-accent);
+}
+
+[data-theme="dark"] .pronunciation-button:hover {
+  background: var(--bg-accent-hover);
+  border-color: var(--accent-color);
+}
+
+[data-theme="dark"] .side-message {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .error-message {
+  color: var(--text-danger);
+}
+
+[data-theme="dark"] .sync-message {
+  color: var(--text-secondary);
+}
+
+/* Translation Panel */
+[data-theme="dark"] .translation-panel {
+  background: transparent;
+}
+
+[data-theme="dark"] .translation-item {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .translation-item:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .translation-item__number {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .translation-block span.translation-label {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .translation-block--source p {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .translation-block--target {
+  border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .translation-block--target p {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .translation-toggle {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .translation-toggle:hover {
+  background: var(--bg-accent);
+  color: var(--text-accent);
+}
+
+/* AI Analysis Panel */
+[data-theme="dark"] .study-section {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .study-section__header h2 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .hard-sentence-card {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .hard-sentence-heading strong {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .hard-sentence-heading > span {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .sentence-analysis {
+  border-top-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .sentence-analysis h3,
+[data-theme="dark"] .sentence-analysis h4 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .sentence-analysis p {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .structure-group {
+  background: var(--bg-hover);
+  border-left-color: var(--border-color);
+}
+
+[data-theme="dark"] .structure-group__label {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .structure-token__text {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .structure-token__type {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .original-sentence {
+  background: var(--bg-accent);
+  border-left-color: var(--accent-color);
+  color: var(--text-accent);
+}
+
+[data-theme="dark"] .vocabulary-analysis-card {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .vocabulary-analysis-card__word {
+  color: var(--text-accent);
+}
+
+[data-theme="dark"] .vocabulary-analysis-card__meta span {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .vocabulary-analysis-card__meaning {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .vocabulary-analysis-card__usage {
+  border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .vocabulary-analysis-card__label {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .vocabulary-analysis-card__usage p {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .phrase-analysis h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .phrase-analysis p {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .phrase-analysis strong {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .grammar-point {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .grammar-point h3 {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .grammar-point p {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .key-points {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .key-points li {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .overview-panel h2,
+[data-theme="dark"] .panel-section > h2 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .overview-panel > p {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .overview-panel h3 {
+  color: var(--text-primary);
+}
+
+/* Learning Toolbar */
+[data-theme="dark"] .learning-toolbar,
+[data-theme="dark"] .learning-toolbar-floating {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .learning-toolbar:hover,
+[data-theme="dark"] .learning-toolbar-floating:hover {
+  border-color: var(--border-hover);
+}
+
+[data-theme="dark"] .learning-toolbar-drag-handle {
+  border-right-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .learning-toolbar-drag-handle:hover {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .learning-tool-button {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+[data-theme="dark"] .learning-tool-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .learning-tool-button:focus-visible {
+  background: var(--bg-hover);
+  color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--border-accent);
+}
+
+[data-theme="dark"] .learning-tool-button:active {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .learning-tool-icon {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .learning-tool-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .learning-tool-icon:focus-visible {
+  background: var(--bg-hover);
+  color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--border-accent);
+}
+
+[data-theme="dark"] .learning-toolbar-divider {
+  background: var(--border-color);
+}
+
+/* Selection Toolbar */
+[data-theme="dark"] .selection-toolbar {
+  background: rgba(var(--text-primary-rgb), 0.96);
+  box-shadow: var(--shadow-xl), var(--shadow-sm);
+}
+
+[data-theme="dark"] .selection-tool-button {
+  color: var(--text-inverse);
+}
+
+[data-theme="dark"] .selection-tool-button:hover {
+  background: rgba(var(--text-inverse-rgb), 0.1);
+}
+
+/* Underline / Highlights */
+[data-theme="dark"] .highlights-list {
+  border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .highlights-list .section-heading h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .highlights-list .section-heading .eyebrow {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .highlights-list .section-heading > span {
+  color: var(--text-secondary);
+  background: var(--border-color);
+}
+
+[data-theme="dark"] .underline-note {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .underline-note:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .underline-note > p.underline-wavy {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .saved-note {
+  color: var(--text-secondary);
+  background: #182232;
+}
+
+[data-theme="dark"] .saved-note svg {
+  color: var(--text-warning);
+}
+
+[data-theme="dark"] .note-editor textarea {
+  background: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .note-editor textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.08);
+}
+
+[data-theme="dark"] .note-actions .secondary-button,
+[data-theme="dark"] .note-actions .primary-button {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .note-actions .secondary-button:hover {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .text-button {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .text-button:hover {
+  color: var(--accent-color);
+}
+
+[data-theme="dark"] .delete-underline {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .delete-underline:hover {
+  color: var(--text-danger);
+}
+
+/* Pagination */
+[data-theme="dark"] .pagination-page,
+[data-theme="dark"] .pagination-button {
+  color: var(--text-primary);
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .pagination-page:hover,
+[data-theme="dark"] .pagination-button:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .pagination-button:disabled {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .pagination-page.is-current {
+  background: var(--accent-color);
+  color: var(--text-inverse);
+  border-color: var(--accent-color);
+}
+
+[data-theme="dark"] .pagination-ellipsis {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .pagination-jump {
+  color: var(--text-accent);
+}
+
+[data-theme="dark"] .pagination-jump input {
+  background: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .vocabulary-page-button {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .vocabulary-page-button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+[data-theme="dark"] .list-pagination {
+  color: var(--text-secondary);
+}
+
+/* Vocabulary Page */
+[data-theme="dark"] .vocabulary-page {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .vocabulary-count {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .vocabulary-search {
+  background: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .vocabulary-search:focus-within {
+  border-color: var(--border-focus);
+}
+
+[data-theme="dark"] .vocabulary-search input {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .vocabulary-search input::placeholder {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .search-clear {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .search-clear:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .vocabulary-sort {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .vocabulary-group-control {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .vocabulary-group-control select {
+  background: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .article-vocabulary-group__header strong {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .article-vocabulary-group__header span {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .vocabulary-sort button {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .vocabulary-sort button.is-active {
+  background: var(--bg-accent);
+}
+
+[data-theme="dark"] .vocabulary-item {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .vocabulary-item:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .vocabulary-item h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .vocabulary-item .phonetic {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .vocabulary-definition {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .vocabulary-item small {
+  color: var(--text-muted);
+}
+
+/* Articles Page */
+[data-theme="dark"] .articles-page {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .article-search-input {
+  color: var(--text-primary);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .article-search-input:focus {
+  border-bottom-color: var(--border-focus);
+}
+
+[data-theme="dark"] .article-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .article-search-clear {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .article-search-clear:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .article-search-button {
+  border-color: var(--border-accent);
+  background: var(--bg-accent);
+  color: var(--text-accent);
+}
+
+[data-theme="dark"] .article-search-button:hover {
+  background: var(--bg-accent-hover);
+  border-color: var(--accent-color);
+}
+
+[data-theme="dark"] .article-sort-select {
+  border-color: var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .article-sort-select:focus {
+  border-color: var(--border-focus);
+}
+
+[data-theme="dark"] .article-list-item {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .article-list-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+[data-theme="dark"] .article-open-button {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .article-open-button small {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .article-tag,
+[data-theme="dark"] .untagged-label {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .article-tag:hover {
+  background: var(--border-color);
+}
+
+[data-theme="dark"] .untagged-label {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .add-tag-button {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .add-tag-button:hover {
+  background: var(--bg-accent);
+}
+
+/* Tag Popover */
+[data-theme="dark"] .tag-popover {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="dark"] .tag-manager-header h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .tag-tool-button {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .tag-tool-button:hover {
+  background: var(--bg-accent);
+  border-color: var(--border-accent);
+  color: var(--text-accent);
+}
+
+[data-theme="dark"] .tag-option {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .tag-option:hover {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .tag-option.is-selected {
+  background: var(--bg-accent);
+}
+
+[data-theme="dark"] .tag-option.is-selected:hover {
+  background: var(--bg-accent-hover);
+}
+
+[data-theme="dark"] .tag-option-empty {
+  border-color: var(--text-muted);
+}
+
+
+
+[data-theme="dark"] .tag-create-row input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.25);
+}
+
+[data-theme="dark"] .tag-create-row .secondary-button {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .tag-delete-button {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .tag-delete-button:hover {
+  background: var(--bg-danger);
+  color: var(--text-danger);
+}
+
+/* Delete Modal */
+[data-theme="dark"] .delete-modal-overlay {
+  background: rgba(var(--text-primary-rgb), 0.45);
+}
+
+[data-theme="dark"] .delete-modal {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-xl);
+}
+
+[data-theme="dark"] .delete-modal-close {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .delete-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .delete-modal-icon {
+  background: var(--bg-danger);
+  color: var(--text-danger);
+}
+
+[data-theme="dark"] .delete-modal h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .delete-modal p {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .delete-modal p strong {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .delete-cancel-button {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .delete-cancel-button:hover {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .delete-confirm-button {
+  border-color: var(--text-danger);
+  background: var(--text-danger);
+  color: var(--text-inverse);
+}
+
+[data-theme="dark"] .delete-confirm-button:hover {
+  border-color: var(--text-danger);
+  background: var(--text-danger-hover);
+}
+
+/* Underline Editor */
+[data-theme="dark"] .underline-editor {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Auth */
+[data-theme="dark"] .auth-screen {
+  background: var(--bg-page);
+}
+
+[data-theme="dark"] .auth-form h1 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .auth-subtitle {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .auth-fields input {
+  border-color: var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .auth-fields input::placeholder {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .auth-fields input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(var(--text-muted-rgb), 0.12);
+}
+
+[data-theme="dark"] .auth-submit {
+  background: var(--text-primary);
+  color: var(--text-inverse);
+}
+
+[data-theme="dark"] .auth-submit:hover:not(:disabled) {
+  background: var(--bg-page);
+}
+
+[data-theme="dark"] .auth-error {
+  background: var(--bg-danger);
+  color: var(--text-danger);
+}
+
+/* Empty States */
+[data-theme="dark"] .empty-reader,
+[data-theme="dark"] .empty-vocabulary {
+  color: var(--text-secondary);
+}
+
+/* Home Page */
+[data-theme="dark"] .home-page {
+  /* inherits page background */
+}
+
+[data-theme="dark"] .home-hero {
+  border-color: var(--border-color);
+  background: linear-gradient(135deg, var(--bg-surface), var(--bg-card));
+}
+
+[data-theme="dark"] .home-hero:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="dark"] .home-eyebrow {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-hero h1 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-hero__description {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .home-new-button {
+  background: #34455f;
+  color: #fff;
+}
+
+[data-theme="dark"] .home-hero__visual {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .home-hero__visual:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="dark"] .home-section-header h2 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-article-count {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-article-card {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .home-article-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .home-article-card__number {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-article-card__arrow {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-article-card:hover .home-article-card__arrow {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-article-card h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-article-card__preview {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .home-article-card__footer {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-empty {
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-empty h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-empty-button {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-empty-button:hover {
+  border-color: var(--border-hover);
+}
+
+[data-theme="dark"] .home-featured-article {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .home-featured-article:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="dark"] .home-featured-article__date {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-featured-article h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-featured-article__preview {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .home-featured-article__footer {
+  border-top-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .app-footer {
+  border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .app-footer__brand strong {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .app-footer__brand span,
+[data-theme="dark"] .app-footer__meta {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-vocabulary-grid {
+  /* inherits */
+}
+
+[data-theme="dark"] .home-word-card {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+}
+
+[data-theme="dark"] .home-word-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .home-word-card__word {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-word-card__pos {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .home-word-card__definition {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .home-section-link {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .home-section-link:hover {
+  color: var(--text-primary);
+}
+
+/* Nav buttons */
+[data-theme="dark"] .nav-button,
+[data-theme="dark"] .icon-button {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .nav-button:hover,
+[data-theme="dark"] .icon-button:hover {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .nav-button.active {
+  color: var(--text-inverse);
+  background: var(--text-primary);
+}
+
+[data-theme="dark"] .nav-button.active:hover {
+  background: var(--border-hover);
+}
+
+/* Primary button */
+[data-theme="dark"] .primary-button {
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+[data-theme="dark"] .primary-button:disabled {
+  background: var(--text-muted);
+}
+
+/* Icon button (danger) */
+[data-theme="dark"] .icon-button {
+  color: var(--text-danger);
+}
+
+[data-theme="dark"] .icon-button:hover {
+  background: var(--bg-danger-hover);
+}
+
+/* Font control (Aa button + theme toggle) */
+[data-theme="dark"] .font-toggle-button,
+[data-theme="dark"] .theme-toggle-button {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .font-toggle-button:hover,
+[data-theme="dark"] .theme-toggle-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+[data-theme="dark"] .font-popover {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-lg);
+}
+
+[data-theme="dark"] .font-popover-header {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .font-popover-header span:first-child {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .font-popover input[type="range"] {
+  accent-color: var(--accent-color);
+}
+
+/* Word hover in reader */
+[data-theme="dark"] .word:hover,
+[data-theme="dark"] .word:focus-visible {
+  background: var(--bg-warning);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .underline-wavy {
+  text-decoration-color: var(--accent-color);
+}
+
+[data-theme="dark"] .word {
+  color: var(--accent-color);
+}
+
+/* Selection highlight */
+[data-theme="dark"] ::selection {
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+/* Migration banner */
+[data-theme="dark"] .migration-banner {
+  background: var(--bg-accent);
+  border-color: var(--border-accent);
+}
+
+/* App header h1 */
+[data-theme="dark"] h1 {
+  color: var(--text-primary);
+}
+
+/* Panel section eyebrow */
+[data-theme="dark"] .panel-section .eyebrow,
+[data-theme="dark"] .overview-panel .eyebrow,
+[data-theme="dark"] .input-label,
+[data-theme="dark"] .eyebrow {
+  color: var(--text-muted);
+}
+
+/* Article paragraph numbers */
+[data-theme="dark"] .article-paragraph::before {
+  color: var(--text-muted);
+}
