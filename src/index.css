@@ -2352,6 +2352,7 @@ Mobile
   flex-direction: row;
   gap: 20px;
   align-items: center;
+  margin-top: 10px;
 }
 
 .text-button {
@@ -2377,7 +2378,7 @@ Mobile
 }
 
 .delete-underline {
-  color: #94a3b8;
+  color: #6c7c91;
 }
 
 .delete-underline:hover,

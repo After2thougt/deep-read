@@ -71,10 +71,7 @@ function isHighlighted(start, end, highlights) {
       item.start < end &&
       item.end > start
   );
-}
-
-
-function getTextPosition(container, offset, root) {
+}function getTextPosition(container, offset, root) {
   const textNode =
     container.nodeType === Node.TEXT_NODE
       ? container
@@ -483,6 +480,111 @@ export default function Reader({
   }, []);
 
 
+  function renderParagraphWithHighlights(
+    paragraph,
+    blockStart,
+    articleOffset,
+    pageHighlights,
+    baseKey
+  ) {
+    const paragraphText = paragraph.text;
+    const paragraphAbsoluteStart = articleOffset + blockStart + paragraph.start;
+    const paragraphAbsoluteEnd = paragraphAbsoluteStart + paragraphText.length;
+
+    const overlappingHighlights = pageHighlights
+      .filter(
+        (h) => h.start < paragraphAbsoluteEnd && h.end > paragraphAbsoluteStart
+      )
+      .map((h) => ({
+        start: Math.max(h.start, paragraphAbsoluteStart),
+        end: Math.min(h.end, paragraphAbsoluteEnd),
+        id: h.id,
+      }))
+      .sort((a, b) => a.start - b.start);
+
+    if (overlappingHighlights.length === 0) {
+      return (
+        <span
+          className="word"
+          key={`${baseKey}-plain`}
+          role="button"
+          tabIndex={0}
+          data-text-start={paragraphAbsoluteStart - articleOffset}
+          onClick={() => onSelectWord(paragraphText)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelectWord(paragraphText);
+            }
+          }}
+        >
+          {paragraphText}
+        </span>
+      );
+    }
+
+    const pieces = [];
+    let cursor = paragraphAbsoluteStart;
+
+    for (const hl of overlappingHighlights) {
+      if (cursor < hl.start) {
+        const normalText = paragraphText.slice(cursor - paragraphAbsoluteStart, hl.start - paragraphAbsoluteStart);
+        pieces.push(
+          <span
+            className="word"
+            key={`${baseKey}-plain-${cursor}`}
+            role="button"
+            tabIndex={0}
+            data-text-start={cursor - articleOffset}
+            onClick={() => onSelectWord(normalText)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelectWord(normalText);
+              }
+            }}
+          >
+            {normalText}
+          </span>
+        );
+      }
+      const highlightText = paragraphText.slice(hl.start - paragraphAbsoluteStart, hl.end - paragraphAbsoluteStart);
+      pieces.push(
+        <span
+          className="underline-wavy"
+          key={`${baseKey}-hl-${hl.id}-${hl.start}`}
+          data-text-start={hl.start - articleOffset}
+        >
+          {highlightText}
+        </span>
+      );
+      cursor = hl.end;
+    }
+
+    if (cursor < paragraphAbsoluteEnd) {
+      const normalText = paragraphText.slice(cursor - paragraphAbsoluteStart);
+      pieces.push(
+        <span
+          className="word"
+          key={`${baseKey}-plain-${cursor}`}
+          role="button"
+          tabIndex={0}
+          data-text-start={cursor - articleOffset}
+          onClick={() => onSelectWord(normalText)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelectWord(normalText);
+            }
+          }}
+        >
+          {normalText}
+        </span>
+      );
+    }
+
+    return <>{pieces}</>;
+  }
 
   function startToolbarDrag(event) {
 
@@ -1012,28 +1114,13 @@ export default function Reader({
                               fontSize: `${fontSize || 18}px`,
                             }}
                           >
-                            {(() => {
-                              let cursor = 0;
-                              return getWords(paragraph.text).map((token, tokenIndex) => {
-                                const tokenRelativeStart =
-                                  paragraph.text.indexOf(token, cursor);
-                                cursor =
-                                  tokenRelativeStart >= 0
-                                    ? tokenRelativeStart + token.length
-                                    : cursor + token.length;
-
-                                const tokenStart =
-                                  blockStart +
-                                  paragraph.start +
-                                  tokenRelativeStart;
-
-                                return renderToken(
-                                  token,
-                                  tokenStart,
-                                  `${blockIndex}-${paragraphIndex}-${tokenIndex}`
-                                );
-                              });
-                            })()}
+                            {renderParagraphWithHighlights(
+                            paragraph,
+                            blockStart,
+                            articleOffset,
+                            pageHighlights,
+                            `${blockIndex}-${paragraphIndex}`
+                          )}
                           </div>
 
                       </div>
@@ -1256,7 +1343,7 @@ export default function Reader({
                     <p className="highlight-text">
 
 
-                      <span className="underline-wavy">“{item.text.trim()}”</span>
+                      <span>{item.text.trim()}</span>
 
                     </p>
 
