@@ -27,6 +27,7 @@ import {
 import ArticleInput from "../components/ArticleInput";
 import DictionaryCard from "../components/DictionaryCard";
 import Reader from "../components/Reader";
+import ConfirmModal from "../components/ConfirmModal";
 
 
 function structureTokens(value) {
@@ -923,6 +924,8 @@ export default function ReaderPage({
   const [analyzing, setAnalyzing] =
     useState(false);
 
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
   const [fontSize, setFontSize] =
   useState(() => {
     return Number(
@@ -982,6 +985,12 @@ function resetFont() {
     useRef(0);
 
   const activeAnalysisRequestId =
+    useRef(null);
+
+  const analysisAbortControllerRef =
+    useRef(null);
+
+  const translationAbortControllerRef =
     useRef(null);
 
   const readerPageRef =
@@ -1330,10 +1339,7 @@ function resetFont() {
 
   async function handleTranslate() {
     if (translations) {
-      setTranslationCollapsed(
-        false
-      );
-
+      setTranslationCollapsed(false);
       return;
     }
 
@@ -1341,62 +1347,54 @@ function resetFont() {
       return;
     }
 
-    const requestGeneration =
-      ++translationRequestGeneration.current;
+    // Cancel any in-flight translation request
+    if (translationAbortControllerRef.current) {
+      translationAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    translationAbortControllerRef.current = abortController;
 
-    const requestedPage =
-      currentPage;
+    const requestGeneration = ++translationRequestGeneration.current;
+    const requestedPage = currentPage;
 
     setTranslating(true);
     setTranslateError("");
 
     try {
-      const result =
-        await translateArticle(
-          pageContent,
-          "zh",
-          {
-            articleId,
-            pageNumber:
-              requestedPage,
-          }
-        );
+      const result = await translateArticle(
+        pageContent,
+        "zh",
+        {
+          articleId,
+          pageNumber: requestedPage,
+          signal: abortController.signal,
+        }
+      );
 
       if (
-        translationRequestGeneration.current ===
-          requestGeneration &&
-        currentPage ===
-          requestedPage
+        translationRequestGeneration.current === requestGeneration &&
+        currentPage === requestedPage &&
+        !abortController.signal.aborted
       ) {
         setTranslations(
-          Array.isArray(
-            result?.paragraphs
-          )
-            ? result.paragraphs
-            : []
+          Array.isArray(result?.paragraphs) ? result.paragraphs : []
         );
-
-        setTranslationCollapsed(
-          false
-        );
+        setTranslationCollapsed(false);
       }
     } catch (err) {
+      if (err.name === 'AbortError') {
+        return; // Ignore aborted requests
+      }
       if (
-        translationRequestGeneration.current ===
-        requestGeneration
+        translationRequestGeneration.current === requestGeneration &&
+        !abortController.signal.aborted
       ) {
-        setTranslateError(
-          err?.error ||
-            err?.message ||
-            "Translation failed."
-        );
+        setTranslateError(err?.error || err?.message || "Translation failed.");
       }
     } finally {
-      if (
-        translationRequestGeneration.current ===
-        requestGeneration
-      ) {
+      if (translationRequestGeneration.current === requestGeneration) {
         setTranslating(false);
+        translationAbortControllerRef.current = null;
       }
     }
   }
@@ -1404,10 +1402,7 @@ function resetFont() {
 
   async function handleAnalyze() {
     if (hasValidAnalysis(analysis)) {
-      setStudyResultsCollapsed(
-        false
-      );
-
+      setStudyResultsCollapsed(false);
       return;
     }
 
@@ -1415,73 +1410,60 @@ function resetFont() {
       return;
     }
 
-    const requestGeneration =
-      ++analysisRequestGeneration.current;
+    // Cancel any in-flight analysis request
+    if (analysisAbortControllerRef.current) {
+      analysisAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    analysisAbortControllerRef.current = abortController;
 
-    const requestId = `${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2)}`;
+    const requestGeneration = ++analysisRequestGeneration.current;
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    activeAnalysisRequestId.current =
-      requestId;
+    activeAnalysisRequestId.current = requestId;
 
     setAnalyzing(true);
     setAnalysisError("");
 
     try {
-      const result =
-        await analyzeArticle(
-          pageContent,
-          requestId,
-          {
-            articleId,
-            pageNumber: currentPage,
-          }
-        );
+      const result = await analyzeArticle(
+        pageContent,
+        requestId,
+        {
+          articleId,
+          pageNumber: currentPage,
+          signal: abortController.signal,
+        }
+      );
 
       if (
-        analysisRequestGeneration.current ===
-        requestGeneration
+        analysisRequestGeneration.current === requestGeneration &&
+        !abortController.signal.aborted
       ) {
         setAnalysis(result);
-        setStudyResultsCollapsed(
-          false
-        );
+        setStudyResultsCollapsed(false);
       }
     } catch (err) {
+      if (err.name === 'AbortError') {
+        return; // Ignore aborted requests
+      }
       if (
-        analysisRequestGeneration.current ===
-        requestGeneration
+        analysisRequestGeneration.current === requestGeneration &&
+        !abortController.signal.aborted
       ) {
-        setAnalysisError(
-          err?.error ||
-            err?.message ||
-            "Analysis failed."
-        );
+        setAnalysisError(err?.error || err?.message || "Analysis failed.");
       }
     } finally {
-      if (
-        analysisRequestGeneration.current ===
-        requestGeneration
-      ) {
+      if (analysisRequestGeneration.current === requestGeneration) {
         setAnalyzing(false);
-
-        activeAnalysisRequestId.current =
-          null;
+        activeAnalysisRequestId.current = null;
+        analysisAbortControllerRef.current = null;
       }
     }
   }
 
 
-  async function handleClearStudyResults() {
-    if (
-      !window.confirm(
-        "Clear Study Results?\n\nThis deletes the cached AI analysis for this saved article. The next analysis will call AI again."
-      )
-    ) {
-      return;
-    }
-
+  async function executeClearStudyResults() {
     ++analysisRequestGeneration.current;
 
     setAnalyzing(false);
@@ -1512,7 +1494,13 @@ function resetFont() {
           ? "The running backend is outdated. Restart npm start, then clear Study Results again."
           : message
       );
+    } finally {
+      setClearConfirmOpen(false);
     }
+  }
+
+  function handleClearStudyResults() {
+    setClearConfirmOpen(true);
   }
 
 
@@ -1628,7 +1616,40 @@ function resetFont() {
       />
 
       {/* Save message */}
-      {saveMessage && (
+      {clearConfirmOpen && (
+      <ConfirmModal
+        open={clearConfirmOpen}
+        title="Clear Study Results?"
+        message="Are you sure you want to clear the study results? This action cannot be undone."
+        onCancel={() => setClearConfirmOpen(false)}
+        onConfirm={executeClearStudyResults}
+        confirmText="Clear"
+      />
+    )}
+
+    {clearConfirmOpen && (
+      <ConfirmModal
+        open={clearConfirmOpen}
+        title="Clear Study Results?"
+        message="Are you sure you want to clear the study results? This action cannot be undone."
+        onCancel={() => setClearConfirmOpen(false)}
+        onConfirm={executeClearStudyResults}
+        confirmText="Clear"
+      />
+    )}
+
+    {clearConfirmOpen && (
+      <ConfirmModal
+        open={clearConfirmOpen}
+        title="Clear Study Results?"
+        message="Are you sure you want to clear the study results? This action cannot be undone."
+        onCancel={() => setClearConfirmOpen(false)}
+        onConfirm={executeClearStudyResults}
+        confirmText="Clear"
+      />
+    )}
+
+    {saveMessage && (
         <div className="article-save-message">
           {saveMessage}
         </div>
