@@ -105,6 +105,22 @@ db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS article_analyses_page_lookup_idx
     UNIQUE (article_id, page_number, content_hash, source, target, provider)
   );`);
 
+try {
+  db.exec(
+    'ALTER TABLE vocabulary ADD COLUMN start_offset INTEGER'
+  );
+} catch (error) {
+  if (!/duplicate column/i.test(error.message)) throw error;
+}
+
+try {
+  db.exec(
+    'ALTER TABLE vocabulary ADD COLUMN end_offset INTEGER'
+  );
+} catch (error) {
+  if (!/duplicate column/i.test(error.message)) throw error;
+}
+
 try { db.exec("ALTER TABLE article_translation_cache ADD COLUMN source TEXT NOT NULL DEFAULT 'auto'"); } catch (error) { if (!/duplicate column/i.test(error.message)) throw error; }
 try { db.exec("ALTER TABLE article_translation_cache ADD COLUMN provider TEXT NOT NULL DEFAULT 'deeplx'"); } catch (error) { if (!/duplicate column/i.test(error.message)) throw error; }
 

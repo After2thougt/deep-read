@@ -1449,21 +1449,69 @@ app.get('/api/vocabulary', async (req, res) => {
   const page = parseListNumber(req.query.page, 1, Number.MAX_SAFE_INTEGER);
   const limit = parseListNumber(req.query.limit, 10);
   const sort = req.query.sort === 'az' ? 'az' : 'recent';
-  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
-  const where = search ? 'WHERE LOWER(v.word) LIKE LOWER(?)' : '';
-  const params = search ? [`%${search}%`] : [];
-  const orderBy = sort === 'az' ? 'v.word COLLATE NOCASE ASC' : 'v.saved_at DESC';
+
+  const search =
+    typeof req.query.search === 'string'
+      ? req.query.search.trim().slice(0, 100)
+      : '';
+
+  const articleId = req.query.article_id;  // 放这里
+
+  const conditions = [];
+  const params = [];
+
+  if (search) {
+    conditions.push('LOWER(v.word) LIKE LOWER(?)');
+    params.push(`%${search}%`);
+  }
+
+  if (articleId) {
+    conditions.push('v.article_id = ?');
+    params.push(articleId);
+  }
+
+  const where = conditions.length
+    ? `WHERE ${conditions.join(' AND ')}`
+    : '';
+
+  const orderBy =
+    sort === 'az'
+      ? 'v.word COLLATE NOCASE ASC'
+      : 'v.saved_at DESC';
 
   try {
-    const total = db.prepare(`SELECT COUNT(*) AS count FROM vocabulary v ${where}`).get(...params).count;
-    const rows = db.prepare(`SELECT v.*, a.title AS source_article_title
-      FROM vocabulary v LEFT JOIN articles a ON a.id = v.article_id
-      ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`)
-      .all(...params, limit, (page - 1) * limit)
-      .map(serializeVocabulary);
-    return res.json({ items: rows, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) });
+    const total = db.prepare(
+      `SELECT COUNT(*) AS count 
+       FROM vocabulary v ${where}`
+    ).get(...params).count;
+
+    const rows = db.prepare(
+      `SELECT v.*, a.title AS source_article_title
+       FROM vocabulary v 
+       LEFT JOIN articles a ON a.id = v.article_id
+       ${where}
+       ORDER BY ${orderBy}
+       LIMIT ? OFFSET ?`
+    )
+    .all(
+      ...params,
+      limit,
+      (page - 1) * limit
+    )
+    .map(serializeVocabulary);
+
+    return res.json({
+      items: rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit))
+    });
+
   } catch (error) {
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error(error);
+    return res.status(500)
+      .json({ error: 'Internal server error' });
   }
 });
 
@@ -1518,6 +1566,26 @@ app.get('/api/vocabulary/:word', async (req, res) => {
     return res.json(serializeVocabulary(entry));
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/articles/:id/vocabulary', (req, res) => {
+  try {
+    const words = db.prepare(`
+      SELECT word
+      FROM vocabulary
+      WHERE article_id = ?
+    `)
+    .all(req.params.id)
+    .map(row => row.word.toLowerCase());
+
+    res.json(words);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      error: "Internal server error"
+    });
   }
 });
 

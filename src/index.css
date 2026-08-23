@@ -628,7 +628,6 @@ textarea:focus {
 .word:hover,
 .word:focus-visible {
   outline: none;
-  background: #fef3c7;
   color: #1e293b;
 }
 
@@ -6245,4 +6244,11 @@ Dictionary Empty State
 /* Article paragraph numbers */
 [data-theme="dark"] .article-paragraph::before {
   color: var(--text-muted);
+}
+
+.vocabulary-highlight {
+    font-weight: 800;
+  background: rgba(250, 204, 21, 0.25);
+  border-radius: 3px;
+  padding: 0 2px;
 }
