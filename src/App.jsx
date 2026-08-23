@@ -16,6 +16,8 @@ import {
 
 } from "./api/articles";
 
+import { safeGetItem, safeSetItem, safeRemoveItem } from "./utils/storage";
+
 import "./index.css";
 
 
@@ -132,16 +134,12 @@ export default function App() {
    */
 
   const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem("deepread-theme") || "light";
-    } catch {
-      return "light";
-    }
+    return safeGetItem("deepread-theme") || "light";
   });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("deepread-theme", theme);
+    safeSetItem("deepread-theme", theme);
   }, [theme]);
 
   /*
@@ -157,7 +155,7 @@ export default function App() {
 
   const [page, setPage] = useState(
     () =>
-      localStorage.getItem(
+      safeGetItem(
         "vocabulary-trainer:last-page"
       ) || "home"
   );
@@ -175,11 +173,7 @@ export default function App() {
   // Persist only the current article ID to localStorage.
   // On refresh, we restore the ID and re-fetch the article from the backend.
   const [articleId, setArticleId] = useState(() => {
-    try {
-      return localStorage.getItem("deepread:current-article-id") || null;
-    } catch {
-      return null;
-    }
+    return safeGetItem("deepread:current-article-id") || null;
   });
 
   const [article, setArticle] = useState("");
@@ -213,9 +207,9 @@ export default function App() {
   // Persist articleId to localStorage
   useEffect(() => {
     if (articleId) {
-      localStorage.setItem("deepread:current-article-id", articleId);
+      safeSetItem("deepread:current-article-id", articleId);
     } else {
-      localStorage.removeItem("deepread:current-article-id");
+      safeRemoveItem("deepread:current-article-id");
     }
   }, [articleId]);
 
@@ -369,7 +363,7 @@ useEffect(() => {
    */
 
   function navigateTo(nextPage) {
-    localStorage.setItem(
+    safeSetItem(
       "vocabulary-trainer:last-page",
       nextPage
     );
@@ -514,6 +508,7 @@ function newArticle() {
       </header>
 
 
+
       {/* =================================================
           MIGRATION
           ================================================= */}
@@ -543,8 +538,9 @@ function newArticle() {
           onOpenVocabulary={() =>
             navigateTo("vocabulary")
     }
-  />
-)}
+  />)
+}
+
 
 
       {/* =================================================
@@ -564,7 +560,7 @@ function newArticle() {
 
       {page === "reader" && (
   <ReaderPage
-   
+  
     article={article}
     articleId={articleId}
     articleTitle={articleTitle}
@@ -576,7 +572,7 @@ function newArticle() {
     initialPage={
       articleId
         ? Number(
-            localStorage.getItem(
+            safeGetItem(
               `vocabulary-trainer:article-page:${articleId}`
             ) || 1
           )
@@ -592,8 +588,9 @@ function newArticle() {
 
     theme={theme}
     setTheme={setTheme}
-  />
-)}
+  />)
+}
+
 
 
       {/* =================================================
@@ -608,6 +605,7 @@ function newArticle() {
         )}
 
 
+
       {/* =================================================
           VOCABULARY
           ================================================= */}
@@ -615,6 +613,7 @@ function newArticle() {
       {page === "vocabulary" && (
         <VocabularyPage />
       )}
+
 
 
       <footer className="app-footer">
@@ -632,4 +631,3 @@ function newArticle() {
     </div>
   );
 }
-

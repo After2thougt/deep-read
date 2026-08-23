@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { safeGetItem, safeSetItem, safeRemoveItem } from "../utils/storage";
 
 const PREFIX = "deep-read-draft";
 const SAVE_DEBOUNCE = 1500;
@@ -25,7 +26,7 @@ export default function useDraft(articleId) {
   /** Read draft from localStorage. Returns { blocks, title, savedAt } or null. */
   const readDraft = useCallback(() => {
     try {
-      const raw = localStorage.getItem(getKey());
+      const raw = safeGetItem(getKey());
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object" && parsed.savedAt) return parsed;
@@ -33,7 +34,6 @@ export default function useDraft(articleId) {
     } catch {
       return null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);
 
   /** Debounced save of blocks + title to localStorage. */
@@ -42,25 +42,20 @@ export default function useDraft(articleId) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         const key = getKey();
-        localStorage.setItem(
-          key,
-          JSON.stringify({ blocks, title, savedAt: Date.now() })
-        );
+        safeSetItem(key, JSON.stringify({ blocks, title, savedAt: Date.now() }));
       }, SAVE_DEBOUNCE);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [articleId]
   );
 
   /** Remove current draft key, its temp variant, and the legacy null key. */
   const clearDraft = useCallback(() => {
-    localStorage.removeItem(getKey());
+    safeRemoveItem(getKey());
     if (tempIdRef.current) {
-      localStorage.removeItem(`${PREFIX}-temp-${tempIdRef.current}`);
+      safeRemoveItem(`${PREFIX}-temp-${tempIdRef.current}`);
     }
     // Clean up legacy broken key from old code
-    localStorage.removeItem(`${PREFIX}-null`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    safeRemoveItem(`${PREFIX}-null`);
   }, [articleId]);
 
   /** Compare draft.savedAt vs serverUpdatedAt. Returns true if draft should be restored. */
@@ -68,11 +63,10 @@ export default function useDraft(articleId) {
     (serverUpdatedAt) => {
       const draft = readDraft();
       if (!draft?.savedAt) return false;
-      if (!serverUpdatedAt) return true; // No server timestamp → show draft
+      if (!serverUpdatedAt) return false; // No server timestamp → don't assume draft is newer
       const serverTime = new Date(serverUpdatedAt).getTime();
       return Number.isFinite(serverTime) && draft.savedAt > serverTime;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [articleId]
   );
 
@@ -86,10 +80,10 @@ export default function useDraft(articleId) {
     if (!prev && articleId && tempIdRef.current) {
       const tempKey = `${PREFIX}-temp-${tempIdRef.current}`;
       const realKey = `${PREFIX}-${articleId}`;
-      const data = localStorage.getItem(tempKey);
+      const data = safeGetItem(tempKey);
       if (data) {
-        localStorage.setItem(realKey, data);
-        localStorage.removeItem(tempKey);
+        safeSetItem(realKey, data);
+        safeRemoveItem(tempKey);
       }
     }
   }, [articleId]);

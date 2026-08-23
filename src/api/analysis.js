@@ -1,8 +1,10 @@
 export async function analyzeArticle(text, requestId, options = {}) {
+  const { signal, ...restOptions } = options;
   const resp = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(requestId ? { 'X-Analysis-Request-Id': requestId } : {}) },
-    body: JSON.stringify({ text, ...options }),
+    body: JSON.stringify({ text, ...restOptions }),
+    signal,
   });
 
   if (!resp.ok) {
@@ -14,10 +16,12 @@ export async function analyzeArticle(text, requestId, options = {}) {
 }
 
 export async function clearArticleAnalysis(articleId, text, requestId, options = {}) {
+  const { signal, ...restOptions } = options;
   const resp = await fetch(`/api/articles/${encodeURIComponent(articleId)}/analysis`, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json', ...(requestId ? { 'X-Analysis-Request-Id': requestId } : {}) },
-    body: JSON.stringify({ text, ...options }),
+    body: JSON.stringify({ text, ...restOptions }),
+    signal,
   });
 
   if (!resp.ok) {
