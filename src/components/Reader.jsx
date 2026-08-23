@@ -1253,10 +1253,10 @@ export default function Reader({
                   >
 
 
-                    <p className="underline-wavy highlight-text">
+                    <p className="highlight-text">
 
 
-                      “{item.text.trim()}”
+                      <span className="underline-wavy">“{item.text.trim()}”</span>
 
                     </p>
 

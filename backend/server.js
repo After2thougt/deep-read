@@ -704,8 +704,24 @@ grammarExplanation: a concrete, sentence-specific explanation of the grammar and
 literaryAnalysis: evidence-based comment, or say that literary value is limited;
 chineseUnderstanding: natural Chinese meaning.
 The fields sentenceStructure, sentenceStructureGroups, grammarExplanation, and literaryAnalysis are mandatory for every selected sentence. Do not return a separate structure field.
-vocabularyAnalysis: extract 3-8 useful words from the entire current page, each with word, partOfSpeech, level, meaning, usage. Prefer C1/C2, literary, classical, formal, uncommon, potentially misleading, or contextually special words. Never include basic words such as the, room, night, and, or was. Use Formal, Literary, Archaic, or Advanced when an exact CEFR level is uncertain.
-phraseCollocations: extract 3-6 important page-level phrases, each with phrase, meaning, context, usage, example. State literary colouring in usage when relevant.
+vocabularyAnalysis: extract 3-8 useful words from the entire current page, each with word, partOfSpeech, level, meaning, usage. meaning MUST be written in English only. 
+Do not provide Chinese translations or bilingual explanations in vocabularyAnalysis.
+The meaning should be a concise English dictionary-style definition suitable for English learners.
+usage should be an English explanation of how the word is used in this context. Prefer C1/C2, literary, classical, formal, uncommon, potentially misleading, or contextually special words. Never include basic words such as the, room, night, and, or was. Use Formal, Literary, Archaic, or Advanced when an exact CEFR level is uncertain.
+phraseCollocations:Extract only genuine fixed expressions, idioms, phrasal verbs, lexical collocations, or commonly paired expressions from the current page.
+Rules:
+- Do NOT include ordinary word combinations or random phrases.
+- A phrase must have a recognized usage pattern beyond its literal meaning.
+- Include phrases only when they are useful for English learners.
+- If the page contains no meaningful collocations, return an empty array [].
+- Do not force the number of items.
+Each item must include:
+phrase: the exact phrase from the source text;
+meaning: an English-only explanation of the phrase;
+context: how the phrase is used in this article;
+usage: typical usage notes;
+example: an original English example sentence.
+Do not provide Chinese translations or bilingual explanations in vocabularyAnalysis.
 Preserve the exact source sentence text and do not invent facts.
 
 CURRENT PAGE TEXT:
