@@ -693,7 +693,7 @@ function buildFallbackAnalysis(text, reason = 'AI analysis is unavailable.') {
 function buildAnalysisPrompt(text) {
   return `Analyze ONLY the current page text below. Return one valid JSON object and no Markdown.
 Required top-level fields: summary (specific page summary), keyPoints (array), hardSentences (array), vocabularyAnalysis (array), phraseCollocations (array).
-Select 3-5 complete, natural-language sentences from the supplied text (or fewer if there are fewer). Never select headings, Roman numerals, numbered list markers, isolated letters, or fragments such as "I." or "1.".
+Select 2-4 complete, natural-language sentences from the supplied text (or fewer if there are fewer). Never select headings, Roman numerals, numbered list markers, isolated letters, or fragments such as "I." or "1.".
 Every hardSentences item MUST include:
 sentence: the exact complete source sentence;
 difficulty: a concise level;
@@ -708,21 +708,21 @@ vocabularyAnalysis: extract 3-8 useful words from the entire current page, each 
 Do not provide Chinese translations or bilingual explanations in vocabularyAnalysis.
 The meaning should be a concise English dictionary-style definition suitable for English learners.
 usage should be an English explanation of how the word is used in this context. Prefer C1/C2, literary, classical, formal, uncommon, potentially misleading, or contextually special words. Never include basic words such as the, room, night, and, or was. Use Formal, Literary, Archaic, or Advanced when an exact CEFR level is uncertain.
-phraseCollocations:Extract only genuine fixed expressions, idioms, phrasal verbs, lexical collocations, or commonly paired expressions from the current page.
+phraseCollocations:
+Extract only genuine fixed expressions, idioms, phrasal verbs, lexical collocations, or commonly paired expressions from the current page.
 Rules:
 - Do NOT include ordinary word combinations or random phrases.
 - A phrase must have a recognized usage pattern beyond its literal meaning.
 - Include phrases only when they are useful for English learners.
 - If the page contains no meaningful collocations, return an empty array [].
 - Do not force the number of items.
+- Do not invent phrases that are not present in the source text.
 Each item must include:
 phrase: the exact phrase from the source text;
 meaning: an English-only explanation of the phrase;
-context: how the phrase is used in this article;
-usage: typical usage notes;
-example: an original English example sentence.
-Do not provide Chinese translations or bilingual explanations in vocabularyAnalysis.
-Preserve the exact source sentence text and do not invent facts.
+context: explain the meaning of this phrase in the specific sentence from the article;
+usage: typical usage notes, including literary/formal nuance when relevant.
+Preserve the exact source phrase and do not invent facts.
 
 CURRENT PAGE TEXT:
 ${text}`;
@@ -798,7 +798,7 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
       return {
         model,
         input: buildAnalysisPrompt(text),
-        max_output_tokens: 2400,
+        max_output_tokens: 5000,
       };
     }
 
@@ -811,7 +811,7 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
         },
       ],
       temperature: 0.0,
-      max_tokens: 2400,
+      max_tokens: 5000,
     };
   };
 

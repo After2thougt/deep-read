@@ -305,12 +305,17 @@ function normalizeAnalysis(value) {
 
 function hasValidAnalysis(value) {
   if (!value || typeof value !== 'object') return false;
+
   const payload = value;
+
   return (
-    (typeof payload.summary === 'string' && payload.summary.trim().length > 0) &&
-    Array.isArray(payload.hardSentences) && payload.hardSentences.length > 0 &&
-    Array.isArray(payload.vocabularyAnalysis) && payload.vocabularyAnalysis.length > 0 &&
-    Array.isArray(payload.phraseCollocations) && payload.phraseCollocations.length > 0
+    typeof payload.summary === 'string' &&
+    payload.summary.trim().length > 0 &&
+    Array.isArray(payload.hardSentences) &&
+    payload.hardSentences.length > 0 &&
+    Array.isArray(payload.vocabularyAnalysis) &&
+    payload.vocabularyAnalysis.length > 0 &&
+    Array.isArray(payload.phraseCollocations)
   );
 }
 
