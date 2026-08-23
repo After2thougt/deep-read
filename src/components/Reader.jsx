@@ -283,6 +283,7 @@ export default function Reader({
 
   const [selection, setSelection] = useState(null);
   const [showFontControl, setShowFontControl] = useState(false);
+  const [savedWords, setSavedWords] = useState([]);
 
 
   const [
@@ -448,121 +449,75 @@ export default function Reader({
     };
 
 
-  }, []);
+  }, [])
 
-
-
+  // Toolbar drag handling
   useEffect(() => {
-
     function handlePointerMove(event) {
+      const drag = dragStateRef.current;
+      const toolbar = toolbarRef.current;
+      if (!drag || !toolbar) return;
 
-      const drag =
-        dragStateRef.current;
-
-      const toolbar =
-        toolbarRef.current;
-
-
-      if (!drag || !toolbar) {
-        return;
-      }
-
-
-      const rect =
-        toolbar.getBoundingClientRect();
-
-
+      const rect = toolbar.getBoundingClientRect();
       const margin = 12;
-
 
       const x = Math.max(
         margin,
         Math.min(
           event.clientX - drag.offsetX,
-          window.innerWidth -
-            rect.width -
-            margin
+          window.innerWidth - rect.width - margin
         )
       );
-
 
       const y = Math.max(
         margin,
         Math.min(
           event.clientY - drag.offsetY,
-          window.innerHeight -
-            rect.height -
-            margin
+          window.innerHeight - rect.height - margin
         )
       );
 
-
-      setToolbarPosition({
-        x,
-        y,
-      });
-
+      setToolbarPosition({ x, y });
     }
 
-
     function handlePointerUp() {
-
-      if (!dragStateRef.current) {
-        return;
-      }
-
-
+      if (!dragStateRef.current) return;
       dragStateRef.current = null;
-
-      document.body.classList.remove(
-        "is-dragging-toolbar"
-      );
-
-
-      setToolbarPosition((position)=>{
-
+      document.body.classList.remove("is-dragging-toolbar");
+      setToolbarPosition((position) => {
         try {
-
           localStorage.setItem(
             "deepread:learning-toolbar-position",
             JSON.stringify(position)
           );
-
         } catch {}
-
         return position;
       });
     }
 
-
-    window.addEventListener(
-      "pointermove",
-      handlePointerMove
-    );
-
-    window.addEventListener(
-      "pointerup",
-      handlePointerUp
-    );
-
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
 
     return () => {
-
-      window.removeEventListener(
-        "pointermove",
-        handlePointerMove
-      );
-
-      window.removeEventListener(
-        "pointerup",
-        handlePointerUp
-      );
-
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
     };
-
-
   }, []);
-    useEffect(() => {
+
+  // Load vocabulary
+  useEffect(() => {
+    async function loadVocabulary() {
+      try {
+        const res = await fetch("/api/vocabulary?limit=10000");
+        const data = await res.json();
+        setSavedWords(data.items.map((item) => item.word.toLowerCase()));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadVocabulary();
+  }, []);
+useEffect(() => {
 
     function keepToolbarInViewport() {
 
@@ -634,52 +589,90 @@ export default function Reader({
 
 
   function renderParagraphWithHighlights(
-    paragraph,
-    blockStart,
-    articleOffset,
-    pageHighlights,
-    baseKey
-  ) {
-    const paragraphText = paragraph.text;
-    const paragraphAbsoluteStart = articleOffset + blockStart + paragraph.start;
-    const paragraphAbsoluteEnd = paragraphAbsoluteStart + paragraphText.length;
+ paragraph,
+ blockStart,
+ articleOffset,
+ pageHighlights,
+ keyPrefix
+) {
 
-    const overlappingHighlights = pageHighlights
-      .filter(
-        (h) => h.start < paragraphAbsoluteEnd && h.end > paragraphAbsoluteStart
-      )
-      .map((h) => ({
-        start: Math.max(h.start, paragraphAbsoluteStart),
-        end: Math.min(h.end, paragraphAbsoluteEnd),
-        id: h.id,
-      }))
-      .sort((a, b) => a.start - b.start);
+  const paragraphAbsoluteStart =
+    blockStart + paragraph.start; 
 
-    if (overlappingHighlights.length === 0) {
-      return (
-        <span
-          className="word"
-          key={`${baseKey}-plain`}
-          role="button"
-          tabIndex={0}
-          data-text-start={paragraphAbsoluteStart - articleOffset}
-          onClick={(event) => {
-            const word = extractWordAtClick(event);
-            if (word) onSelectWord(word);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              const word = extractWordAtClick(event);
-              if (word) onSelectWord(word);
-            }
-          }}
-        >
-          {paragraphText}
-        </span>
-      );
-    }
+  const paragraphText =
+    paragraph.text;
 
+ const paragraphAbsoluteEnd =
+  paragraphAbsoluteStart + paragraphText.length;
+
+  const vocabularyHighlights =
+    savedWords.map(word => {
+
+      const regex =
+        new RegExp(
+          `\\b${word}\\b`,
+          "gi"
+        );
+
+
+      const matches = [];
+
+      let match;
+
+      while (
+        (match = regex.exec(paragraph.text))
+      ) {
+
+        matches.push({
+          start:
+            blockStart +
+            paragraph.start +
+            match.index,
+
+          end:
+            blockStart +
+            paragraph.start +
+            match.index +
+            match[0].length,
+
+          text:
+            match[0],
+
+          style:"vocabulary"
+        });
+
+      }
+
+      return matches;
+
+    })
+    .flat();
+
+
+const baseKey = keyPrefix;
+
+              const highlights = [
+                ...pageHighlights,
+                ...vocabularyHighlights
+              ];
+              
+              
+              const overlappingHighlights =
+              highlights
+                .filter(
+                  hl =>
+                    hl.start < paragraphAbsoluteEnd &&
+                    hl.end > paragraphAbsoluteStart
+                )
+                .sort(
+                  (a, b) => a.start - b.start
+                );
+                console.log({
+  highlights,
+  paragraphAbsoluteStart,
+  paragraphAbsoluteEnd,
+  firstHighlight: highlights[0]
+});
     const pieces = [];
     let cursor = paragraphAbsoluteStart;
 
@@ -712,7 +705,11 @@ export default function Reader({
       const highlightText = paragraphText.slice(hl.start - paragraphAbsoluteStart, hl.end - paragraphAbsoluteStart);
       pieces.push(
         <span
-          className="underline-wavy"
+          className={
+            hl.style === "vocabulary"
+              ? "vocabulary-highlight"
+              : "underline-wavy"
+          }
           key={`${baseKey}-hl-${hl.id}-${hl.start}`}
           data-text-start={hl.start - articleOffset}
           onClick={(event) => {
@@ -1239,10 +1236,9 @@ export default function Reader({
 
 
                 const blockStart =
-                  Number.isFinite(block.textOffset)
-                    ? block.textOffset -
-                      articleOffset
-                    : contentOffset;
+                Number.isFinite(block.textOffset)
+                  ? block.textOffset
+                  : contentOffset;
 
 
 
