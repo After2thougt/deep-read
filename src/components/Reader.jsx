@@ -127,6 +127,159 @@ export default function Reader({
   const toolbarRef = useRef(null);
   const dragStateRef = useRef(null);
 
+  // Extract word at click position from selection
+  function extractWordAtClick(event) {
+    // Get the text node at click position using caretRangeFromPoint
+    let textNode = null;
+    let charOffset = 0;
+    let range = null;
+
+    // Try caretRangeFromPoint first (Firefox, Safari, Chrome)
+    range = document.caretRangeFromPoint(event.clientX, event.clientY);
+    
+    if (range) {
+      // If startContainer is a text node, use it directly
+      if (range.startContainer.nodeType === Node.TEXT_NODE) {
+        textNode = range.startContainer;
+        charOffset = range.startOffset;
+      } else {
+        // startContainer is an element - find the text node at click position within it
+        const walker = document.createTreeWalker(
+          range.startContainer,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+        let node;
+        while (node = walker.nextNode()) {
+          const rect = node.getBoundingClientRect();
+          if (rect.left <= event.clientX && rect.right >= event.clientX &&
+              rect.top <= event.clientY && rect.bottom >= event.clientY) {
+            textNode = node;
+            // Use the range to get offset within this text node
+            const testRange = document.createRange();
+            testRange.setStart(textNode, 0);
+            testRange.setEnd(range.startContainer, range.startOffset);
+            charOffset = testRange.toString().length;
+            break;
+          }
+        }
+      }
+    }
+
+    // Fallback: caretPositionFromPoint (Chrome/Edge)
+    if (!textNode && document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(event.clientX, event.clientY);
+      if (pos && pos.offsetNode && pos.offsetNode.nodeType === Node.TEXT_NODE) {
+        textNode = pos.offsetNode;
+        charOffset = pos.offset;
+      } else if (pos && pos.offsetNode) {
+        // offsetNode is an element - find text node within it
+        const walker = document.createTreeWalker(
+          pos.offsetNode,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+        let node;
+        while (node = walker.nextNode()) {
+          const rect = node.getBoundingClientRect();
+          if (rect.left <= event.clientX && rect.right >= event.clientX &&
+              rect.top <= event.clientY && rect.bottom >= event.clientY) {
+            textNode = node;
+            // Approximate offset
+            charOffset = 0;
+            break;
+          }
+        }
+      }
+    }
+
+    // Last fallback: search in event.target
+    if (!textNode) {
+      const walker = document.createTreeWalker(
+        event.target,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+      let node;
+      while (node = walker.nextNode()) {
+        const rect = node.getBoundingClientRect();
+        if (rect.left <= event.clientX && rect.right >= event.clientX &&
+            rect.top <= event.clientY && rect.bottom >= event.clientY) {
+          textNode = node;
+          charOffset = 0;
+          break;
+        }
+      }
+    }
+
+    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
+      console.log('[extractWordAtClick] No text node found');
+      return null;
+    }
+
+    const text = textNode.textContent;
+    if (!text) {
+      console.log('[extractWordAtClick] Empty text node');
+      return null;
+    }
+
+    // Clamp offset to valid range
+    if (charOffset < 0) charOffset = 0;
+    if (charOffset > text.length) charOffset = text.length;
+
+    // Expand left to find word start (only letters and apostrophe)
+    let start = charOffset;
+    while (start > 0 && /[A-Za-z']/.test(text[start - 1])) {
+      start--;
+    }
+
+    // Expand right to find word end
+    let end = charOffset;
+    while (end < text.length && /[A-Za-z']/.test(text[end])) {
+      end++;
+    }
+
+    // Extract the word
+    let word = text.slice(start, end);
+    if (!word) {
+      console.log('[extractWordAtClick] Empty word slice', { start, end, charOffset, textLen: text.length });
+      return null;
+    }
+
+    // Clean: remove leading/trailing apostrophes
+    word = word.replace(/^'+|'+$/g, '');
+
+    // STRICT validation
+    if (!word || word.length > 50) {
+      console.log('[extractWordAtClick] Invalid: empty or too long', { word, len: word?.length });
+      return null;
+    }
+
+    // Reject any whitespace, punctuation except apostrophe
+    if (/[\s,.;:!?""()\[\]{}]/.test(word)) {
+      console.log('[extractWordAtClick] Invalid: contains punctuation/space', { word });
+      return null;
+    }
+
+    // Must match: letters only, or letters with single apostrophe inside (not at ends)
+    if (!/^[A-Za-z]+(?:'[A-Za-z]+)?$/.test(word)) {
+      console.log('[extractWordAtClick] Invalid: regex mismatch', { word });
+      return null;
+    }
+
+    console.log('[extractWordAtClick] SUCCESS', {
+      nodeType: textNode.nodeType,
+      text: textNode.textContent,
+      offset: charOffset,
+      word
+    });
+
+    return word;
+  }
+
 
   const [selection, setSelection] = useState(null);
   const [showFontControl, setShowFontControl] = useState(false);
@@ -510,11 +663,15 @@ export default function Reader({
           role="button"
           tabIndex={0}
           data-text-start={paragraphAbsoluteStart - articleOffset}
-          onClick={() => onSelectWord(paragraphText)}
+          onClick={(event) => {
+            const word = extractWordAtClick(event);
+            if (word) onSelectWord(word);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              onSelectWord(paragraphText);
+              const word = extractWordAtClick(event);
+              if (word) onSelectWord(word);
             }
           }}
         >
@@ -536,11 +693,15 @@ export default function Reader({
             role="button"
             tabIndex={0}
             data-text-start={cursor - articleOffset}
-            onClick={() => onSelectWord(normalText)}
+            onClick={(event) => {
+              const word = extractWordAtClick(event);
+              if (word) onSelectWord(word);
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                onSelectWord(normalText);
+                const word = extractWordAtClick(event);
+                if (word) onSelectWord(word);
               }
             }}
           >
@@ -554,6 +715,10 @@ export default function Reader({
           className="underline-wavy"
           key={`${baseKey}-hl-${hl.id}-${hl.start}`}
           data-text-start={hl.start - articleOffset}
+          onClick={(event) => {
+            const word = extractWordAtClick(event);
+            if (word) onSelectWord(word);
+          }}
         >
           {highlightText}
         </span>
@@ -570,11 +735,15 @@ export default function Reader({
           role="button"
           tabIndex={0}
           data-text-start={cursor - articleOffset}
-          onClick={() => onSelectWord(normalText)}
+          onClick={(event) => {
+            const word = extractWordAtClick(event);
+            if (word) onSelectWord(word);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              onSelectWord(normalText);
+              const word = extractWordAtClick(event);
+              if (word) onSelectWord(word);
             }
           }}
         >
@@ -903,23 +1072,20 @@ export default function Reader({
 
         tabIndex={0}
 
-        onClick={() =>
-          onSelectWord(token)
-        }
+        onClick={(event) => {
+            const word = extractWordAtClick(event);
+            if (word) onSelectWord(word);
+          }}
 
-        onKeyDown={(event)=>{
-
+        onKeyDown={(event) => {
           if (
             event.key === "Enter" ||
             event.key === " "
           ) {
-
             event.preventDefault();
-
-            onSelectWord(token);
-
+            const word = extractWordAtClick(event);
+            if (word) onSelectWord(word);
           }
-
         }}
 
       >
@@ -1436,8 +1602,8 @@ export default function Reader({
 
                             {
                               item.note
-                                ? "Edit "
-                                : "Add "
+                                ? "Edit Note"
+                                : "Add Note"
                             }
 
                           </button>
@@ -1450,10 +1616,10 @@ export default function Reader({
                             onClick={() =>
                               setDeleteUnderlineTarget(item.id)
                             }
-                            title="Delete underline"
+                            title="Remove underline"
                           >
                             <Trash2 size={16} />
-                            Delete
+                            Remove 
                           </button>
 
                           </div>
@@ -1488,9 +1654,13 @@ export default function Reader({
           Boolean(deleteUnderlineTarget)
         }
 
-        title="Delete underline?"
+        title="Remove underline?"
 
-        message="Are you sure you want to remove this highlight?"
+        message={[
+  "Are you sure you want to remove this highlight?",
+  <br key="br" />,
+  "The note will be deleted too."
+]}
 
         onCancel={()=>
           setDeleteUnderlineTarget(null)
