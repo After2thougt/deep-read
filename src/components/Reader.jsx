@@ -109,6 +109,7 @@ export default function Reader({
   articleOffset = 0,
   pageEnd = Infinity,
   highlights = [],
+  savedWords = [],
   onSelectWord,
   onSaveUnderline,
   onRemoveUnderline,
@@ -283,7 +284,6 @@ export default function Reader({
 
   const [selection, setSelection] = useState(null);
   const [showFontControl, setShowFontControl] = useState(false);
-  const [savedWords, setSavedWords] = useState([]);
 
 
   const [
@@ -504,19 +504,7 @@ export default function Reader({
     };
   }, []);
 
-  // Load vocabulary
-  useEffect(() => {
-    async function loadVocabulary() {
-      try {
-        const res = await fetch("/api/vocabulary?limit=10000");
-        const data = await res.json();
-        setSavedWords(data.items.map((item) => item.word.toLowerCase()));
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    loadVocabulary();
-  }, []);
+  
 useEffect(() => {
 
     function keepToolbarInViewport() {
@@ -589,22 +577,25 @@ useEffect(() => {
 
 
   function renderParagraphWithHighlights(
- paragraph,
- blockStart,
- articleOffset,
- pageHighlights,
- keyPrefix
+  paragraph,
+  blockStart,
+  articleOffset,
+  pageHighlights,
+  keyPrefix
 ) {
 
   const paragraphAbsoluteStart =
-    blockStart + paragraph.start; 
+    blockStart + paragraph.start;
 
   const paragraphText =
     paragraph.text;
 
- const paragraphAbsoluteEnd =
-  paragraphAbsoluteStart + paragraphText.length;
+  const paragraphAbsoluteEnd =
+    paragraphAbsoluteStart + paragraphText.length;
 
+  const baseKey = keyPrefix;
+
+  // Build vocabulary highlights from savedWords prop
   const vocabularyHighlights =
     savedWords.map(word => {
 
@@ -613,7 +604,6 @@ useEffect(() => {
           `\\b${word}\\b`,
           "gi"
         );
-
 
       const matches = [];
 
@@ -638,7 +628,7 @@ useEffect(() => {
           text:
             match[0],
 
-          style:"vocabulary"
+          type: "vocabulary"
         });
 
       }
@@ -648,109 +638,97 @@ useEffect(() => {
     })
     .flat();
 
+  // Combine all highlights and sort by start position
+  const allHighlights = [
+    ...pageHighlights.map(hl => ({ ...hl, type: "underline" })),
+    ...vocabularyHighlights
+  ].sort((a, b) => a.start - b.start);
 
-const baseKey = keyPrefix;
+  // Filter to highlights overlapping this paragraph
+  const overlappingHighlights = allHighlights
+    .filter(
+      hl =>
+        hl.end > paragraphAbsoluteStart &&
+        hl.start < paragraphAbsoluteEnd
+    )
+    .map(hl => ({
+      ...hl,
+      start: Math.max(hl.start, paragraphAbsoluteStart),
+      end: Math.min(hl.end, paragraphAbsoluteEnd),
+    }))
+    .sort((a, b) => a.start - b.start);
 
-              const highlights = [
-                ...pageHighlights,
-                ...vocabularyHighlights
-              ];
-              
-              
-              const overlappingHighlights =
-              highlights
-                .filter(
-                  hl =>
-                    hl.start < paragraphAbsoluteEnd &&
-                    hl.end > paragraphAbsoluteStart
-                )
-                .sort(
-                  (a, b) => a.start - b.start
-                );
-                console.log({
-  highlights,
-  paragraphAbsoluteStart,
-  paragraphAbsoluteEnd,
-  firstHighlight: highlights[0]
-});
-    const pieces = [];
-    let cursor = paragraphAbsoluteStart;
-
-    for (const hl of overlappingHighlights) {
-      if (cursor < hl.start) {
-        const normalText = paragraphText.slice(cursor - paragraphAbsoluteStart, hl.start - paragraphAbsoluteStart);
-        pieces.push(
-          <span
-            className="word"
-            key={`${baseKey}-plain-${cursor}`}
-            role="button"
-            tabIndex={0}
-            data-text-start={cursor - articleOffset}
-            onClick={(event) => {
-              const word = extractWordAtClick(event);
-              if (word) onSelectWord(word);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                const word = extractWordAtClick(event);
-                if (word) onSelectWord(word);
-              }
-            }}
-          >
-            {normalText}
-          </span>
-        );
-      }
-      const highlightText = paragraphText.slice(hl.start - paragraphAbsoluteStart, hl.end - paragraphAbsoluteStart);
-      pieces.push(
-        <span
-          className={
-            hl.style === "vocabulary"
-              ? "vocabulary-highlight"
-              : "underline-wavy"
-          }
-          key={`${baseKey}-hl-${hl.id}-${hl.start}`}
-          data-text-start={hl.start - articleOffset}
-          onClick={(event) => {
-            const word = extractWordAtClick(event);
-            if (word) onSelectWord(word);
-          }}
-        >
-          {highlightText}
-        </span>
-      );
-      cursor = hl.end;
-    }
-
-    if (cursor < paragraphAbsoluteEnd) {
-      const normalText = paragraphText.slice(cursor - paragraphAbsoluteStart);
-      pieces.push(
-        <span
-          className="word"
-          key={`${baseKey}-plain-${cursor}`}
-          role="button"
-          tabIndex={0}
-          data-text-start={cursor - articleOffset}
-          onClick={(event) => {
-            const word = extractWordAtClick(event);
-            if (word) onSelectWord(word);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              const word = extractWordAtClick(event);
-              if (word) onSelectWord(word);
-            }
-          }}
-        >
-          {normalText}
-        </span>
-      );
-    }
-
-    return <>{pieces}</>;
+  // Collect all unique boundaries from highlights
+  const boundaries = new Set([paragraphAbsoluteStart, paragraphAbsoluteEnd]);
+  for (const hl of overlappingHighlights) {
+    boundaries.add(hl.start);
+    boundaries.add(hl.end);
   }
+  const sortedBoundaries = Array.from(boundaries).sort((a, b) => a - b);
+
+  // Build segments: each segment is a non-overlapping text range with its highlight types
+  const segments = [];
+  for (let i = 0; i < sortedBoundaries.length - 1; i++) {
+    const segStart = sortedBoundaries[i];
+    const segEnd = sortedBoundaries[i + 1];
+    if (segStart >= segEnd) continue;
+
+    // Find which highlights cover this segment
+    const types = new Set();
+    for (const hl of overlappingHighlights) {
+      if (hl.start <= segStart && hl.end >= segEnd) {
+        types.add(hl.type);
+      }
+    }
+
+    segments.push({
+      start: segStart,
+      end: segEnd,
+      types: Array.from(types)
+    });
+  }
+
+  // Render each segment once
+  const pieces = [];
+
+  for (const seg of segments) {
+    const segText = paragraphText.slice(
+      seg.start - paragraphAbsoluteStart,
+      seg.end - paragraphAbsoluteStart
+    );
+    if (!segText) continue;
+
+    const hasVocabulary = seg.types.includes("vocabulary");
+    const hasUnderline = seg.types.includes("underline");
+
+    const classNames = ["word"];
+    if (hasVocabulary) classNames.push("vocabulary-highlight");
+    if (hasUnderline) classNames.push("underline-wavy");
+
+    pieces.push(
+      <span
+        className={classNames.join(" ")}
+        key={`${baseKey}-seg-${seg.start}-${seg.end}`}
+        data-text-start={seg.start - articleOffset}
+        onClick={(event) => {
+          const word = extractWordAtClick(event);
+          if (word) onSelectWord(word);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            const word = extractWordAtClick(event);
+            if (word) onSelectWord(word);
+          }
+        }}
+      >
+        {segText}
+      </span>
+    );
+  }
+
+  return <>{pieces}</>;
+}
 
   function startToolbarDrag(event) {
 
