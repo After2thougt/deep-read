@@ -943,6 +943,20 @@ useEffect(() => {
   );
 }, [fontSize]);
 
+// Load vocabulary
+useEffect(() => {
+  async function loadVocabulary() {
+    try {
+      const res = await fetch("/api/vocabulary?limit=10000");
+      const data = await res.json();
+      setSavedWords(data.items.map((item) => item.word.toLowerCase()));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  loadVocabulary();
+}, []);
+
 
 function increaseFont() {
   setFontSize((size) =>
@@ -971,6 +985,8 @@ function resetFont() {
     translationCollapsed,
     setTranslationCollapsed,
   ] = useState(false);
+
+  const [savedWords, setSavedWords] = useState([]);
 
   const [currentPage, setCurrentPage] =
     useState(initialPage);
@@ -1557,6 +1573,9 @@ function resetFont() {
           articleId || null,
       });
 
+      // Immediately update savedWords for instant highlight update
+      setSavedWords(prev => {        const word = selectedWord.word.toLowerCase();        if (!prev.includes(word)) {          return [...prev, word];        }        return prev;      });
+
       setSaved(true);
 
       try {
@@ -1713,6 +1732,7 @@ function resetFont() {
               pageContent.length
             }
             highlights={highlights}
+            savedWords={savedWords}
             onSelectWord={
               selectWord
             }
