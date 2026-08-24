@@ -60,7 +60,7 @@ export default function HighlightsPanel({
         >
           <div className="accordion-header-left">
             <h3 className="accordion-title">
-              Underlined passages
+              Click to show/hide the Underlined passages
               <span className="highlight-count">
                 {pageHighlights.length}
               </span>

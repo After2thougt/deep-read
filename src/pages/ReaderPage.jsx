@@ -883,6 +883,7 @@ export default function ReaderPage({
   onTitleChange,
   onArticleSaved,
   onNewArticle,
+  onBackToArticles,
 
   blocks = [],
   onBlocksChange,
@@ -1647,6 +1648,7 @@ function resetFont() {
               onNewArticle();
             }
           }}
+        onBackToArticles={onBackToArticles}
         theme={theme}
         setTheme={setTheme}
       />

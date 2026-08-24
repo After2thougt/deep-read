@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, FilePlus2, Pencil, Save, Upload } from "lucide-react";
+import { ChevronDown, ChevronLeft, FilePlus2, Pencil, Save, Upload } from "lucide-react";
 import { uploadArticleImage } from "../api/articles";
 import { initialEditorBlocks, editorSourceSignature } from "./article-editor-draft";
 import useDraft from "../hooks/useDraft";
@@ -15,6 +15,7 @@ export default function ArticleInput({
   onBlocksChange,
   onSave,
   onNewArticle,
+  onBackToArticles,
   saveMessage,
 }) {
   // View mode is per-article. New articles default to edit mode.
@@ -688,6 +689,7 @@ export default function ArticleInput({
           {saveMessage && <p className="save-message">{saveMessage}</p>}
         </div>
         <div className="article-actions">
+
           <button
             className="secondary-button"
             onClick={() => setIsCollapsed(false)}
@@ -695,21 +697,17 @@ export default function ArticleInput({
           >
             <Pencil size={18} /> Edit 
           </button>
-          <button
-            className="secondary-button"
-            onClick={startNewArticle}
-            type="button"
-          >
-            <FilePlus2 size={18} /> New 
-          </button>
-          <button
-            className="primary-button save-article-button"
-            onClick={handleSave}
-            disabled={isSaving}
-            type="button"
-          >
-            <Save size={18} /> {isSaving ? "Saving..." : "Save "}
-          </button>
+          {onBackToArticles && (
+            <button
+              className="secondary-button back-to-articles"
+              onClick={onBackToArticles}
+              type="button"
+            >
+              <ChevronLeft size={18} /> Back to Articles
+            </button>
+          )}
+          
+        
         </div>
       </section>
     );
@@ -745,6 +743,15 @@ export default function ArticleInput({
         </div>
       )}
       <div className="article-actions">
+        {onBackToArticles && (
+          <button
+            className="secondary-button back-to-articles"
+            onClick={onBackToArticles}
+            type="button"
+          >
+            <ChevronLeft size={18} /> Back to Articles
+          </button>
+        )}
         <label className="upload-button">
           <Upload size={18} /> Upload TXT
           <input
