@@ -371,6 +371,10 @@ useEffect(() => {
     setPage(nextPage);
   }
 
+  function goToArticles() {
+    navigateTo("articles");
+  }
+
 
   /*
    * =====================================================
@@ -457,20 +461,6 @@ function newArticle() {
             onClick={() => navigateTo("home")}
           >
             Home
-          </button>
-
-
-          {/* READER */}
-
-          <button
-            className={
-              page === "reader"
-                ? "nav-button active"
-                : "nav-button"
-            }
-            onClick={() => navigateTo("reader")}
-          >
-            Reader
           </button>
 
 
@@ -585,6 +575,7 @@ function newArticle() {
     onArticleSaved={handleArticleSaved}
 
     onNewArticle={newArticle}
+    onBackToArticles={goToArticles}
 
     theme={theme}
     setTheme={setTheme}
