@@ -1,0 +1,15 @@
+const fs = require('fs');
+let content = fs.readFileSync('D:\\projects\\deep-read\\backend\\server.js', 'utf8');
+
+// Add change-password endpoint after logout
+const logoutEnd = "app.post('/api/auth/logout', (req, res) => {\r\n  const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];\r\n  if (token) sessions.delete(token);\r\n  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax`);\r\n  return res.status(204).end();\r\n});";
+
+const changePasswordEndpoint = "app.post('/api/auth/logout', (req, res) => {\r\n  const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];\r\n  if (token) sessions.delete(token);\r\n  const isProd = process.env.NODE_ENV === 'production';\r\n  const secure = isProd ? '; Secure' : '';\r\n  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure}`);\r\n  return res.status(204).end();\r\n});\r\n\r\napp.post('/api/auth/change-password', requireAuth, (req, res) => {\r\n  const username = currentUser(req);\r\n  const { currentPassword, newPassword } = req.body || {};\r\n\r\n  if (!currentPassword || !newPassword) {\r\n    return res.status(400).json({ error: 'Current password and new password are required.' });\r\n  }\r\n  if (newPassword.length < 8) {\r\n    return res.status(400).json({ error: 'New password must be at least 8 characters.' });\r\n  }\r\n\r\n  const user = db.prepare('SELECT username, password_hash FROM auth_users WHERE username = ?').get(username);\r\n  if (!user || !verifyPassword(currentPassword, user.password_hash)) {\r\n    return res.status(401).json({ error: 'Current password is incorrect.' });\r\n  }\r\n\r\n  // Update password hash\r\n  const newHash = hashPassword(newPassword);\r\n  db.prepare('UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE username = ?')\r\n    .run(newHash, new Date().toISOString(), username);\r\n\r\n  // Delete ALL sessions for this user\r\n  for (const [token, session] of sessions.entries()) {\r\n    if (session.username === username) {\r\n      sessions.delete(token);\r\n    }\r\n  }\r\n\r\n  // Create new session for the user\r\n  const tokenId = crypto.randomBytes(32).toString('hex');\r\n  const token = `${tokenId}.${crypto.createHmac('sha256', sessionSecret).update(tokenId).digest('hex')}`;\r\n  sessions.set(token, { username, expiresAt: Date.now() + SESSION_TTL_MS });\r\n  setSessionCookie(res, token);\r\n\r\n  return res.json({ success: true, message: 'Password changed successfully.' });\r\n});";
+
+if (content.includes(logoutEnd)) {
+  content = content.replace(logoutEnd, changePasswordEndpoint);
+  fs.writeFileSync('D:\\projects\\deep-read\\backend\\server.js', content, 'utf8');
+  console.log('Successfully added change-password endpoint');
+} else {
+  console.log('Logout endpoint not found');
+}

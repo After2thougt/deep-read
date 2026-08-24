@@ -1,0 +1,178 @@
+/* =========================================================
+   App
+========================================================= */
+
+.app {
+  max-width: 1200px;
+  min-height: 100vh;
+  margin: auto;
+  padding: 30px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0;
+  font-size: 1.6rem;
+}
+
+nav {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-button,
+.icon-button {
+  border: 0;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-button {
+  padding: 10px 14px;
+  border-radius: 9px;
+}
+
+.nav-button,
+.nav-button:hover,
+.nav-button:focus,
+.nav-button.active {
+  text-decoration: none;
+}
+
+/* 鼠标移入效果 */
+.nav-button:hover,
+.icon-button:hover {
+  background: #e1e3e7;
+  
+}
+
+/* 点击时轻微缩小 */
+.nav-button:active,
+.icon-button:active {
+  transform: scale(0.96);
+}
+
+.nav-button.active {
+  color: #fff;
+  background: #000000;
+}
+
+/* active状态鼠标经过 */
+.nav-button.active:hover {
+  background: #b6bccc;
+  color: #fff;
+}
+
+
+/* =========================================================
+   Layout
+========================================================= */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 24px;
+  align-items: start;
+}
+
+
+/* =========================================================
+   General Cards
+========================================================= */
+
+.reader,
+.dictionary,
+.vocabulary-page {
+  padding: 28px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 5px 20px rgb(15 23 42 / 8%);
+
+}
+
+.panel-section,
+.reading-surface {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.panel-section {
+  padding: 17px;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgb(15 23 42 / 4%);
+}
+
+
+.panel-section .eyebrow,
+.overview-panel .eyebrow {
+  margin-bottom: 6px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.input-label,
+.eyebrow {
+  display: block;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+
+/* =========================================================
+   Textarea
+========================================================= */
+
+textarea {
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+
+  padding: 14px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+
+  line-height: 1.5;
+}
+
+textarea:focus {
+  outline: 2px solid #93c5fd;
+  border-color: #2563eb;
+}
+
+
+/* =========================================================
+   Empty States
+========================================================= */
+
+.empty-reader,
+.empty-vocabulary {
+  color: #64748b;
+  margin-top: revert-layer;
+}

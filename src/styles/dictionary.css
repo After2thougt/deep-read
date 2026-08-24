@@ -1,0 +1,286 @@
+/* =========================================================
+   Dictionary
+========================================================= */
+
+.word-panel {
+  align-self: start;
+
+  height: max-content;
+  min-height: 0;
+
+  border-color: #cbd5e1;
+
+  transform-origin: top left;
+
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.word-panel--expanded {
+  transform: scale(1);
+}
+
+.word-panel--compact {
+  box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
+}
+
+.dictionary {
+  margin-top: 13px;
+
+  padding: 17px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+
+  background: #fff;
+
+  box-shadow: 0 3px 12px rgb(15 23 42 / 4%);
+}
+
+.dictionary-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dictionary-word-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dictionary-title h3 {
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 1.35rem;
+  line-height: 1.3;
+}
+
+.pronunciation-button {
+  display: inline-grid;
+  place-items: center;
+
+  width: 30px;
+  height: 30px;
+
+  padding: 0;
+
+  border: 1px solid #bfdbfe;
+  border-radius: 50%;
+
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.pronunciation-button:hover,
+.pronunciation-button:focus-visible {
+  outline: none;
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+
+.phonetic {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.part-of-speech {
+  display: inline-flex;
+
+  padding: 3px 7px;
+
+  border-radius: 4px;
+
+  color: #1d4ed8;
+  background: #eff6ff;
+
+  font-size: 0.75rem;
+  font-weight: 700;
+
+  text-transform: capitalize;
+}
+
+.dictionary-definition {
+  margin: 13px 0;
+
+  color: #334155;
+
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.dictionary .example {
+  margin: 12px 0;
+  padding: 10px;
+
+  border-left: 2px solid #93c5fd;
+
+  background: #f8fafc;
+
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.dictionary .example p {
+  margin: 6px 0 0;
+}
+
+.dictionary-attribution {
+  margin: 12px 0;
+
+  color: #64748b;
+
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.dictionary-attribution a {
+  color: #2563eb;
+}
+
+.dictionary-save {
+  width: 100%;
+}
+
+.side-message {
+  margin: 0;
+  padding: 18px;
+
+  color: #64748b;
+
+  background: #fff;
+  border-radius: 8px;
+}
+
+.error-message {
+  color: #b91c1c;
+}
+
+.sync-message {
+  margin: 12px 0 0;
+
+  color: #475569;
+
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+/* =========================================================
+Dictionary Empty State
+========================================================= */
+
+.word-panel .panel-heading h2 {
+  font-family: Inter, Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: #1e293b;
+}
+
+[data-theme="dark"] .word-panel .panel-heading h2 {
+  color: white;
+}
+
+.word-panel .panel-empty {
+  margin: 10px 0 0;
+
+  font-family: Inter, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: #94a3b8;
+}
+
+.article-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.article-controls-row .article-search-bar {
+  flex: 1;
+}
+
+.article-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.note-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
+.save-note-button,
+.cancel-note-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  padding: 0;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  transition:
+    background .15s ease,
+    border-color .15s ease,
+    color .15s ease,
+    transform .15s ease;
+}
+
+
+/* Save */
+
+.save-note-button {
+  border: 1px solid #bfdbfe;
+
+  background: #eff6ff;
+
+  color: #9da6ba;
+}
+
+
+.save-note-button:hover {
+  background: #dbeafe;
+}
+
+
+/* Cancel */
+
+.cancel-note-button {
+  border: 1px solid #e2e8f0;
+
+  background: #fff;
+
+  color: #64748b;
+}
+
+
+.cancel-note-button:hover {
+  border-color: #fecaca;
+
+  background: #fef2f2;
+
+  color: #dc2626;
+}
+
+
+.save-note-button:active,
+.cancel-note-button:active {
+  transform: scale(.95);
+}

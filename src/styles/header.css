@@ -1,0 +1,169 @@
+/* =========================================================
+   Font Control (Aa button + Theme toggle)
+========================================================= */
+/* =========================================================
+   Font Control (Aa button + Theme toggle)
+======================================================= */
+
+.font-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.font-toggle-button,
+.theme-toggle-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  border-radius: 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+}
+
+.font-toggle-button:hover,
+.theme-toggle-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+.font-toggle-button:active,
+.theme-toggle-button:active {
+  transform: scale(0.96);
+}
+
+.font-toggle-button:focus-visible,
+.theme-toggle-button:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.font-popover {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  width: 200px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  animation: fontPopoverIn 0.18s ease;
+}
+
+.font-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.font-popover-header span:first-child {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.font-popover input[type="range"] {
+  width: 100%;
+  cursor: pointer;
+  accent-color: var(--accent-color);
+}
+
+@keyframes fontPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* =========================================================
+   User Menu
+========================================================= */
+/* =========================================================
+   User
+   ========================================================= */
+
+   .user-menu {
+  position: relative;
+}
+
+
+.user-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+
+.user-button:hover {
+  background: var(--bg-hover);
+}
+
+
+.user-dropdown {
+  position: absolute;
+  right: 0;
+  top: 45px;
+
+  width: 180px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+
+  border-radius: 12px;
+
+  padding: 10px;
+
+  box-shadow: 0 8px 25px rgba(0,0,0,.12);
+
+  z-index: 1000;
+}
+
+
+.user-name {
+  padding: 8px;
+  font-weight: 600;
+}
+
+
+.user-dropdown button {
+  width: 100%;
+  text-align: left;
+
+  padding: 8px;
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+
+.user-dropdown button:hover {
+  background: var(--bg-hover);
+}
+

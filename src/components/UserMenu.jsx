@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { User, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { User, LogOut, UserCog } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
 
 export default function UserMenu({ username, onLogout }) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const ref = useRef(null);
@@ -37,13 +39,11 @@ export default function UserMenu({ username, onLogout }) {
             {username || "Guest"}
           </div>
 
-          <button>
-            Settings
+          <button onClick={() => navigate("/profile")}>
+            <UserCog size={16} style={{marginRight: "6px", verticalAlign: "middle"}} />
+            Profile
           </button>
 
-          <button>
-            Export Data
-          </button>
 
           <button onClick={() => setShowLogoutConfirm(true)}>
             <LogOut size={16} style={{marginRight: "6px", verticalAlign: "middle"}} />

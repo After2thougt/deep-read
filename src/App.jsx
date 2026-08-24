@@ -6,6 +6,7 @@ import ReaderPage from "./pages/ReaderPage";
 import VocabularyPage from "./pages/VocabularyPage";
 import ArticlesPage from "./pages/ArticlesPage";
 import HomePage from "./pages/HomePage";
+import ProfilePage from "./pages/ProfilePage";
 import MigrationBanner from "./components/MigrationBanner";
 import { fetchVocabulary } from "./api/vocabulary";
 import UserMenu from "./components/UserMenu";
@@ -358,6 +359,15 @@ function AppRoutes({onLogout, username, authenticated}) {
         <Route
           path="/vocabulary"
           element={<VocabularyPage />}
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProfilePage
+              username={username}
+              onLogout={onLogout}
+            />
+          }
         />
       </Routes>
 
