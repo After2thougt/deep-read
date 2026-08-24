@@ -25,8 +25,8 @@ export default function ProfilePage({ username, onLogout }) {
       <div className="profile-card">
         <div className="profile-header">
           <div className="profile-avatar">
-            <User size={48} />
-          </div>
+          <img src="/avatar.png" alt="Profile avatar" />
+        </div>
           <h2 className="profile-username">{username}</h2>
         </div>
 
