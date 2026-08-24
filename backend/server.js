@@ -196,9 +196,12 @@ app.post('/api/auth/logout', (req, res) => {
   return res.status(204).end();
 });
 
-app.get('/api/auth/me', (req, res) => {
+app.get("/api/auth/me", (req, res) => {
   const username = currentUser(req);
-  return username ? res.json({ authenticated: true, username }) : res.status(401).json({ authenticated: false });
+  if (!username) {
+    return res.status(401).json({});
+  }
+  res.json({ username });
 });
 
 app.use('/api', (req, res, next) => {
@@ -1726,6 +1729,14 @@ app.post('/api/translate', async (req, res) => {
       provider,
     });
   }
+});
+
+app.post("/api/auth/logout",(req,res)=>{
+  req.session.destroy(()=>{
+    res.json({
+      success:true
+    });
+  });
 });
 
 app.post('/api/analyze', async (req, res) => {

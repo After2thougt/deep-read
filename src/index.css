@@ -154,6 +154,13 @@ nav {
   border-radius: 9px;
 }
 
+.nav-button,
+.nav-button:hover,
+.nav-button:focus,
+.nav-button.active {
+  text-decoration: none;
+}
+
 /* 鼠标移入效果 */
 .nav-button:hover,
 .icon-button:hover {
@@ -6589,3 +6596,74 @@ Dictionary Empty State
   border-radius: 3px;
   padding: 0 2px;
 }
+
+/* =========================================================
+   User
+   ========================================================= */
+
+   .user-menu {
+  position: relative;
+}
+
+
+.user-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+
+.user-button:hover {
+  background: var(--bg-hover);
+}
+
+
+.user-dropdown {
+  position: absolute;
+  right: 0;
+  top: 45px;
+
+  width: 180px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+
+  border-radius: 12px;
+
+  padding: 10px;
+
+  box-shadow: 0 8px 25px rgba(0,0,0,.12);
+
+  z-index: 1000;
+}
+
+
+.user-name {
+  padding: 8px;
+  font-weight: 600;
+}
+
+
+.user-dropdown button {
+  width: 100%;
+  text-align: left;
+
+  padding: 8px;
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+
+.user-dropdown button:hover {
+  background: var(--bg-hover);
+}
+
