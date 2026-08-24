@@ -1,0 +1,205 @@
+/* =========================================================
+   Pagination
+========================================================= */
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  min-height: 48px;
+  margin-top: 20px;
+}
+
+
+/* page button */
+
+.pagination-button,
+.pagination-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+
+  padding: 0;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: #475569;
+
+  font-size: 0.9rem;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+
+/* hover */
+
+.pagination-button:hover:not(:disabled),
+.pagination-page:hover {
+  background: #f8fafc;
+
+  border-color: #cbd5e1;
+
+  color: #2563eb;
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 2px 6px rgba(15,23,42,0.08);
+}
+
+
+/* disabled */
+
+.pagination-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+
+/* current page */
+
+.pagination-page.is-current {
+
+  border-color: #2563eb;
+
+  background: #2563eb;
+
+  color: white;
+
+  font-weight: 700;
+
+  box-shadow:
+    0 4px 12px rgba(37,99,235,0.25);
+}
+
+
+/* ellipsis */
+
+.pagination-ellipsis {
+
+  width: 30px;
+
+  color: #94a3b8;
+
+  font-weight: 600;
+
+  text-align: center;
+}
+
+
+/* page group */
+
+.pagination-item {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+}
+
+
+/* jump area */
+
+.pagination-jump {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  margin-left: 20px;
+
+  padding-left: 20px;
+
+  border-left: 1px solid #e2e8f0;
+
+  color: #64748b;
+
+  font-size: 0.85rem;
+
+}
+
+
+/* input */
+
+.pagination-jump input {
+
+  width: 48px;
+
+  height: 36px;
+
+  padding: 0;
+
+  border:
+
+    1px solid #cbd5e1;
+
+  border-radius: 10px;
+
+
+  background: #ffffff;
+
+  color: #334155;
+
+  font-size: 0.9rem;
+
+  font-weight: 600;
+
+  text-align: center;
+
+
+  outline: none;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+
+.pagination-jump input:focus {
+
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37,99,235,0.15);
+
+}
+
+
+/* mobile */
+
+@media (max-width: 600px) {
+
+  .pagination-jump {
+
+    display: none;
+
+  }
+
+
+  .pagination-button,
+  .pagination-page {
+
+    width: 34px;
+
+    height: 34px;
+
+  }
+
+}

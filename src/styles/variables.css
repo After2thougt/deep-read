@@ -1,0 +1,114 @@
+:root {
+  font-family: Inter, Arial, sans-serif;
+  color: #1e293b;
+  background: #f5f6f8;
+
+  /* Light theme color variables */
+  --bg-page: #f5f6f8;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --bg-input: #ffffff;
+  --bg-accent: #eff6ff;
+  --bg-accent-hover: #dbeafe;
+  --bg-danger: #fef2f2;
+  --bg-danger-hover: #fee2e2;
+  --bg-success: #f0fdf4;
+  --bg-warning: #fefce8;
+
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+  --text-accent: #2563eb;
+  --text-danger: #dc2626;
+  --text-success: #16a34a;
+  --text-warning: #a16207;
+
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --border-focus: #93c5fd;
+  --border-accent: #bfdbfe;
+  --border-danger: #fecaca;
+
+  --accent-color: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-rgb: 37, 99, 235;
+  --text-primary-rgb: 30, 41, 59;
+  --text-muted-rgb: 148, 163, 184;
+  --text-inverse-rgb: 255, 255, 255;
+  --text-danger-rgb: 220, 38, 38;
+
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.12);
+  --shadow-xl: 0 20px 50px rgba(15, 23, 42, 0.18);
+}
+/* Dark theme variables */
+[data-theme="dark"] {
+  --bg-page: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-card: #1e293b;
+  --bg-hover: #334155;
+  --bg-input: #1e293b;
+  --bg-accent: #1e3a5f;
+  --bg-accent-hover: #1e40af;
+  --bg-danger: #7f1d1d;
+  --bg-danger-hover: #991b1b;
+  --bg-success: #14532d;
+  --bg-warning: #78350f;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-inverse: #0f172a;
+  --text-accent: #60a5fa;
+  --text-danger: #f87171;
+  --text-success: #4ade80;
+  --text-warning: #fbbf24;
+
+  --border-color: #334155;
+  --border-hover: #475569;
+  --border-focus: #60a5fa;
+  --border-accent: #1e3a5f;
+  --border-danger: #7f1d1d;
+
+  --accent-color: #d4d7dc;
+  --accent-hover: #60a5fa;
+  --accent-rgb: 96, 165, 250;
+  --text-primary-rgb: 241, 245, 249;
+  --text-muted-rgb: 100, 116, 139;
+  --text-inverse-rgb: 15, 23, 42;
+  --text-danger-rgb: 248, 113, 113;
+
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.6);
+
+  color: var(--text-primary);
+  background: var(--bg-page);
+}
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}

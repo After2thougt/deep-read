@@ -98,6 +98,16 @@ const sessions = new Map();
 const loginAttempts = new Map();
 const SESSION_COOKIE = 'deepread_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
+
+// Session cleanup: remove expired sessions every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of sessions.entries()) {
+    if (session.expiresAt < now) {
+      sessions.delete(token);
+    }
+  }
+}, 10 * 60 * 1000);
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 10;
 
@@ -122,7 +132,9 @@ function parseCookies(header) {
 }
 
 function setSessionCookie(res, token) {
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(token)}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}; Path=/; HttpOnly; SameSite=Lax`);
+  const isProd = process.env.NODE_ENV === 'production';
+  const secure = isProd ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(token)}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}; Path=/; HttpOnly; SameSite=Lax${secure}`);
 }
 
 function currentUser(req) {
@@ -192,8 +204,47 @@ app.post('/api/auth/login', (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
   const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
   if (token) sessions.delete(token);
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax`);
+  const isProd = process.env.NODE_ENV === 'production';
+  const secure = isProd ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure}`);
   return res.status(204).end();
+});
+
+app.post('/api/auth/change-password', requireAuth, (req, res) => {
+  const username = currentUser(req);
+  const { currentPassword, newPassword } = req.body || {};
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current password and new password are required.' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  }
+
+  const user = db.prepare('SELECT username, password_hash FROM auth_users WHERE username = ?').get(username);
+  if (!user || !verifyPassword(currentPassword, user.password_hash)) {
+    return res.status(401).json({ error: 'Current password is incorrect.' });
+  }
+
+  // Update password hash
+  const newHash = hashPassword(newPassword);
+  db.prepare('UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE username = ?')
+    .run(newHash, new Date().toISOString(), username);
+
+  // Delete ALL sessions for this user
+  for (const [token, session] of sessions.entries()) {
+    if (session.username === username) {
+      sessions.delete(token);
+    }
+  }
+
+  // Create new session for the user
+  const tokenId = crypto.randomBytes(32).toString('hex');
+  const token = `${tokenId}.${crypto.createHmac('sha256', sessionSecret).update(tokenId).digest('hex')}`;
+  sessions.set(token, { username, expiresAt: Date.now() + SESSION_TTL_MS });
+  setSessionCookie(res, token);
+
+  return res.json({ success: true, message: 'Password changed successfully.' });
 });
 
 app.get("/api/auth/me", (req, res) => {

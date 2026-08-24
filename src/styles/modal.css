@@ -1,0 +1,938 @@
+/* =========================================================
+   Selection Toolbar
+========================================================= */
+
+.selection-toolbar {
+  z-index: 100;
+
+  display: flex;
+  align-items: center;
+
+  padding: 4px;
+
+  background: rgba(15, 23, 42, 0.96);
+  border-radius: 10px;
+
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.22),
+    0 2px 8px rgba(15, 23, 42, 0.12);
+
+  animation: selectionToolbarIn 0.12s ease-out;
+}
+
+.selection-tool-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  height: 32px;
+  padding: 0 11px;
+
+  border: 0;
+  border-radius: 7px;
+
+  color: #fff;
+  background: transparent;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.selection-tool-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.underline-preview {
+  font-size: 18px;
+  line-height: 1;
+}
+
+@keyframes selectionToolbarIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+
+/* =========================================================
+   Underlined Passages
+========================================================= */
+
+.highlights-list {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+
+/* header */
+.accordion-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 4px;
+  background:transparent;
+  border-radius:0;
+}
+
+
+.accordion-header:hover {
+  background:transparent;
+}
+
+
+/* content */
+.accordion-content-inner {
+  padding:8px 0;
+  display:flex;
+  flex-direction:column;
+}
+
+
+/* each underline */
+.underline-note {
+  padding:14px 4px;
+  margin:0;
+  border:none;
+  border-bottom:1px solid #e5e7eb;
+  background:transparent;
+}
+
+
+/* highlighted text */
+.highlight-text {
+  margin:0;
+  color:#334155;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:1rem;
+  line-height:1.7;
+}
+
+
+/* note */
+.saved-note {
+  padding:8px 10px;
+  background:#fffbeb;
+  border-left:3px solid #facc15;
+  width:100%;
+  box-sizing:border-box;
+}
+
+
+/* buttons */
+.underline-item-actions {
+  gap:14px;
+}
+
+
+.text-button {
+  font-size:.75rem;
+  color:#94a3b8;
+}
+
+.accordion-header:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
+.accordion-header-left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.accordion-header .eyebrow {
+  margin: 0 0 2px;
+}
+
+.accordion-title {
+
+display:flex;
+
+align-items:center;
+
+gap:8px;
+
+font-size:15px;
+
+font-weight:600;
+
+margin:0;
+
+}
+
+
+.highlight-count {
+
+font-size:12px;
+
+padding:2px 8px;
+
+border-radius:20px;
+
+background:#dbeafe;
+
+color:#2563eb;
+
+}
+
+.accordion-chevron {
+
+display:flex;
+
+transition:
+transform .25s ease;
+
+}
+
+
+.accordion-chevron.open {
+
+transform:
+rotate(180deg);
+
+}
+
+.accordion-header[aria-expanded="true"] .accordion-chevron,
+.accordion-header[aria-expanded="true"] .accordion-chevron svg {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+ max-height:0;
+ overflow:hidden;
+ opacity:0;
+ transition:
+   max-height .25s ease,
+   opacity .2s ease;
+}
+
+
+.accordion-content.expanded {
+ max-height:420px;
+ opacity:1;
+}
+
+.accordion-content-inner {
+
+padding:
+
+12px 4px;
+
+display:flex;
+
+flex-direction:column;
+
+gap:12px;
+
+max-height:380px;
+
+overflow-y:auto;
+
+}
+
+/* Custom scrollbar for accordion content */
+.accordion-content-inner::-webkit-scrollbar {
+  width: 6px;
+}
+
+.accordion-content-inner::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.accordion-content-inner::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 3px;
+}
+
+.accordion-content-inner::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Firefox */
+.accordion-content-inner {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+/* Keep existing underline-note styles but remove the old section-heading styles */
+.highlights-list .section-heading {
+  display: none; /* Hidden - replaced by accordion-header */
+}
+
+.highlights-list .highlights-content {
+  display: none; /* Hidden - replaced by accordion-content */
+}
+
+.underline-note {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.saved-note {
+  width:100%;
+}
+
+.underline-item-actions {
+  display:flex;
+  justify-content:flex-start;
+  gap:16px;
+}
+
+.highlights-list .section-heading > div {
+  min-width: 0;
+}
+
+.highlights-list .section-heading .eyebrow {
+  margin: 0 0 3px;
+}
+
+.highlights-list .section-heading h3 {
+  margin: 0;
+
+  color: #1e293b;
+
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.highlights-list .section-heading > span {
+  display: grid;
+  place-items: center;
+
+  flex: 0 0 auto;
+
+  min-width: 25px;
+  height: 25px;
+
+  border-radius: 50%;
+
+  color: #475569;
+  background: #e2e8f0;
+
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.underline-note {
+  position: relative;
+
+  margin: 0;
+  padding: 14px 14px 12px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+
+  background: #fff;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.underline-note + .underline-note {
+  margin-top: 8px;
+}
+
+.underline-note:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
+}
+
+.underline-note > p {
+  margin: 0;
+}
+
+.underline-note > p.underline-wavy {
+  color: #334155;
+
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.98rem;
+  line-height: 1.65;
+  margin-bottom: 5px;
+}
+
+.saved-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  padding: 9px 11px;
+
+  border-left: 2px solid #facc15;
+  border-radius: 0 7px 7px 0;
+
+  color: #475569;
+  
+
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.saved-note svg {
+  flex: 0 0 auto;
+  margin-top: 3px;
+  color: #a16207;
+}
+
+.underline-item-actions {
+  display: flex;
+  flex-direction: row;
+  justify-content:flex-start;
+  gap: 16px;
+  align-items: center;
+}
+
+.text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  padding: 2px 0;
+
+  border: 0;
+
+  color: #64748b;
+  background: transparent;
+
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.text-button:hover,
+.text-button:focus-visible {
+  outline: none;
+  color: #1e3a5f;
+}
+
+.delete-underline {
+  color: #6c7c91;
+}
+
+.delete-underline:hover,
+.delete-underline:focus-visible {
+  color: #b91c1c;
+}
+
+.note-editor {
+  margin-top: 11px;
+}
+
+.note-editor .input-label {
+  margin-bottom: 5px;
+  font-size: 0.72rem;
+}
+
+.note-editor textarea {
+  min-height: 76px;
+  margin-top: 0;
+
+  padding: 10px 11px;
+
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+
+  background: #fff;
+
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.note-editor textarea:focus {
+  outline: none;
+
+  border-color: #93c5fd;
+
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 8%);
+}
+
+.note-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-top: 8px;
+}
+
+.note-actions .secondary-button,
+.note-actions .primary-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+}
+
+.note-save {
+  width: auto;
+}
+
+
+/* =========================================================
+   Delete Modal
+========================================================= */
+
+.delete-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.45);
+
+  backdrop-filter: blur(3px);
+}
+
+.delete-modal {
+  position: relative;
+
+  width: min(420px, 100%);
+
+  padding: 28px;
+
+  background: #fff;
+  border-radius: 16px;
+
+  box-shadow:
+    0 20px 50px rgba(15, 23, 42, 0.18),
+    0 4px 12px rgba(15, 23, 42, 0.08);
+
+  text-align: center;
+
+  animation: deleteModalIn 0.18s ease-out;
+}
+
+@keyframes deleteModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.delete-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+  color: #64748b;
+}
+
+.delete-modal-close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.delete-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 48px;
+  height: 48px;
+
+  margin: 0 auto 16px;
+
+  border-radius: 50%;
+
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.delete-modal-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+
+.delete-modal h3 {
+  margin: 0 0 8px;
+
+  color: #1e293b;
+
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.delete-modal p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.delete-modal p strong {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.delete-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.delete-modal-actions button {
+  flex: 1;
+
+  height: 40px;
+
+  border-radius: 9px;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.delete-cancel-button {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+}
+
+.delete-cancel-button:hover {
+  background: #f8fafc;
+}
+
+.delete-confirm-button {
+  border: 1px solid #dc2626;
+  background: #dc2626;
+  color: #fff;
+}
+
+.delete-confirm-button:hover {
+  border-color: #b91c1c;
+  background: #b91c1c;
+}
+
+
+/* =========================================================
+   Password Modal
+========================================================= */
+
+/* Reuse delete modal overlay and modal base styles */
+.password-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.45);
+
+  backdrop-filter: blur(3px);
+}
+
+.password-modal {
+  position: relative;
+
+  width: min(420px, 100%);
+
+  padding: 28px;
+
+  background: #fff;
+  border-radius: 16px;
+
+  box-shadow:
+    0 20px 50px rgba(15, 23, 42, 0.18),
+    0 4px 12px rgba(15, 23, 42, 0.08);
+
+  text-align: center;
+
+  animation: deleteModalIn 0.18s ease-out;
+}
+  /* Override icon background to neutral */
+
+.password-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #eff6ff; /* bg-accent */
+  color: #2563eb; /* accent-color */
+}
+
+.password-modal-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+.password-modal h3 {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.password-modal p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.password-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.password-modal-actions button {
+  flex: 1;
+  height: 40px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.password-cancel-button {
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+}
+
+.password-cancel-button:hover {
+  background: var(--bg-hover);
+}
+
+.password-confirm-button {
+  border: 1px solid var(--accent-color);
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+.password-confirm-button:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+/* Password input styles */
+.modal-field {
+  margin-bottom: 16px;
+}
+
+.modal-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.password-input-wrapper input:focus {
+  outline: 2px solid var(--border-focus);
+  border-color: var(--border-focus);
+}
+
+.password-input-wrapper input:disabled {
+  background: var(--bg-surface);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle:hover {
+  background: var(--bg-hover);
+  border-radius: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.modal-button {
+  flex: 1;
+  height: 40px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.modal-button--secondary {
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+}
+
+.modal-button--secondary:hover {
+  background: var(--bg-hover);
+}
+
+.modal-button--primary {
+  border: 1px solid var(--accent-color);
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+.modal-button--primary:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+/* Dark theme overrides for password modal */
+[data-theme="dark"] .password-modal-overlay {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .password-modal {
+  background: var(--bg-card);
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .password-modal-icon {
+  background: #1e3a5f; /* dark bg-accent */
+  color: #60a5fa; /* dark accent-color */
+}
+
+[data-theme="dark"] .password-modal h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .password-modal p {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .password-cancel-button {
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .password-cancel-button:hover {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .password-confirm-button {
+  border: 1px solid var(--accent-color);
+  background: var(--accent-color);
+  color: var(--text-inverse);
+}
+
+[data-theme="dark"] .password-confirm-button:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+[data-theme="dark"] .password-input-wrapper input {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .password-input-wrapper input:focus {
+  outline: 2px solid var(--border-focus);
+  border-color: var(--border-focus);
+}
+
+[data-theme="dark"] .password-toggle {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .password-toggle:hover {
+  background: var(--bg-hover);
+}
+
+
+/* =========================================================
+   Underline Editor
+========================================================= */
+
+.underline-editor {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 10;
+
+  width: min(420px, calc(100vw - 36px));
+
+  padding: 16px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+
+  background: #f8fafc;
+
+  box-shadow: 0 12px 32px rgb(15 23 42 / 18%);
+}
+
+.underline-actions {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.underline-save {
+  width: auto;
+}
