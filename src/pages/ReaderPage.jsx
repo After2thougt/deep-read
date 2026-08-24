@@ -309,7 +309,9 @@ function hasValidAnalysis(value) {
 
   const payload = value;
 
-  return (
+    console.log("PAGE OFFSET", { articleOffset: pageOffset, currentPage });
+
+return (
     typeof payload.summary === 'string' &&
     payload.summary.trim().length > 0 &&
     Array.isArray(payload.hardSentences) &&
@@ -458,7 +460,16 @@ function splitBlockPages(blocks) {
           type: "text",
           content: chunk,
           textOffset: sourceOffset,
+
+          
+        })
+        console.log("SPLIT PAGE BLOCK", {
+          pageIndex: result.length - 1,
+          textOffset: sourceOffset - chunk.length,
+          contentLength: chunk.length,
+          contentStart: chunk.slice(0,50)
         });
+;
 
         current.text += chunk;
         sourceOffset += chunk.length;
@@ -1071,6 +1082,12 @@ function resetFont() {
             total + page.length,
           0
         );
+
+  console.log("PAGE OFFSET CALC", {
+    currentPage,
+    pageOffset
+  });
+
 
 
   const dictionaryExpanded =
@@ -1721,7 +1738,7 @@ function resetFont() {
             Reader Column
             ======================================= */}
         <div className="reader-column">
-          <Reader
+                    <Reader
             article={pageContent}
              fontSize={fontSize}
              setFontSize={setFontSize}
