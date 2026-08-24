@@ -7,6 +7,7 @@ export default function ConfirmModal({
   onCancel,
   onConfirm,
   confirmText = "Delete",
+  icon,
 }) {
   if (!open) {
     return null;
@@ -30,7 +31,7 @@ export default function ConfirmModal({
         </button>
 
         <div className="delete-modal-icon">
-          <Trash2 size={22} strokeWidth={2} />
+          {icon ? icon : <Trash2 size={22} strokeWidth={2} />}
         </div>
 
         <h3>{title}</h3>

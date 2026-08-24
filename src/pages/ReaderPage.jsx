@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   ChevronDown,
   ChevronLeft,
@@ -17,7 +18,7 @@ import {
   saveVocabulary,
 } from "../api/vocabulary";
 
-import { saveArticle } from "../api/articles";
+import { saveArticle, fetchArticle } from "../api/articles";
 import { translateArticle } from "../api/translation";
 import {
   analyzeArticle,
@@ -874,7 +875,6 @@ function StudyResults({
 
 export default function ReaderPage({
   article,
-  articleId,
   articleTitle,
   highlights,
   initialPage = 1,
@@ -955,6 +955,12 @@ useEffect(() => {
   );
 }, [fontSize]);
 
+// URL-based routing: detect new vs existing article
+const { id } = useParams();
+const location = useLocation();
+const isNewArticle = id === "new";
+const articleId = isNewArticle ? null : id;
+
 // Load vocabulary
 useEffect(() => {
   async function loadVocabulary() {
@@ -968,6 +974,24 @@ useEffect(() => {
   }
   loadVocabulary();
 }, []);
+
+// Load article when articleId changes (from URL)
+useEffect(() => {
+  if (!articleId) return; // new article, don't load
+
+  async function loadArticle() {
+    try {
+      const fullArticle = await fetchArticle(articleId);
+      setArticle(fullArticle.content || "");
+      setArticleTitle(fullArticle.title || "");
+      setHighlights(fullArticle.highlights || []);
+      setArticleBlocks(fullArticle.blocks || []);
+    } catch (error) {
+      console.error("Failed to load article:", error);
+    }
+  }
+  loadArticle();
+}, [articleId]);
 
 
 function increaseFont() {
@@ -1592,7 +1616,13 @@ function resetFont() {
       });
 
       // Immediately update savedWords for instant highlight update
-      setSavedWords(prev => {        const word = selectedWord.word.toLowerCase();        if (!prev.includes(word)) {          return [...prev, word];        }        return prev;      });
+      setSavedWords(prev => {
+        const word = selectedWord.word.toLowerCase();
+        if (!prev.includes(word)) {
+          return [...prev, word];
+        }
+        return prev;
+      });
 
       setSaved(true);
 
@@ -1620,38 +1650,47 @@ function resetFont() {
 
   return (
     <div
-      className="reader-page reader-page--editing"
+      className={`reader-page ${isNewArticle ? "reader-page--editing" : "reader-page--reading"}`}
       ref={readerPageRef}
-    >
-      {/* =========================================
-          Article Editor
+    >      {/* =========================================
+          Article Editor (only for new articles)
           ========================================= */}
-      <ArticleInput
-        article={article}
-        title={articleTitle}
-        articleId={articleId}
-        fontSize={fontSize}
-        setFontSize={setFontSize}
-        blocks={blocks}
-        onArticleChange={
-          onArticleChange
-        }
-        onTitleChange={
-          onTitleChange
-        }
-        onBlocksChange={
-          onBlocksChange
-        }
-        onSave={saveCurrentArticle}
-        onNewArticle={() => {
-            if (typeof onNewArticle === "function") {
-              onNewArticle();
-            }
-          }}
-        onBackToArticles={onBackToArticles}
-        theme={theme}
-        setTheme={setTheme}
-      />
+      {isNewArticle && (
+        <ArticleInput
+          article={article}
+          title={articleTitle}
+          articleId={articleId}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          blocks={blocks}
+          onArticleChange={
+            onArticleChange
+          }
+          onTitleChange={
+            onTitleChange
+          }
+          onBlocksChange={
+            onBlocksChange
+          }
+          onSave={saveCurrentArticle}
+          onNewArticle={() => {
+              if (typeof onNewArticle === "function") {
+                onNewArticle();
+              }
+            }}
+          onBackToArticles={onBackToArticles}
+          theme={theme}
+          setTheme={setTheme}
+          
+        />
+      )}      {/* =========================================
+          Reading View (for existing articles)
+          ========================================= */}
+      {!isNewArticle && articleTitle && (
+        <header className="reader-header">
+          <h1 className="reader-title">{articleTitle}</h1>
+        </header>
+      )}
 
       {/* Save message */}
       {clearConfirmOpen && (
