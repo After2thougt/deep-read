@@ -2071,7 +2071,6 @@ Mobile
   font-size: 0.9rem;
   line-height: 1.45;
 }
-
 /* =========================================================
    Pagination
 ========================================================= */
@@ -2080,94 +2079,203 @@ Mobile
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
 
-  min-height: 42px;
+  min-height: 48px;
+  margin-top: 20px;
 }
 
-.pagination-controls[hide-on-single-page] {
-  display: none;
-}
+
+/* page button */
 
 .pagination-button,
 .pagination-page {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
 
   padding: 0;
 
-  border: 1px solid transparent;
-  border-radius: 5px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
 
-  color: #1e3a5f;
-  background: transparent;
+  background: #ffffff;
+  color: #475569;
 
-  font-size: 0.86rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
+
+
+/* hover */
 
 .pagination-button:hover:not(:disabled),
 .pagination-page:hover {
-  background: #eff6ff;
-}
+  background: #f8fafc;
 
-.pagination-button:disabled {
-  color: #cbd5e1;
-}
-
-.pagination-page.is-current {
-  border-color: #2563eb;
+  border-color: #cbd5e1;
 
   color: #2563eb;
-  background: #fff;
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 2px 6px rgba(15,23,42,0.08);
+}
+
+
+/* disabled */
+
+.pagination-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+
+/* current page */
+
+.pagination-page.is-current {
+
+  border-color: #2563eb;
+
+  background: #2563eb;
+
+  color: white;
 
   font-weight: 700;
+
+  box-shadow:
+    0 4px 12px rgba(37,99,235,0.25);
 }
 
-.pagination-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
+
+/* ellipsis */
 
 .pagination-ellipsis {
-  width: 24px;
 
-  color: #475569;
+  width: 30px;
 
-  font-weight: 700;
+  color: #94a3b8;
+
+  font-weight: 600;
+
   text-align: center;
 }
 
-.pagination-jump {
-  display: inline-flex;
+
+/* page group */
+
+.pagination-item {
+
+  display: flex;
+
   align-items: center;
-  gap: 8px;
 
-  margin-left: 16px;
-
-  color: #1e3a5f;
-
-  font-size: 0.84rem;
-  white-space: nowrap;
+  gap: 6px;
 }
 
+
+/* jump area */
+
+.pagination-jump {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  margin-left: 20px;
+
+  padding-left: 20px;
+
+  border-left: 1px solid #e2e8f0;
+
+  color: #64748b;
+
+  font-size: 0.85rem;
+
+}
+
+
+/* input */
+
 .pagination-jump input {
-  width: 46px;
-  height: 32px;
 
-  padding: 0 7px;
+  width: 48px;
 
-  border: 1px solid #cbd5e1;
-  border-radius: 5px;
+  height: 36px;
+
+  padding: 0;
+
+  border:
+
+    1px solid #cbd5e1;
+
+  border-radius: 10px;
+
+
+  background: #ffffff;
 
   color: #334155;
 
+  font-size: 0.9rem;
+
+  font-weight: 600;
+
   text-align: center;
+
+
+  outline: none;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
+
+.pagination-jump input:focus {
+
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37,99,235,0.15);
+
+}
+
+
+/* mobile */
+
+@media (max-width: 600px) {
+
+  .pagination-jump {
+
+    display: none;
+
+  }
+
+
+  .pagination-button,
+  .pagination-page {
+
+    width: 34px;
+
+    height: 34px;
+
+  }
+
+}
 /* =========================================================
    Selection Toolbar
 ========================================================= */
@@ -2234,19 +2342,225 @@ Mobile
 ========================================================= */
 
 .highlights-list {
-  margin-top: 32px;
-  padding-top: 22px;
-
-  border-top: 1px solid #e2e8f0;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
 }
 
-.highlights-list .section-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
 
-  margin-bottom: 14px;
+/* header */
+.accordion-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 4px;
+  background:transparent;
+  border-radius:0;
+}
+
+
+.accordion-header:hover {
+  background:transparent;
+}
+
+
+/* content */
+.accordion-content-inner {
+  padding:8px 0;
+  display:flex;
+  flex-direction:column;
+}
+
+
+/* each underline */
+.underline-note {
+  padding:14px 4px;
+  margin:0;
+  border:none;
+  border-bottom:1px solid #e5e7eb;
+  background:transparent;
+}
+
+
+/* highlighted text */
+.highlight-text {
+  margin:0;
+  color:#334155;
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:1rem;
+  line-height:1.7;
+}
+
+
+/* note */
+.saved-note {
+  padding:8px 10px;
+  background:#fffbeb;
+  border-left:3px solid #facc15;
+  width:100%;
+  box-sizing:border-box;
+}
+
+
+/* buttons */
+.underline-item-actions {
+  gap:14px;
+}
+
+
+.text-button {
+  font-size:.75rem;
+  color:#94a3b8;
+}
+
+.accordion-header:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
+.accordion-header-left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.accordion-header .eyebrow {
+  margin: 0 0 2px;
+}
+
+.accordion-title {
+
+display:flex;
+
+align-items:center;
+
+gap:8px;
+
+font-size:15px;
+
+font-weight:600;
+
+margin:0;
+
+}
+
+
+.highlight-count {
+
+font-size:12px;
+
+padding:2px 8px;
+
+border-radius:20px;
+
+background:#dbeafe;
+
+color:#2563eb;
+
+}
+
+.accordion-chevron {
+
+display:flex;
+
+transition:
+transform .25s ease;
+
+}
+
+
+.accordion-chevron.open {
+
+transform:
+rotate(180deg);
+
+}
+
+.accordion-header[aria-expanded="true"] .accordion-chevron,
+.accordion-header[aria-expanded="true"] .accordion-chevron svg {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+ max-height:0;
+ overflow:hidden;
+ opacity:0;
+ transition:
+   max-height .25s ease,
+   opacity .2s ease;
+}
+
+
+.accordion-content.expanded {
+ max-height:420px;
+ opacity:1;
+}
+
+.accordion-content-inner {
+
+padding:
+
+12px 4px;
+
+display:flex;
+
+flex-direction:column;
+
+gap:12px;
+
+max-height:380px;
+
+overflow-y:auto;
+
+}
+
+/* Custom scrollbar for accordion content */
+.accordion-content-inner::-webkit-scrollbar {
+  width: 6px;
+}
+
+.accordion-content-inner::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.accordion-content-inner::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 3px;
+}
+
+.accordion-content-inner::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Firefox */
+.accordion-content-inner {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+/* Keep existing underline-note styles but remove the old section-heading styles */
+.highlights-list .section-heading {
+  display: none; /* Hidden - replaced by accordion-header */
+}
+
+.highlights-list .highlights-content {
+  display: none; /* Hidden - replaced by accordion-content */
+}
+
+.underline-note {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.saved-note {
+  width:100%;
+}
+
+.underline-item-actions {
+  display:flex;
+  justify-content:flex-start;
+  gap:16px;
 }
 
 .highlights-list .section-heading > div {
@@ -2327,7 +2641,6 @@ Mobile
   align-items: flex-start;
   gap: 8px;
 
-  margin-bottom: 5px;
   padding: 9px 11px;
 
   border-left: 2px solid #facc15;
@@ -2349,9 +2662,9 @@ Mobile
 .underline-item-actions {
   display: flex;
   flex-direction: row;
-  gap: 20px;
+  justify-content:flex-start;
+  gap: 16px;
   align-items: center;
-  margin-top: 10px;
 }
 
 .text-button {
@@ -5465,6 +5778,30 @@ Dictionary Empty State
 /* Underline / Highlights */
 [data-theme="dark"] .highlights-list {
   border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .accordion-header {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .accordion-header:hover {
+  background: var(--bg-accent-hover);
+}
+
+[data-theme="dark"] .accordion-header:focus-visible {
+  outline-color: var(--border-focus);
+}
+
+[data-theme="dark"] .accordion-title {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .accordion-chevron {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .accordion-content-inner {
+  scrollbar-color: var(--border-hover) transparent;
 }
 
 [data-theme="dark"] .highlights-list .section-heading h3 {

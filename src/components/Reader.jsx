@@ -1,19 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  MessageSquare,
-  Pencil,
-  Save,
-  X,
   Languages,
   Sparkles,
-  Trash2,
   Moon,
   Sun,
 } from "lucide-react";
 
 import { getWords } from "../utils/text";
 import { generateId } from "../utils/id";
-import ConfirmModal from "./ConfirmModal";
+import HighlightsPanel from "./HighlightsPanel";
 
 
 function splitParagraphs(text) {
@@ -285,22 +280,6 @@ export default function Reader({
   const [selection, setSelection] = useState(null);
   const [showFontControl, setShowFontControl] = useState(false);
 
-
-  const [
-    editingNoteId,
-    setEditingNoteId,
-  ] = useState(null);
-
-  const [
-    noteDraft,
-    setNoteDraft,
-  ] = useState("");
-
-
-  const [
-    deleteUnderlineTarget,
-    setDeleteUnderlineTarget,
-  ] = useState(null);
 
 
 
@@ -914,40 +893,6 @@ useEffect(() => {
 
 
 
-  function startNoteEdit(item) {
-
-    setEditingNoteId(item.id);
-
-    setNoteDraft(item.note || "");
-
-  }
-
-
-
-
-  function saveNote(item) {
-
-    onUpdateUnderline(
-      item.id,
-      {
-        note: noteDraft.trim(),
-      }
-    );
-
-
-    setEditingNoteId(null);
-
-    setNoteDraft("");
-
-  }
-
-  function cancelNote() {
-  setEditingNoteId(null);
-  setNoteDraft("");
-}
-
-
-
   function renderToken(token, tokenStart, key) {
 
     const absoluteTokenStart =
@@ -1439,223 +1384,11 @@ useEffect(() => {
 
 
 
-      {
-        pageHighlights.length > 0 && (
-
-          <section className="highlights-list">
-
-
-            <div className="section-heading">
-
-              <div>
-
-                <p className="eyebrow">
-                  Your notes
-                </p>
-
-                <h3>
-                  Underlined passages
-                </h3>
-
-              </div>
-
-
-              <span>
-                {pageHighlights.length}
-              </span>
-
-
-            </div>
-
-
-
-
-            {
-              pageHighlights.map(
-                (item)=>(
-
-                  <article
-                    className="underline-note"
-                    key={item.id}
-                  >
-
-
-                    <p className="highlight-text">
-
-
-                      <span>{item.text.trim()}</span>
-
-                    </p>
-
-
-
-                    {
-                      editingNoteId === item.id
-
-                      ? (
-
-                        <div className="note-editor">
-
-
-                          <textarea
-
-                            value={noteDraft}
-
-                            onChange={
-                              e =>
-                                setNoteDraft(
-                                  e.target.value
-                                )
-                            }
-
-                          />
-
-                              <div className="note-actions">
-                                <button
-                                  className="save-note-button"
-                                  type="button"
-                                  title="Save note"
-                                  aria-label="Save note"
-                                  onClick={() => saveNote(item)}
-                                >
-                                  <Save size={15} />
-                                </button>
-
-                                <button
-                                  type="button"
-                                  className="cancel-note-button"
-                                  onClick={cancelNote}
-                                  title="Cancel"
-                                  aria-label="Cancel"
-                                >
-                                  <X size={15} />
-                                </button>
-                              </div>
-
-                        </div>
-
-                      )
-
-
-                      : (
-
-                        <>
-
-
-                          {
-                            item.note && (
-
-                              <div className="saved-note">
-
-                                <MessageSquare size={16}/>
-
-                                {item.note}
-
-                              </div>
-
-                            )
-                          }
-
-
-
-                          <div className="underline-item-actions">
-
-                          <button
-
-                            className="text-button"
-
-                            type="button"
-
-                            onClick={()=>
-                              startNoteEdit(item)
-                            }
-
-                          >
-
-                            <Pencil size={16}/>
-
-                            {
-                              item.note
-                                ? "Edit Note"
-                                : "Add Note"
-                            }
-
-                          </button>
-
-
-
-                          <button
-                            className="text-button delete-underline"
-                            type="button"
-                            onClick={() =>
-                              setDeleteUnderlineTarget(item.id)
-                            }
-                            title="Remove underline"
-                          >
-                            <Trash2 size={16} />
-                            Remove 
-                          </button>
-
-                          </div>
-
-
-
-                        </>
-
-                      )
-
-                    }
-
-
-                  </article>
-
-
-                )
-              )
-            }
-
-
-          </section>
-
-        )
-      }
-
-
-
-      <ConfirmModal
-
-        open={
-          Boolean(deleteUnderlineTarget)
-        }
-
-        title="Remove underline?"
-
-        message={[
-  "Are you sure you want to remove this highlight?",
-  <br key="br" />,
-  "The note will be deleted too."
-]}
-
-        onCancel={()=>
-          setDeleteUnderlineTarget(null)
-        }
-
-        onConfirm={()=>{
-
-          onRemoveUnderline(
-            deleteUnderlineTarget
-          );
-
-          setDeleteUnderlineTarget(null);
-
-        }}
-
-        confirmText="Delete"
-
-      />
-
-
-    </main>
+            <HighlightsPanel
+        pageHighlights={pageHighlights}
+        onUpdateUnderline={onUpdateUnderline}
+        onRemoveUnderline={onRemoveUnderline}
+      /></main>
   );
 
 }
