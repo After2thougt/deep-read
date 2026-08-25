@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { User, Lock, Settings, LogOut } from "lucide-react";
-import ConfirmModal from "../components/ConfirmModal";
-import PasswordModal from "../components/PasswordModal";
+import ConfirmModal from "../components/ui/ConfirmModal";
+import PasswordModal from "../components/ui/PasswordModal";
 
 export default function ProfilePage({ username, onLogout }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -58,10 +58,7 @@ export default function ProfilePage({ username, onLogout }) {
           <h3 className="profile-section-title">Preferences</h3>
 
           <div className="profile-actions">
-            <button className="profile-action-button" onClick={() => window.location.href = "/settings"}>
-              <Settings size={18} />
-              <span>Settings</span>
-            </button>
+
           </div>
         </div>
 

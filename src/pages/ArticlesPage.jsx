@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowUpDown, BookOpen, Check, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, X as XIcon } from "lucide-react";
 import { addArticleTag, clearArticleListCache, createTag, deleteTag, fetchArticle, fetchArticles, removeArticleTag, removeArticle, renameTag } from "../api/articles";
-import ConfirmModal from "../components/ConfirmModal";
+import ConfirmModal from "../components/ui/ConfirmModal";
 
 const PAGE_SIZE = 10;
 

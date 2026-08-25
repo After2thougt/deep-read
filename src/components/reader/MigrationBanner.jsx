@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Upload } from "lucide-react";
-import { dismissMigration, getLocalDataSummary, migrateLocalDataToDatabase } from "../api/migrate";
+import { dismissMigration, getLocalDataSummary, migrateLocalDataToDatabase } from "../../api/migrate";
 
 export default function MigrationBanner() {
   const [summary] = useState(getLocalDataSummary);
