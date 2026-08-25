@@ -28,6 +28,8 @@ export default function ProfilePage({ username, onLogout }) {
           <img src="/avatar.png" alt="Profile avatar" />
         </div>
           <h2 className="profile-username">{username}</h2>
+          
+          <p className="profile-description">You really want to study now?</p>
         </div>
 
         <div className="profile-section">

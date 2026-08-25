@@ -71,6 +71,10 @@
   color: var(--text-primary);
 }
 
+.profile-description {
+  margin-top: 10px;
+}
+
 
 /* Sections */
 .profile-section {
@@ -197,10 +201,6 @@
     padding: 24px;
     border-radius: 16px;
   }
-
-
-
-
 
   .profile-username {
     font-size: 21px;
