@@ -4,6 +4,7 @@ import { uploadArticleImage } from "../../api/articles";
 import { initialEditorBlocks, editorSourceSignature } from "./article-editor-draft";
 import useDraft from "../../hooks/useDraft";
 import "./article-editor.css";
+import { useLocation } from "react-router-dom";
 
 export default function ArticleInput({
   title,
@@ -45,6 +46,10 @@ export default function ArticleInput({
   const isReplacingRef = useRef(false);
   const checkedIdsRef = useRef(new Set());
   const lastRenderedArticleIdRef = useRef(null);
+
+  const location = useLocation();
+
+  const isCreatePage = location.pathname === "/articles/new";
 
   /* ---------- helpers ---------- */
 
@@ -674,10 +679,14 @@ export default function ArticleInput({
     event.target.value = "";
   }
 
-    function startNewArticle() {
-      onNewArticle?.();
-      setIsCollapsed(false);
+  const startNewArticle = () => {
+    console.log("[ArticleInput] New article clicked, onNewArticle:", typeof onNewArticle);
+    if (onNewArticle) {
+      onNewArticle();
+    } else {
+      console.error("[ArticleInput] onNewArticle prop missing");
     }
+  };
 
   /* ---------- collapsed view ---------- */
 
@@ -709,7 +718,7 @@ export default function ArticleInput({
               <ChevronLeft size={18} /> Back to Articles
             </button>
           )}
-          
+    
         
         </div>
       </section>

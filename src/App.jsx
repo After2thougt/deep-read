@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { BookOpen } from "lucide-react";
-import { BrowserRouter, Routes, Route, NavLink, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, NavLink, useNavigate, useLocation } from "react-router-dom";
 
 import ReaderPage from "./pages/ReaderPage";
 import VocabularyPage from "./pages/VocabularyPage";
@@ -118,6 +118,7 @@ function LoginScreen({ onLogin }) {
 
 function AppRoutes({onLogout, username, authenticated}) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   /*
    * =====================================================
@@ -229,14 +230,20 @@ function AppRoutes({onLogout, username, authenticated}) {
     navigate(`/articles/${savedArticle.id}`);
   }
 
-  function newArticle() {
-    setArticle("");
-    setArticleTitle("");
-    setHighlights([]);
-    setArticleBlocks([]);
-    navigate("/articles/new");
-  }
+    function newArticle() {
+      console.log("New article clicked");
 
+      setArticle("");
+      setArticleTitle("");
+      setHighlights([]);
+      setArticleBlocks([]);
+
+      console.log("before navigate");
+
+      navigate("/articles/new");
+
+      console.log("after navigate");
+    }
   function goToArticles() {
     navigate("/articles");
   }
@@ -318,6 +325,7 @@ function AppRoutes({onLogout, username, authenticated}) {
           path="/articles/new"
           element={
             <ReaderPage
+              key="new-article"
               article={article}
               articleId={null}
               articleTitle={articleTitle}
@@ -340,6 +348,7 @@ function AppRoutes({onLogout, username, authenticated}) {
           path="/articles/:id"
           element={
             <ReaderPage
+              key={location.pathname}
               article={article}
               articleId={null} // Will be fetched from URL in ReaderPage
               articleTitle={articleTitle}

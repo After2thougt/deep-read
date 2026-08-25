@@ -959,13 +959,27 @@ useEffect(() => {
     "reader-font-size",
     String(fontSize)
   );
-}, [fontSize]);
+});
 
-// URL-based routing: detect new vs existing article
 const { id } = useParams();
 const location = useLocation();
-const isNewArticle = id === "new";
+
+
+const isNewArticle =
+  location.pathname === "/articles/new" || id === "new";
+
 const articleId = isNewArticle ? null : id;
+
+// Render-time logging for debugging
+console.log("[ReaderPage render]", {
+  pathname: window.location.pathname,
+  id,
+  isNewArticle,
+  articleId,
+  articleContentLength: articleContent?.length,
+  articleTitleState: articleTitleState?.slice(0, 30)
+});
+
 
 // Load vocabulary
 useEffect(() => {
@@ -980,6 +994,10 @@ useEffect(() => {
   }
   loadVocabulary();
 }, []);
+
+useEffect(() => {
+  console.log("Route changed:", location.pathname);
+}, [location.pathname]);
 
 // Load article when articleId changes (from URL)
 useEffect(() => {
@@ -1172,7 +1190,7 @@ function resetFont() {
 
     setTranslations(null);
     setAnalysis(null);
-  }, [article, pages.length]);
+  }, [articleContent, pages.length]);
 
 
   function scrollReaderToTop() {
@@ -1687,9 +1705,9 @@ function resetFont() {
           }
           onSave={saveCurrentArticle}
           onNewArticle={() => {
-              if (typeof onNewArticle === "function") {
+               console.log("ReaderPage New Article");
                 onNewArticle();
-              }
+              
             }}
           onBackToArticles={onBackToArticles}
           theme={theme}
