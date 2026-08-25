@@ -667,7 +667,6 @@ overflow-y:auto;
   justify-content: center;
   width: 48px;
   height: 48px;
-  margin: 0 auto 16px;
   border-radius: 50%;
   background: #eff6ff; /* bg-accent */
   color: #2563eb; /* accent-color */
@@ -697,7 +696,6 @@ overflow-y:auto;
 .password-modal-actions {
   display: flex;
   gap: 10px;
-  margin-top: 24px;
 }
 
 .password-modal-actions button {

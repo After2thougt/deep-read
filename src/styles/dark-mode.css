@@ -1586,6 +1586,14 @@
   color: var(--text-primary);
 }
 
+[data-theme="dark"] .user-button {
+  color: #8896ab;
+}
+
+[data-theme="dark"] .user-name {
+  color: black;
+}
+
 /* Vocabulary Highlight */
 [data-theme="dark"] .vocabulary-highlight {
   background: rgba(250, 204, 21, 0.35);

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronLeft, FilePlus2, Pencil, Save, Upload } from "lucide-react";
-import { uploadArticleImage } from "../api/articles";
+import { uploadArticleImage } from "../../api/articles";
 import { initialEditorBlocks, editorSourceSignature } from "./article-editor-draft";
-import useDraft from "../hooks/useDraft";
+import useDraft from "../../hooks/useDraft";
 import "./article-editor.css";
 
 export default function ArticleInput({
@@ -17,9 +17,12 @@ export default function ArticleInput({
   onNewArticle,
   onBackToArticles,
   saveMessage,
+  forceExpanded = false,
 }) {
   // View mode is per-article. New articles default to edit mode.
   const [isCollapsed, setIsCollapsed] = useState(() => {
+    // forceExpanded prop overrides everything (used when ReaderPage explicitly enters edit mode)
+    if (forceExpanded) return false;
     if (!articleId) return false; // new article -> edit mode
     try {
       const saved = localStorage.getItem(`deepread:reader-view-mode:${articleId}`);

@@ -116,6 +116,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  color: #475569;
 }
 
 
@@ -131,7 +132,7 @@
 
   width: 180px;
 
-  background: var(--surface);
+  background: white;
   border: 1px solid var(--border);
 
   border-radius: 12px;

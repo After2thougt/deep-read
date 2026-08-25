@@ -7,9 +7,9 @@ import VocabularyPage from "./pages/VocabularyPage";
 import ArticlesPage from "./pages/ArticlesPage";
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
-import MigrationBanner from "./components/MigrationBanner";
+import MigrationBanner from "./components/reader/MigrationBanner";
 import { fetchVocabulary } from "./api/vocabulary";
-import UserMenu from "./components/UserMenu";
+import UserMenu from "./components/ui/UserMenu";
 
 import {
   fetchArticles,
@@ -332,6 +332,7 @@ function AppRoutes({onLogout, username, authenticated}) {
               onBackToArticles={goToArticles}
               theme={theme}
               setTheme={setTheme}
+              isNewArticle={true}
             />
           }
         />

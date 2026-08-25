@@ -6,8 +6,8 @@ import {
   ChevronDown
 } from "lucide-react";
 
-import ConfirmModal from "./ConfirmModal";
-import NoteEditor from "./NoteEditor";
+import ConfirmModal from "../ui/ConfirmModal";
+import NoteEditor from "../ui/NoteEditor";
 
 export default function HighlightsPanel({
   pageHighlights,

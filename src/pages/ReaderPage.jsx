@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Languages,
+  Pencil,
   X,
 } from "lucide-react";
 
@@ -25,10 +26,10 @@ import {
   clearArticleAnalysis,
 } from "../api/analysis";
 
-import ArticleInput from "../components/ArticleInput";
-import DictionaryCard from "../components/DictionaryCard";
-import Reader from "../components/Reader";
-import ConfirmModal from "../components/ConfirmModal";
+import ArticleInput from "../components/article/ArticleInput";
+import DictionaryCard from "../components/ui/DictionaryCard";
+import Reader from "../components/reader/Reader";
+import ConfirmModal from "../components/ui/ConfirmModal";
 
 
 function structureTokens(value) {
@@ -937,6 +938,11 @@ export default function ReaderPage({
     useState(false);
 
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [articleContent, setArticleContent] = useState(article || "");
+  const [articleTitleState, setArticleTitleState] = useState(articleTitle || "");
+  const [highlightsState, setHighlightsState] = useState(highlights || []);
+  const [blocksState, setBlocksState] = useState(blocks || []);
 
   const [fontSize, setFontSize] =
   useState(() => {
@@ -982,10 +988,10 @@ useEffect(() => {
   async function loadArticle() {
     try {
       const fullArticle = await fetchArticle(articleId);
-      setArticle(fullArticle.content || "");
-      setArticleTitle(fullArticle.title || "");
-      setHighlights(fullArticle.highlights || []);
-      setArticleBlocks(fullArticle.blocks || []);
+      setArticleContent(fullArticle.content || "");
+      setArticleTitleState(fullArticle.title || "");
+      setHighlightsState(fullArticle.highlights || []);
+      setBlocksState(fullArticle.blocks || []);
     } catch (error) {
       console.error("Failed to load article:", error);
     }
@@ -1049,7 +1055,7 @@ function resetFont() {
     useRef(null);
 
 
-  const hasBlocks = blocks.some(
+  const hasBlocks = blocksState.some(
     (block) =>
       block.type === "image"
   );
@@ -1059,7 +1065,7 @@ function resetFont() {
       hasBlocks
         ? splitBlockPages(blocks)
         : [],
-    [blocks, hasBlocks]
+    [blocksState, hasBlocks]
   );
 
   const pages = useMemo(
@@ -1069,7 +1075,7 @@ function resetFont() {
             (page) => page.text
           )
         : splitPageText(article),
-    [article, blockPages, hasBlocks]
+    [articleContent, blockPages, hasBlocks]
   );
 
   const pageContent =
@@ -1298,6 +1304,12 @@ function resetFont() {
       setSaveMessage(
         "Article saved in your library."
       );
+
+      // Exit edit mode after saving existing article
+      if (!isNewArticle) {
+        setIsEditing(false);
+      }
+
     } catch (err) {
       setSaveMessage(
         err.message ||
@@ -1629,7 +1641,7 @@ function resetFont() {
       try {
         await syncVocabularyToEudic(
           selectedWord.word,
-          article
+          articleContent
         );
 
         setSynced(true);
@@ -1652,17 +1664,18 @@ function resetFont() {
     <div
       className={`reader-page ${isNewArticle ? "reader-page--editing" : "reader-page--reading"}`}
       ref={readerPageRef}
-    >      {/* =========================================
+    >
+      {/* =========================================
           Article Editor (only for new articles)
           ========================================= */}
-      {isNewArticle && (
+      {(isNewArticle || !isNewArticle) && (
         <ArticleInput
-          article={article}
-          title={articleTitle}
+          article={articleContent}
+          title={articleTitleState}
           articleId={articleId}
           fontSize={fontSize}
           setFontSize={setFontSize}
-          blocks={blocks}
+          blocks={blocksState}
           onArticleChange={
             onArticleChange
           }
@@ -1681,16 +1694,10 @@ function resetFont() {
           onBackToArticles={onBackToArticles}
           theme={theme}
           setTheme={setTheme}
-          
+          forceExpanded={isEditing && !isNewArticle}
         />
-      )}      {/* =========================================
-          Reading View (for existing articles)
-          ========================================= */}
-      {!isNewArticle && articleTitle && (
-        <header className="reader-header">
-          <h1 className="reader-title">{articleTitle}</h1>
-        </header>
       )}
+
 
       {/* Save message */}
       {clearConfirmOpen && (

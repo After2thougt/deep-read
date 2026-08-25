@@ -6,8 +6,8 @@ import {
   Sun,
 } from "lucide-react";
 
-import { getWords } from "../utils/text";
-import { generateId } from "../utils/id";
+import { getWords } from "../../utils/text";
+import { generateId } from "../../utils/id";
 import HighlightsPanel from "./HighlightsPanel";
 
 

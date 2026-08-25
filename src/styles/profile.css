@@ -16,7 +16,7 @@
   width: 100%;
   max-width: 520px;
 
-  background: var(--card-bg, var(--surface));
+  background:white;
   border: 1px solid var(--border-color, var(--border));
   border-radius: 20px;
 
