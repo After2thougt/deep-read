@@ -414,6 +414,7 @@ export default function App() {
       authenticated: false,
       username: "",
     });
+    window.location.replace("/");
   }
 
   useEffect(() => {
@@ -448,13 +449,15 @@ export default function App() {
   if (!auth.authenticated) {
     return (
       <LoginScreen
-        onLogin={(username) => (
+        onLogin={(username) => {
           setAuth({
             loading: false,
             authenticated: true,
             username,
-          })
-        )}
+          });
+
+          window.location.replace("/");
+        }}
       />
     );
   }
