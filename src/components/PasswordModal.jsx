@@ -105,7 +105,7 @@ export default function PasswordModal({
           </div>
           <h3 id="password-modal-title" className="password-modal-title">{title}</h3>
           <p className="password-modal-description">
-            Enter your current password and choose a new one. Your new password must be at least 8 characters.
+            Enter your current password and choose a new one. As you wish.
           </p>
         </div>
 
