@@ -944,6 +944,15 @@ export default function ReaderPage({
   const [highlightsState, setHighlightsState] = useState(highlights || []);
   const [blocksState, setBlocksState] = useState(blocks || []);
 
+  // Log blocksState changes
+  useEffect(() => {
+    console.log("[ReaderPage blocksState changed]", {
+      length: blocksState.length,
+      images: blocksState.filter(b => b.type === "image").length,
+      blocks: blocksState
+    });
+  }, [blocksState]);
+
   const [fontSize, setFontSize] =
   useState(() => {
     return Number(
@@ -978,6 +987,11 @@ console.log("[ReaderPage render]", {
   articleId,
   articleContentLength: articleContent?.length,
   articleTitleState: articleTitleState?.slice(0, 30)
+});
+
+console.log("[render state]", {
+  title: articleTitleState,
+  contentLength: articleContent.length
 });
 
 
@@ -1016,6 +1030,22 @@ useEffect(() => {
   }
   loadArticle();
 }, [articleId]);
+
+
+// Reset local state when navigating to new article
+useEffect(() => {
+  if (isNewArticle) {
+    console.log("[ReaderPage] Resetting state for new article");
+    setArticleContent("");
+    setArticleTitleState("");
+    setHighlightsState([]);
+    setBlocksState([]);
+    setAnalysis(null);
+    setTranslations(null);
+    setSaveMessage("");
+    setCurrentPage(1);
+  }
+}, [isNewArticle]);
 
 
 function increaseFont() {
@@ -1075,13 +1105,13 @@ function resetFont() {
 
   const hasBlocks = blocksState.some(
     (block) =>
-      block.type === "image"
+      block.type === "image" || block.type === "text"
   );
 
   const blockPages = useMemo(
     () =>
       hasBlocks
-        ? splitBlockPages(blocks)
+        ? splitBlockPages(blocksState)
         : [],
     [blocksState, hasBlocks]
   );
@@ -1092,7 +1122,7 @@ function resetFont() {
         ? blockPages.map(
             (page) => page.text
           )
-        : splitPageText(article),
+        : splitPageText(articleContent),
     [articleContent, blockPages, hasBlocks]
   );
 
@@ -1104,6 +1134,9 @@ function resetFont() {
         ?.blocks || []
     : null;
 
+  // Log pageBlocks (after declaration)
+  useEffect(() => {
+    const imageBlocks = pageBlocks ? pageBlocks.filter(b => b.type === "image") : [];    console.log("[ReaderPage pageBlocks]", { length: pageBlocks?.length || 0, images: imageBlocks.length, imageBlocks });  }, [pageBlocks]);
 
   const pageOffset = hasBlocks
     ? blockPages
@@ -1293,7 +1326,7 @@ function resetFont() {
 
       const payload = {
         id: articleId,
-        title: articleTitle,
+        title: articleTitleState,
 
         content:
           typeof draft.content ===
@@ -1312,10 +1345,25 @@ function resetFont() {
             : undefined,
       };
 
+      console.log("[ReaderPage saveCurrentArticle] payload:", {
+        id: payload.id,
+        title: payload.title,
+        contentLength: payload.content?.length,
+        blocksLength: payload.blocks?.length,
+        highlightsLength: payload.highlights?.length
+      });
+
       const savedArticle =
         await saveArticle(
           payload
         );
+
+      console.log("[ReaderPage saveCurrentArticle] savedArticle:", {
+        id: savedArticle.id,
+        title: savedArticle.title,
+        contentLength: savedArticle.content?.length,
+        blocksLength: savedArticle.blocks?.length
+      });
 
       onArticleSaved(savedArticle);
 
@@ -1694,15 +1742,9 @@ function resetFont() {
           fontSize={fontSize}
           setFontSize={setFontSize}
           blocks={blocksState}
-          onArticleChange={
-            onArticleChange
-          }
-          onTitleChange={
-            onTitleChange
-          }
-          onBlocksChange={
-            onBlocksChange
-          }
+          onArticleChange={setArticleContent}
+          onTitleChange={setArticleTitleState}
+          onBlocksChange={setBlocksState}
           onSave={saveCurrentArticle}
           onNewArticle={() => {
                console.log("ReaderPage New Article");
@@ -1814,7 +1856,7 @@ function resetFont() {
               pageOffset +
               pageContent.length
             }
-            highlights={highlights}
+            highlights={highlightsState}
             savedWords={savedWords}
             onSelectWord={
               selectWord

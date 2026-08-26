@@ -157,6 +157,7 @@ function AppRoutes({onLogout, username, authenticated}) {
   const [articleListVersion, setArticleListVersion] = useState(0);
 
   function handleArticleSaved(savedArticle) {
+    console.log("[App handleArticleSaved] savedArticle:", { id: savedArticle.id, title: savedArticle.title });
     clearArticleListCache();
     setArticleListVersion((value) => value + 1);
   }

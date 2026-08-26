@@ -543,7 +543,7 @@
 
 /* Selection Toolbar */
 [data-theme="dark"] .selection-toolbar {
-  background: rgba(var(--text-primary-rgb), 0.96);
+  background: rgba(124, 135, 145, 0.96);
   box-shadow: var(--shadow-xl), var(--shadow-sm);
 }
 
@@ -595,6 +595,10 @@
 [data-theme="dark"] .highlights-list .section-heading > span {
   color: var(--text-secondary);
   background: var(--border-color);
+}
+
+[data-theme="dark"] .highlight-text {
+  color: #d4d7dc;
 }
 
 [data-theme="dark"] .underline-note {
@@ -1320,12 +1324,6 @@
   accent-color: var(--accent-color);
 }
 
-/* Word hover in reader */
-[data-theme="dark"] .word:hover,
-[data-theme="dark"] .word:focus-visible {
-  background: var(--bg-warning);
-  color: var(--text-primary);
-}
 
 
 
@@ -1587,11 +1585,23 @@
 }
 
 [data-theme="dark"] .user-button {
-  color: #8896ab;
+  color: #b6b9bd;
 }
 
 [data-theme="dark"] .user-name {
   color: black;
+}
+
+[data-theme="dark"] .user-dropdown{
+  background: #c9d2d6;
+}
+
+[data-theme="dark"] .user-dropdown button {
+  color:#3a3a3a;
+}
+
+[data-theme="dark"] .user-dropdown button:hover {
+  background: #ffffff24;
 }
 
 /* Vocabulary Highlight */
@@ -1599,3 +1609,4 @@
   background: rgba(250, 204, 21, 0.35);
   color: var(--text-primary);
 }
+

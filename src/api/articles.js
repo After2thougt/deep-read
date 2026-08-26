@@ -42,12 +42,14 @@ export async function fetchArticle(id) {
 }
 
 export async function saveArticle({ id, title, content, highlights = [], blocks }) {
+  console.log("[API saveArticle] request:", { id, title, contentLength: content?.length, blocksLength: blocks?.length, highlightsLength: highlights?.length });
   const row = await apiFetch("/api/articles", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, title, content, highlights, ...(Array.isArray(blocks) ? { blocks } : {}) }),
   });
 
+  console.log("[API saveArticle] response:", { id: row.id, title: row.title, contentLength: row.content?.length, blocksLength: row.blocks?.length });
   return normalizeArticle(row);
 }
 

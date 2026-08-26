@@ -90,10 +90,10 @@
 
 .article-image {
   display: block;
-  max-width: 100%;
   width: auto;
+  max-width: 85%;
+  max-height: 500px;
   height: auto;
-  max-height: 600px;
   object-fit: contain;
   margin: 16px auto;
 }
