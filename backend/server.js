@@ -1426,6 +1426,7 @@ app.get('/api/articles/:id', (req, res) => {
 
 app.post('/api/articles', async (req, res) => {
   const { id, title, content, highlights = [], blocks } = req.body || {};
+  console.log("[Backend POST /api/articles] request:", { id, title, contentLength: content?.length, blocksLength: blocks?.length, highlightsLength: highlights?.length });
   if (typeof title !== 'string' || !title.trim() || typeof content !== 'string') {
     return res.status(400).json({ error: 'Article title and content are required.' });
   }
@@ -1437,6 +1438,7 @@ app.post('/api/articles', async (req, res) => {
       VALUES (@id, @title, @content, @highlights, @created_at, @updated_at)
       ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,
       highlights = excluded.highlights, updated_at = excluded.updated_at`).run(article);
+    console.log("[Backend] Article inserted/updated with id:", article.id);
     if (Array.isArray(blocks)) {
       const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
       const previousImages = db.prepare("SELECT content FROM article_blocks WHERE article_id = ? AND type = 'image'").all(article.id);
@@ -1448,11 +1450,16 @@ app.post('/api/articles', async (req, res) => {
         if (!nextImages.has(row.content)) removeArticleImageIfUnused(row.content, article.id);
       }
     }
-    return res.status(201).json({ ...serializeArticle(db.prepare('SELECT * FROM articles WHERE id = ?').get(article.id)), blocks: getArticleBlocks(article.id).map(({ id, type, content, sort_order }) => ({ id, type, content, sort_order })) });
+    const savedArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(article.id);
+    console.log("[Backend] Saved article from DB:", { id: savedArticle.id, title: savedArticle.title, contentLength: savedArticle.content?.length });
+    const responseData = { ...serializeArticle(savedArticle), blocks: getArticleBlocks(article.id).map(({ id, type, content, sort_order }) => ({ id, type, content, sort_order })) };
+    console.log("[Backend] Response data:", { id: responseData.id, title: responseData.title, blocksLength: responseData.blocks?.length });
+    return res.status(201).json(responseData);
   } catch (error) {
+    console.error("[Backend] Error saving article:", error);
     return res.status(500).json({ error: 'Internal server error' });
   }
-});
+}););
 
 app.delete('/api/articles/:id', async (req, res) => {
   const id = req.params.id;

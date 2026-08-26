@@ -20,6 +20,7 @@ export default function ArticleInput({
   saveMessage,
   forceExpanded = false,
 }) {
+  console.log("[ArticleInput props]", { title, articleLength: article?.length, onTitleChange: typeof onTitleChange, onArticleChange: typeof onArticleChange });
   // View mode is per-article. New articles default to edit mode.
   const [isCollapsed, setIsCollapsed] = useState(() => {
     // forceExpanded prop overrides everything (used when ReaderPage explicitly enters edit mode)
@@ -36,6 +37,9 @@ export default function ArticleInput({
   const [blocks, setBlocks] = useState(() =>
     initialEditorBlocks(article, propsBlocks)
   );
+
+  console.log("[ArticleInput] isCollapsed:", isCollapsed, "forceExpanded:", forceExpanded, "articleId:", articleId);
+
   const [isSaving, setIsSaving] = useState(false);
 
   const editorRef = useRef(null);
@@ -344,8 +348,8 @@ export default function ArticleInput({
     const newBlocks = serializeDOMToBlocks();
     console.log("[ArticleInput] syncNow – editor blocks", newBlocks);
     setBlocks(newBlocks);
-    if (onBlocksChange) onBlocksChange(newBlocks);
-    if (onArticleChange) onArticleChange(blocksToText(newBlocks));
+    if (onBlocksChange) {
+      const imageBlocks = newBlocks.filter(b => b.type === "image");      console.log("[ArticleInput emit blocks]", { total: newBlocks.length, images: imageBlocks.length, imageBlocks });      onBlocksChange(newBlocks);    }    if (onArticleChange) onArticleChange(blocksToText(newBlocks));
   }
 
   function handleInput() {
@@ -353,9 +357,10 @@ export default function ArticleInput({
     clearTimeout(inputTimer.current);
     inputTimer.current = setTimeout(() => {
       const newBlocks = serializeDOMToBlocks();
+      const text = blocksToText(newBlocks);
+      console.log("[ArticleInput] article change", text.length, "chars");
       setBlocks(newBlocks);
-      if (onBlocksChange) onBlocksChange(newBlocks);
-      if (onArticleChange) onArticleChange(blocksToText(newBlocks));
+      if (onBlocksChange) {        const imageBlocks = newBlocks.filter(b => b.type === "image");        console.log("[ArticleInput handleInput emit blocks]", { total: newBlocks.length, images: imageBlocks.length, imageBlocks });        onBlocksChange(newBlocks);      }      if (onArticleChange) onArticleChange(text);
     }, 300);
   }
 
@@ -804,9 +809,9 @@ export default function ArticleInput({
       <input
         className="title-input"
         id="article-title"
-        value={title}
+        value={title || ""}
         placeholder="Untitled article"
-        onChange={(event) => onTitleChange(event.target.value)}
+        onChange={(event) => { const value = event.target.value; console.log("[title update]", value); console.log("[ArticleInput] title change", value); console.log("[ArticleInput] calling onTitleChange with:", value); onTitleChange?.(value); }}
       />
 
       <label className="input-label" htmlFor="article-input">

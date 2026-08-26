@@ -70,6 +70,7 @@ export default function ArticlesPage({
   const [sort, setSort] = useState(""); // '' = recently updated (default)
 
   const loadArticles = useCallback(async () => {
+    console.log("[ArticlesPage loadArticles] refreshVersion:", refreshVersion, "payload:", { page, selectedTag, searchQuery, sort });
     try {
       setLoading(true); setError("");
       const payload = { page, limit: PAGE_SIZE };
@@ -81,11 +82,12 @@ export default function ArticlesPage({
         payload.tag = selectedTag;
       }
       const result = await fetchArticles(payload);
+      console.log("[ArticlesPage loadArticles] result:", { itemsCount: result.items?.length, total: result.total, totalPages: result.totalPages, firstItem: result.items?.[0] });
       setArticles(result.items); setTags(result.tags || []); setTotal(result.total); setAllTotal(result.allTotal); setUntaggedTotal(result.untaggedTotal); setTotalPages(result.totalPages);
     } catch (err) {
       setError(err.message || "Unable to load articles.");
     } finally { setLoading(false); }
-  }, [page, selectedTag, searchQuery, sort]);
+  }, [page, selectedTag, searchQuery, sort, refreshVersion]);
 
   useEffect(() => {
   loadArticles();

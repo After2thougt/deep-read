@@ -127,7 +127,7 @@ export default function PasswordModal({
 
           {/* Current Password */}
           <div className="password-modal-field">
-            <label htmlFor="currentPassword">Current Password</label>
+          
             <div className="password-input-wrapper">
               <input
                 id="currentPassword"
@@ -153,7 +153,6 @@ export default function PasswordModal({
 
           {/* New Password */}
           <div className="password-modal-field">
-            <label htmlFor="newPassword">New Password</label>
             <div className="password-input-wrapper">
               <input
                 id="newPassword"
@@ -178,7 +177,7 @@ export default function PasswordModal({
 
           {/* Confirm New Password */}
           <div className="password-modal-field">
-            <label htmlFor="confirmPassword">Confirm New Password</label>
+     
             <div className="password-input-wrapper">
               <input
                 id="confirmPassword"

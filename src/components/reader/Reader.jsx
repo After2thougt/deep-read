@@ -11,6 +11,22 @@ import { generateId } from "../../utils/id";
 import HighlightsPanel from "./HighlightsPanel";
 
 
+// ImageWrapper component for debugging image sizes
+function ImageWrapper({ src }) {
+  const imageRef = useRef(null);
+
+  useEffect(() => {
+    const img = imageRef.current;
+    if (!img) return;
+
+    console.log("[Reader actual image size]", {
+      naturalWidth: img.naturalWidth,
+      naturalHeight: img.naturalHeight,      clientWidth: img.clientWidth,      clientHeight: img.clientHeight,      computedStyle: window.getComputedStyle(img)
+    });  }, [src]);
+
+  return (
+    <img      ref={imageRef}      className="article-image"      src={src}      alt=""    />  );}
+
 function splitParagraphs(text) {
   const parts = String(text || "").split(/(\r?\n\s*\r?\n)/);
   const paragraphs = [];
@@ -122,6 +138,10 @@ export default function Reader({
   const selectionToolbarRef = useRef(null);
   const toolbarRef = useRef(null);
   const dragStateRef = useRef(null);
+
+  // Debug: log blocks prop changes
+  useEffect(() => {
+    const imageBlocks = blocks ? blocks.filter(b => b.type === "image") : [];    console.log("[Reader props blocks]", { length: blocks?.length || 0, images: imageBlocks.length, imageBlocks });  }, [blocks]);
 
   // Extract word at click position from selection
   function extractWordAtClick(event) {
@@ -1126,7 +1146,7 @@ useEffect(() => {
                 if (
                   block.type === "image"
                 ) {
-
+                  console.log("[Reader render image block]", { src: block.content, block });
                   return (
 
                     <div
@@ -1137,11 +1157,7 @@ useEffect(() => {
                       }
                     >
 
-                      <img
-                        className="article-image"
-                        src={block.content}
-                        alt=""
-                      />
+                      <ImageWrapper src={block.content} />
 
                     </div>
 
