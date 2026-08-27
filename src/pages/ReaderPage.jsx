@@ -1329,19 +1329,16 @@ function resetFont() {
         title: articleTitleState,
 
         content:
-          typeof draft.content ===
-          "string"
+          typeof draft.content === "string"
             ? draft.content
-            : article,
+            : articleContent,
 
-        highlights,
+        highlights: highlightsState,
 
-        blocks: Array.isArray(
-          draft.blocks
-        )
+        blocks: Array.isArray(draft.blocks)
           ? draft.blocks
-          : blocks.length
-            ? blocks
+          : blocksState.length
+            ? blocksState
             : undefined,
       };
 
@@ -1389,18 +1386,21 @@ function resetFont() {
     underline
   ) {
     try {
+      const newHighlights = [...highlightsState, underline];
       const savedArticle =
         await saveArticle({
           id: articleId,
-          title: articleTitle,
-          content: article,
-
-          highlights: [
-            ...highlights,
-            underline,
-          ],
+          title: articleTitleState,
+          content: articleContent,
+          highlights: newHighlights,
         });
 
+      setHighlightsState(newHighlights);
+      console.log("[ReaderPage highlightsState update]", {
+        action: "add",
+        count: newHighlights.length,
+        highlights: newHighlights
+      });
       onArticleSaved(savedArticle);
     } catch (err) {
       console.error(
@@ -1414,21 +1414,25 @@ function resetFont() {
   async function removeUnderline(
     underlineId
   ) {
+    console.log('[ReaderPage removeUnderline]', { underlineId, highlightsBefore: highlightsState });
     try {
+      const newHighlights = highlightsState.filter(
+        (item) => item.id !== underlineId
+      );
       const savedArticle =
         await saveArticle({
           id: articleId,
-          title: articleTitle,
-          content: article,
-
-          highlights:
-            highlights.filter(
-              (item) =>
-                item.id !==
-                underlineId
-            ),
+          title: articleTitleState,
+          content: articleContent,
+          highlights: newHighlights,
         });
 
+      setHighlightsState(newHighlights);
+      console.log("[ReaderPage highlightsState update]", {
+        action: "remove",
+        count: newHighlights.length,
+        highlights: newHighlights
+      });
       onArticleSaved(savedArticle);
     } catch (err) {
       console.error(
@@ -1444,25 +1448,26 @@ function resetFont() {
     changes
   ) {
     try {
+      const newHighlights = highlightsState.map(
+        (item) =>
+          item.id === underlineId
+            ? { ...item, ...changes }
+            : item
+      );
       const savedArticle =
         await saveArticle({
           id: articleId,
-          title: articleTitle,
-          content: article,
-
-          highlights:
-            highlights.map(
-              (item) =>
-                item.id ===
-                underlineId
-                  ? {
-                      ...item,
-                      ...changes,
-                    }
-                  : item
-            ),
+          title: articleTitleState,
+          content: articleContent,
+          highlights: newHighlights,
         });
 
+      setHighlightsState(newHighlights);
+      console.log("[ReaderPage highlightsState update]", {
+        action: "update",
+        count: newHighlights.length,
+        highlights: newHighlights
+      });
       onArticleSaved(savedArticle);
     } catch (err) {
       setSaveMessage(

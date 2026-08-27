@@ -38,7 +38,12 @@ export function prefetchArticles() {
 }
 
 export async function fetchArticle(id) {
-  return normalizeArticle(await apiFetch(`/api/articles/${encodeURIComponent(id)}`));
+  const article = await apiFetch(`/api/articles/${encodeURIComponent(id)}`);
+  console.log("[fetchArticle result highlights]", {
+    count: article.highlights?.length,
+    highlights: article.highlights
+  });
+  return normalizeArticle(article);
 }
 
 export async function saveArticle({ id, title, content, highlights = [], blocks }) {

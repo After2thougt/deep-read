@@ -128,7 +128,7 @@
   background-repeat: repeat-x;
   background-position: left bottom 2px;
   background-size: 50px 6px;
-  padding-bottom: 4px;
+  padding-bottom: 6px;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }

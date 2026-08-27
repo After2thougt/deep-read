@@ -1442,7 +1442,12 @@ app.get('/api/articles/:id', (req, res) => {
     if (!article) return res.status(404).json({ error: 'Article not found.' });
     const tags = db.prepare(`SELECT t.id, t.name FROM article_tags at
       JOIN tags t ON t.id = at.tag_id WHERE at.article_id = ? ORDER BY t.name COLLATE NOCASE`).all(article.id);
-    return res.json({ ...serializeArticle(article), tags, blocks: getArticleBlocks(article.id).map(({ id, type, content, sort_order }) => ({ id, type, content, sort_order })) });
+        const serialized = serializeArticle(article);
+    console.log("[Backend GET article highlights]", {
+      count: serialized.highlights?.length,
+      highlights: serialized.highlights
+    });
+    return res.json({ ...serialized, tags, blocks: getArticleBlocks(article.id) });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }

@@ -132,8 +132,16 @@ export default function Reader({
   theme = "light",
   setTheme,
 }) {
+  console.log('[Reader raw highlights]', { count: highlights?.length, keys: highlights?.map(h => Object.keys(h)) });
 
-  const contentRef = useRef(null);
+    useEffect(() => {
+    console.log("[Reader highlights changed]", {
+      count: highlights?.length,
+      highlights
+    });
+  }, [highlights]);
+
+const contentRef = useRef(null);
   const fontControlRef = useRef(null);
   const selectionToolbarRef = useRef(null);
   const toolbarRef = useRef(null);
@@ -369,7 +377,14 @@ export default function Reader({
     ]
   );
 
-  useEffect(() => {
+    console.log("[Reader processed highlights]", {
+    count: pageHighlights?.length,
+    pageHighlights,
+    articleOffset,
+    pageEnd
+  });
+
+useEffect(() => {
 
   function handleClickOutside(event) {
 
@@ -655,7 +670,13 @@ useEffect(() => {
       start: Math.max(hl.start, paragraphAbsoluteStart),
       end: Math.min(hl.end, paragraphAbsoluteEnd),
     }))
-    .sort((a, b) => a.start - b.start);
+    .sort((a, b) => a.start - b.start);
+  console.log("[Reader overlapping highlights]", {
+    paragraphAbsoluteStart,
+    paragraphAbsoluteEnd,
+    count: overlappingHighlights?.length,
+    highlights: overlappingHighlights
+  });
 
   // Collect all unique boundaries from highlights
   const boundaries = new Set([paragraphAbsoluteStart, paragraphAbsoluteEnd]);
@@ -700,7 +721,16 @@ useEffect(() => {
     const hasVocabulary = seg.types.includes("vocabulary");
     const hasUnderline = seg.types.includes("underline");
 
-    const classNames = ["word"];
+    
+    if (hasUnderline) console.log('[render underline]', {
+      segStart: seg.start,
+      segEnd: seg.end,
+      segText,
+      segTypes: seg.types,
+      overlappingCount: overlappingHighlights.length,
+      overlappingTypes: overlappingHighlights.map(h => ({ id: h.id, type: h.type, start: h.start, end: h.end }))
+    });
+const classNames = ["word"];
     if (hasVocabulary) classNames.push("vocabulary-highlight");
     if (hasUnderline) classNames.push("underline-wavy");
 
@@ -1407,4 +1437,12 @@ useEffect(() => {
       /></main>
   );
 
+
+
+  useEffect(() => {
+    console.log("[Reader highlights changed]", {
+      count: highlights?.length,
+      highlights
+    });
+  }, [highlights]);
 }
