@@ -25,7 +25,7 @@ function ImageWrapper({ src }) {
     });  }, [src]);
 
   return (
-    <img      ref={imageRef}      className="article-image"      src={src}      alt=""    />  );}
+    <img      ref={imageRef}      className="article-image"      src={src}      alt=""      loading="lazy"    />  );}
 
 function splitParagraphs(text) {
   const parts = String(text || "").split(/(\r?\n\s*\r?\n)/);

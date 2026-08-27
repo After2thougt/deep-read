@@ -4,6 +4,7 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const https = require("https");
 const crypto = require("crypto");
+const sharp = require("sharp");
 
 function generateId(prefix = 'id') {
   // Avoid crypto.randomUUID() because some runtimes/polyfills may not expose it.
@@ -56,6 +57,10 @@ function removeArticleImageIfUnused(imagePath, excludedArticleId) {
 
   try {
     fs.unlinkSync(path.join(uploadsRoot, relative));
+    // Also delete corresponding thumbnail if exists
+    const thumbRelative = relative.replace('.webp', '_thumb.webp');
+    const thumbPath = path.join(uploadsRoot, thumbRelative);
+    try { fs.unlinkSync(thumbPath); } catch {}
     return true;
   } catch (error) {
     if (error.code !== 'ENOENT') console.warn('Unable to remove article image:', error.message);
@@ -1392,12 +1397,12 @@ app.delete('/api/articles/:id/tags/:tagId', (req, res) => {
   }
 });
 
-app.post('/api/articles/images', (req, res) => {
+app.post('/api/articles/images', async (req, res) => {
   const { data, mimeType } = req.body || {};
   const allowed = new Map([
-    ['image/jpeg', 'jpg'],
-    ['image/png', 'png'],
-    ['image/gif', 'gif'],
+    ['image/jpeg', 'webp'],
+    ['image/png', 'webp'],
+    ['image/gif', 'webp'],
     ['image/webp', 'webp'],
   ]);
   const extension = allowed.get(mimeType);
@@ -1406,10 +1411,29 @@ app.post('/api/articles/images', (req, res) => {
   if (!match || match[1] !== mimeType) return res.status(400).json({ error: 'Invalid image data.' });
   let buffer;
   try { buffer = Buffer.from(match[2], 'base64'); } catch { return res.status(400).json({ error: 'Invalid image data.' }); }
-  if (!buffer.length || buffer.length > 8 * 1024 * 1024) return res.status(413).json({ error: 'Image must be smaller than 8 MB.' });
-  const fileName = `${generateId('image')}.${extension}`;
-  fs.writeFileSync(path.join(uploadsRoot, fileName), buffer, { flag: 'wx' });
-  return res.status(201).json({ path: `/uploads/articles/${fileName}`, url: `/uploads/articles/${fileName}` });
+  if (!buffer.length || buffer.length > 10 * 1024 * 1024) return res.status(413).json({ error: 'Image must be smaller than 10 MB.' });
+
+  // Process image with sharp: rotate by EXIF, resize max 1600px, convert to WebP quality 80
+  let processedBuffer;
+  let metadata;
+  try {
+    const processed = sharp(buffer)
+      .rotate()
+      .resize({ width: 1600, withoutEnlargement: true })
+      .webp({ quality: 80 });
+    processedBuffer = await processed.toBuffer();
+    metadata = await sharp(processedBuffer).metadata();
+  } catch (err) {
+    return res.status(400).json({ error: 'Failed to process image.' });
+  }
+
+  // Dev-only: log sharp metadata
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Sharp metadata]', { width: metadata.width, height: metadata.height, format: metadata.format, size: processedBuffer.length });
+  }
+
+  const fileName = `${generateId('image')}.webp`;
+  fs.writeFileSync(path.join(tempUploadsRoot, fileName), processedBuffer, { flag: 'wx' });  return res.status(201).json({ path: `/uploads/temp/${fileName}`, url: `/uploads/temp/${fileName}` });
 });
 
 app.get('/api/articles/:id', (req, res) => {
@@ -1433,33 +1457,23 @@ app.post('/api/articles', async (req, res) => {
 
   try {
     const now = new Date().toISOString();
-    const article = { id: id || generateId('article'), title: title.trim(), content, highlights: JSON.stringify(highlights), created_at: now, updated_at: now };
-    db.prepare(`INSERT INTO articles (id, title, content, highlights, created_at, updated_at)
-      VALUES (@id, @title, @content, @highlights, @created_at, @updated_at)
-      ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,
-      highlights = excluded.highlights, updated_at = excluded.updated_at`).run(article);
-    console.log("[Backend] Article inserted/updated with id:", article.id);
-    if (Array.isArray(blocks)) {
-      const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
-      const previousImages = db.prepare("SELECT content FROM article_blocks WHERE article_id = ? AND type = 'image'").all(article.id);
-      db.prepare('DELETE FROM article_blocks WHERE article_id = ?').run(article.id);
-      const insertBlock = db.prepare('INSERT INTO article_blocks (id, article_id, type, content, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-      normalizedBlocks.forEach((block, index) => insertBlock.run(block.id, article.id, block.type, block.content, index, now));
-      const nextImages = new Set(normalizedBlocks.filter((block) => block.type === 'image').map((block) => block.content));
-      for (const row of previousImages) {
-        if (!nextImages.has(row.content)) removeArticleImageIfUnused(row.content, article.id);
-      }
-    }
-    const savedArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(article.id);
-    console.log("[Backend] Saved article from DB:", { id: savedArticle.id, title: savedArticle.title, contentLength: savedArticle.content?.length });
-    const responseData = { ...serializeArticle(savedArticle), blocks: getArticleBlocks(article.id).map(({ id, type, content, sort_order }) => ({ id, type, content, sort_order })) };
-    console.log("[Backend] Response data:", { id: responseData.id, title: responseData.title, blocksLength: responseData.blocks?.length });
-    return res.status(201).json(responseData);
-  } catch (error) {
-    console.error("[Backend] Error saving article:", error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-}););
+    const articleId = id || generateId('article');    const article = { id: articleId, title: title.trim(), content, highlights: JSON.stringify(highlights), created_at: now, updated_at: now };
+
+    // Track processed images for potential rollback
+    const processedImages = [];
+
+    // Process temp images BEFORE transaction (move + generate thumbnails)    if (Array.isArray(blocks)) {      const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);      const articleUploadsDir = path.join(articlesUploadsRoot, article.id);      fs.mkdirSync(articleUploadsDir, { recursive: true });      for (const block of normalizedBlocks) {        if (block.type === 'image' && block.content.startsWith('/uploads/temp/')) {          const fileName = path.basename(block.content);          const srcPath = path.join(tempUploadsRoot, fileName);          const destPath = path.join(articleUploadsDir, fileName);          const thumbFileName = fileName.replace('.webp', '_thumb.webp');          const thumbPath = path.join(articleUploadsDir, thumbFileName);          try {            // Move original image            fs.renameSync(srcPath, destPath);            processedImages.push(destPath);                        // Generate thumbnail (400px max width, quality 70)            await sharp(destPath)
+              .rotate()
+              .resize({ width: 400, withoutEnlargement: true })
+              .webp({ quality: 70 })
+              .toFile(thumbPath);            processedImages.push(thumbPath);                        block.content = `/uploads/articles/${article.id}/${fileName}`;            block.thumbnail = `/uploads/articles/${article.id}/${thumbFileName}`;          } catch (err) {            console.error('Failed to process image, aborting save:', err.message);            // Cleanup on error            for (const imgPath of processedImages) {              try { fs.unlinkSync(imgPath); } catch {}            }            throw new Error(`Failed to process image ${fileName}: ${err.message}`);          }        }      }    }
+
+    // Use transaction for atomicity (DB operations only)    const tx = db.transaction(() => {      // 1. Upsert article      db.prepare(`INSERT INTO articles (id, title, content, highlights, created_at, updated_at)        VALUES (@id, @title, @content, @highlights, @created_at, @updated_at)        ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,        highlights = excluded.highlights, updated_at = excluded.updated_at`).run(article);      console.log("[Backend] Article inserted/updated with id:", article.id);
+      if (Array.isArray(blocks)) {        const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
+        // 2. Replace blocks atomically        const previousImages = db.prepare("SELECT content FROM article_blocks WHERE article_id = ? AND type = 'image'").all(article.id);        db.prepare('DELETE FROM article_blocks WHERE article_id = ?').run(article.id);        const insertBlock = db.prepare('INSERT INTO article_blocks (id, article_id, type, content, thumbnail, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');        normalizedBlocks.forEach((block, index) => insertBlock.run(block.id, article.id, block.type, block.content, block.thumbnail || null, index, now));        const nextImages = new Set(normalizedBlocks.filter((block) => block.type === 'image').map((block) => block.content));        for (const row of previousImages) {          if (!nextImages.has(row.content)) removeArticleImageIfUnused(row.content, article.id);        }      }    });
+
+    try {      tx();    } catch (txError) {      // Rollback: delete processed images on transaction failure      for (const imgPath of processedImages) {        try { fs.unlinkSync(imgPath); } catch {}      }      // Also try to remove the article directory if empty      const articleDir = path.join(articlesUploadsRoot, articleId);      try { fs.rmdirSync(articleDir); } catch {}      throw txError;    }    const savedArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(article.id);    console.log("[Backend] Saved article from DB:", { id: savedArticle.id, title: savedArticle.title, contentLength: savedArticle.content?.length });    const responseData = { ...serializeArticle(savedArticle), blocks: getArticleBlocks(article.id).map(({ id, type, content, sort_order }) => ({ id, type, content, sort_order })) };    console.log("[Backend] Response data:", { id: responseData.id, title: responseData.title, blocksLength: responseData.blocks?.length });    return res.status(201).json(responseData);  } catch (error) {    console.error("[Backend] Error saving article:", error);    return res.status(500).json({ error: 'Internal server error' });  }
+});
 
 app.delete('/api/articles/:id', async (req, res) => {
   const id = req.params.id;
