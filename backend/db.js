@@ -45,6 +45,7 @@ db.exec(`
     article_id TEXT NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('text', 'image')),
     content TEXT NOT NULL,
+    thumbnail TEXT,
     sort_order INTEGER NOT NULL,
     created_at TEXT NOT NULL,
     FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
@@ -121,6 +122,13 @@ try {
   if (!/duplicate column/i.test(error.message)) throw error;
 }
 
+// Migration: add thumbnail column to article_blocks
+try {
+  db.exec('ALTER TABLE article_blocks ADD COLUMN thumbnail TEXT');
+} catch (error) {
+  if (!/duplicate column/i.test(error.message)) throw error;
+}
+
 try { db.exec("ALTER TABLE article_translation_cache ADD COLUMN source TEXT NOT NULL DEFAULT 'auto'"); } catch (error) { if (!/duplicate column/i.test(error.message)) throw error; }
 try { db.exec("ALTER TABLE article_translation_cache ADD COLUMN provider TEXT NOT NULL DEFAULT 'deeplx'"); } catch (error) { if (!/duplicate column/i.test(error.message)) throw error; }
 
@@ -170,5 +178,9 @@ function serializeArticle(row) {
 function serializeVocabulary(row) {
   return row ? { ...row, raw: parseJson(row.raw, null) } : row;
 }
+
+// Startup: log migration status
+const hasThumbnail = db.prepare("PRAGMA table_info('article_blocks')").all().some(c => c.name === 'thumbnail');
+console.log(`[DB Migration] article_blocks.thumbnail column: ${hasThumbnail ? 'EXISTS' : 'MISSING'}`);
 
 module.exports = { db, databasePath, serializeArticle, serializeVocabulary };
