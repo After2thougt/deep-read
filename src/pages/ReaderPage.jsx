@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   ChevronDown,
@@ -1375,16 +1375,13 @@ function resetFont() {
 
     } catch (err) {
       setSaveMessage(
-        err.message ||
           "Unable to save article."
       );
     }
   }
 
 
-  async function saveUnderline(
-    underline
-  ) {
+  const saveUnderline = useCallback(async (underline) => {
     try {
       const newHighlights = [...highlightsState, underline];
       const savedArticle =
@@ -1408,12 +1405,9 @@ function resetFont() {
         err
       );
     }
-  }
+  }, [articleId, articleTitleState, articleContent, highlightsState, onArticleSaved]);
 
-
-  async function removeUnderline(
-    underlineId
-  ) {
+  const removeUnderline = useCallback(async (underlineId) => {
     console.log('[ReaderPage removeUnderline]', { underlineId, highlightsBefore: highlightsState });
     try {
       const newHighlights = highlightsState.filter(
@@ -1440,13 +1434,10 @@ function resetFont() {
         err
       );
     }
-  }
+  }, [articleId, articleTitleState, articleContent, highlightsState, onArticleSaved]);
 
 
-  async function updateUnderline(
-    underlineId,
-    changes
-  ) {
+  const updateUnderline = useCallback(async (underlineId, changes) => {
     try {
       const newHighlights = highlightsState.map(
         (item) =>
@@ -1475,10 +1466,9 @@ function resetFont() {
           "Unable to update underline."
       );
     }
-  }
+  }, [articleId, articleTitleState, articleContent, highlightsState, onArticleSaved]);
 
-
-  async function handleTranslate() {
+  const handleTranslate = useCallback(async () => {
     if (translations) {
       setTranslationCollapsed(false);
       return;
@@ -1538,10 +1528,8 @@ function resetFont() {
         translationAbortControllerRef.current = null;
       }
     }
-  }
-
-
-  async function handleAnalyze() {
+  }, [article, articleId, currentPage, pageContent, translations]);
+  const handleAnalyze = useCallback(async () => {
     if (hasValidAnalysis(analysis)) {
       setStudyResultsCollapsed(false);
       return;
@@ -1559,7 +1547,7 @@ function resetFont() {
     analysisAbortControllerRef.current = abortController;
 
     const requestGeneration = ++analysisRequestGeneration.current;
-    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const requestId = `1787880209279-28amwp8gerc`;
 
     activeAnalysisRequestId.current = requestId;
 
@@ -1601,7 +1589,7 @@ function resetFont() {
         analysisAbortControllerRef.current = null;
       }
     }
-  }
+  }, [article, articleId, analysis, currentPage, pageContent]);
 
 
   async function executeClearStudyResults() {
@@ -1645,7 +1633,7 @@ function resetFont() {
   }
 
 
-  async function selectWord(word) {
+  const selectWord = useCallback(async (word) => {
     setLastWord(word);
 
     setWordStatus("loading");
@@ -1684,7 +1672,7 @@ function resetFont() {
 
       setWordStatus("error");
     }
-  }
+  }, []);
 
 
   async function saveSelectedWord() {
