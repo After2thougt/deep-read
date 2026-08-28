@@ -15,23 +15,8 @@ export default function HighlightsPanel({
   onRemoveUnderline,
 }) {
   const [editingNoteId, setEditingNoteId] = useState(null);
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      const saved = localStorage.getItem("deepread:underlines-collapsed");
-      if (saved !== null) {
-        return JSON.parse(saved);
-      }
-    } catch {}
-    return true; // default: collapsed
-  });
+  const [collapsed, setCollapsed] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
-
-  // Persist collapsed state to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem("deepread:underlines-collapsed", JSON.stringify(collapsed));
-    } catch {}
-  }, [collapsed]);
 
   function startNoteEdit(item) {
     setEditingNoteId(item.id);

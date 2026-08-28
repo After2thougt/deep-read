@@ -55,7 +55,6 @@ export default function ProfilePage({ username, onLogout }) {
         </div>
 
         <div className="profile-section">
-          <h3 className="profile-section-title">Preferences</h3>
 
           <div className="profile-actions">
 
@@ -72,7 +71,7 @@ export default function ProfilePage({ username, onLogout }) {
       <ConfirmModal
         open={showLogoutConfirm}
         title="Confirm Logout"
-        message="Are you sure you want to sign out?"
+        message="STAYYY!!"
         icon={<LogOut size={22} strokeWidth={2} />}
         onCancel={() => setShowLogoutConfirm(false)}
         onConfirm={handleLogout}

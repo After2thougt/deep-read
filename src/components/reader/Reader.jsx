@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Languages,
   Sparkles,
@@ -9,23 +9,12 @@ import {
 import { getWords } from "../../utils/text";
 import { generateId } from "../../utils/id";
 import HighlightsPanel from "./HighlightsPanel";
+import MemoizedParagraph from "./Paragraph";
 
-
-// ImageWrapper component for debugging image sizes
+// ImageWrapper component (no debug logging)
 function ImageWrapper({ src }) {
-  const imageRef = useRef(null);
-
-  useEffect(() => {
-    const img = imageRef.current;
-    if (!img) return;
-
-    console.log("[Reader actual image size]", {
-      naturalWidth: img.naturalWidth,
-      naturalHeight: img.naturalHeight,      clientWidth: img.clientWidth,      clientHeight: img.clientHeight,      computedStyle: window.getComputedStyle(img)
-    });  }, [src]);
-
   return (
-    <img      ref={imageRef}      className="article-image"      src={src}      alt=""      loading="lazy"    />  );}
+    <img      className="article-image"      src={src}      alt=""      loading="lazy"    />  );}
 
 function splitParagraphs(text) {
   const parts = String(text || "").split(/(\r?\n\s*\r?\n)/);
@@ -132,24 +121,11 @@ export default function Reader({
   theme = "light",
   setTheme,
 }) {
-  console.log('[Reader raw highlights]', { count: highlights?.length, keys: highlights?.map(h => Object.keys(h)) });
-
-    useEffect(() => {
-    console.log("[Reader highlights changed]", {
-      count: highlights?.length,
-      highlights
-    });
-  }, [highlights]);
-
-const contentRef = useRef(null);
+  const contentRef = useRef(null);
   const fontControlRef = useRef(null);
   const selectionToolbarRef = useRef(null);
   const toolbarRef = useRef(null);
   const dragStateRef = useRef(null);
-
-  // Debug: log blocks prop changes
-  useEffect(() => {
-    const imageBlocks = blocks ? blocks.filter(b => b.type === "image") : [];    console.log("[Reader props blocks]", { length: blocks?.length || 0, images: imageBlocks.length, imageBlocks });  }, [blocks]);
 
   // Extract word at click position from selection
   function extractWordAtClick(event) {
@@ -240,13 +216,11 @@ const contentRef = useRef(null);
     }
 
     if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
-      console.log('[extractWordAtClick] No text node found');
       return null;
     }
 
     const text = textNode.textContent;
     if (!text) {
-      console.log('[extractWordAtClick] Empty text node');
       return null;
     }
 
@@ -269,7 +243,6 @@ const contentRef = useRef(null);
     // Extract the word
     let word = text.slice(start, end);
     if (!word) {
-      console.log('[extractWordAtClick] Empty word slice', { start, end, charOffset, textLen: text.length });
       return null;
     }
 
@@ -278,28 +251,18 @@ const contentRef = useRef(null);
 
     // STRICT validation
     if (!word || word.length > 50) {
-      console.log('[extractWordAtClick] Invalid: empty or too long', { word, len: word?.length });
       return null;
     }
 
     // Reject any whitespace, punctuation except apostrophe
     if (/[\s,.;:!?""()\[\]{}]/.test(word)) {
-      console.log('[extractWordAtClick] Invalid: contains punctuation/space', { word });
       return null;
     }
 
     // Must match: letters only, or letters with single apostrophe inside (not at ends)
     if (!/^[A-Za-z]+(?:'[A-Za-z]+)?$/.test(word)) {
-      console.log('[extractWordAtClick] Invalid: regex mismatch', { word });
       return null;
     }
-
-    console.log('[extractWordAtClick] SUCCESS', {
-      nodeType: textNode.nodeType,
-      text: textNode.textContent,
-      offset: charOffset,
-      word
-    });
 
     return word;
   }
@@ -367,8 +330,7 @@ const contentRef = useRef(null);
     () =>
       highlights.filter(
         (item) =>
-          item.start < pageEnd &&
-          item.end > articleOffset
+          item.start < pageEnd &&          item.end > articleOffset
       ),
     [
       highlights,
@@ -376,13 +338,6 @@ const contentRef = useRef(null);
       articleOffset,
     ]
   );
-
-    console.log("[Reader processed highlights]", {
-    count: pageHighlights?.length,
-    pageHighlights,
-    articleOffset,
-    pageEnd
-  });
 
 useEffect(() => {
 
@@ -590,175 +545,7 @@ useEffect(() => {
   }, []);
 
 
-  function renderParagraphWithHighlights(
-  paragraph,
-  blockStart,
-  articleOffset,
-  pageHighlights,
-  keyPrefix
-) {
-
-  const paragraphAbsoluteStart =
-    blockStart + paragraph.start;
-
-  const paragraphText =
-    paragraph.text;
-
-  const paragraphAbsoluteEnd =
-    paragraphAbsoluteStart + paragraphText.length;
-
-  const baseKey = keyPrefix;
-
-  // Build vocabulary highlights from savedWords prop
-  const vocabularyHighlights =
-    savedWords.map(word => {
-
-      const regex =
-        new RegExp(
-          `\\b${word}\\b`,
-          "gi"
-        );
-
-      const matches = [];
-
-      let match;
-
-      while (
-        (match = regex.exec(paragraph.text))
-      ) {
-
-        matches.push({
-          start:
-            blockStart +
-            paragraph.start +
-            match.index,
-
-          end:
-            blockStart +
-            paragraph.start +
-            match.index +
-            match[0].length,
-
-          text:
-            match[0],
-
-          type: "vocabulary"
-        });
-
-      }
-
-      return matches;
-
-    })
-    .flat();
-
-  // Combine all highlights and sort by start position
-  const allHighlights = [
-    ...pageHighlights.map(hl => ({ ...hl, type: "underline" })),
-    ...vocabularyHighlights
-  ].sort((a, b) => a.start - b.start);
-
-  // Filter to highlights overlapping this paragraph
-  const overlappingHighlights = allHighlights
-    .filter(
-      hl =>
-        hl.end > paragraphAbsoluteStart &&
-        hl.start < paragraphAbsoluteEnd
-    )
-    .map(hl => ({
-      ...hl,
-      start: Math.max(hl.start, paragraphAbsoluteStart),
-      end: Math.min(hl.end, paragraphAbsoluteEnd),
-    }))
-    .sort((a, b) => a.start - b.start);
-  console.log("[Reader overlapping highlights]", {
-    paragraphAbsoluteStart,
-    paragraphAbsoluteEnd,
-    count: overlappingHighlights?.length,
-    highlights: overlappingHighlights
-  });
-
-  // Collect all unique boundaries from highlights
-  const boundaries = new Set([paragraphAbsoluteStart, paragraphAbsoluteEnd]);
-  for (const hl of overlappingHighlights) {
-    boundaries.add(hl.start);
-    boundaries.add(hl.end);
-  }
-  const sortedBoundaries = Array.from(boundaries).sort((a, b) => a - b);
-
-  // Build segments: each segment is a non-overlapping text range with its highlight types
-  const segments = [];
-  for (let i = 0; i < sortedBoundaries.length - 1; i++) {
-    const segStart = sortedBoundaries[i];
-    const segEnd = sortedBoundaries[i + 1];
-    if (segStart >= segEnd) continue;
-
-    // Find which highlights cover this segment
-    const types = new Set();
-    for (const hl of overlappingHighlights) {
-      if (hl.start <= segStart && hl.end >= segEnd) {
-        types.add(hl.type);
-      }
-    }
-
-    segments.push({
-      start: segStart,
-      end: segEnd,
-      types: Array.from(types)
-    });
-  }
-
-  // Render each segment once
-  const pieces = [];
-
-  for (const seg of segments) {
-    const segText = paragraphText.slice(
-      seg.start - paragraphAbsoluteStart,
-      seg.end - paragraphAbsoluteStart
-    );
-    if (!segText) continue;
-
-    const hasVocabulary = seg.types.includes("vocabulary");
-    const hasUnderline = seg.types.includes("underline");
-
-    
-    if (hasUnderline) console.log('[render underline]', {
-      segStart: seg.start,
-      segEnd: seg.end,
-      segText,
-      segTypes: seg.types,
-      overlappingCount: overlappingHighlights.length,
-      overlappingTypes: overlappingHighlights.map(h => ({ id: h.id, type: h.type, start: h.start, end: h.end }))
-    });
-const classNames = ["word"];
-    if (hasVocabulary) classNames.push("vocabulary-highlight");
-    if (hasUnderline) classNames.push("underline-wavy");
-
-    pieces.push(
-      <span
-        className={classNames.join(" ")}
-        key={`${baseKey}-seg-${seg.start}-${seg.end}`}
-        data-text-start={seg.start - articleOffset}
-        onClick={(event) => {
-          const word = extractWordAtClick(event);
-          if (word) onSelectWord(word);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            const word = extractWordAtClick(event);
-            if (word) onSelectWord(word);
-          }
-        }}
-      >
-        {segText}
-      </span>
-    );
-  }
-
-  return <>{pieces}</>;
-}
-
+  
   function startToolbarDrag(event) {
 
     if (event.button !== 0) {
@@ -1176,7 +963,6 @@ const classNames = ["word"];
                 if (
                   block.type === "image"
                 ) {
-                  console.log("[Reader render image block]", { src: block.content, block });
                   return (
 
                     <div
@@ -1245,13 +1031,15 @@ const classNames = ["word"];
                               fontSize: `${fontSize || 18}px`,
                             }}
                           >
-                            {renderParagraphWithHighlights(
-                            paragraph,
-                            blockStart,
-                            articleOffset,
-                            pageHighlights,
-                            `${blockIndex}-${paragraphIndex}`
-                          )}
+                            <MemoizedParagraph
+                            paragraph={paragraph}
+                            blockStart={blockStart}
+                            articleOffset={articleOffset}
+                            pageHighlights={pageHighlights}
+                            savedWords={savedWords}
+                            onSelectWord={onSelectWord}
+                            keyPrefix={`${blockIndex}-${paragraphIndex}`}
+                          />
                           </div>
 
                       </div>
@@ -1436,13 +1224,4 @@ const classNames = ["word"];
         onRemoveUnderline={onRemoveUnderline}
       /></main>
   );
-
-
-
-  useEffect(() => {
-    console.log("[Reader highlights changed]", {
-      count: highlights?.length,
-      highlights
-    });
-  }, [highlights]);
 }
