@@ -14,9 +14,14 @@ import MemoizedParagraph from "./Paragraph";
 // ImageWrapper component (no debug logging)
 function ImageWrapper({ src }) {
   return (
-    <img      className="article-image"      src={src}      alt=""      loading="lazy"    />  );}
-
-function splitParagraphs(text) {
+    <img
+      className="article-image"
+      src={src}
+      alt=""
+      loading="lazy"
+    />
+  );
+}function splitParagraphs(text) {
   const parts = String(text || "").split(/(\r?\n\s*\r?\n)/);
   const paragraphs = [];
   let offset = 0;
@@ -121,6 +126,7 @@ export default function Reader({
   theme = "light",
   setTheme,
 }) {
+
   const contentRef = useRef(null);
   const fontControlRef = useRef(null);
   const selectionToolbarRef = useRef(null);
@@ -136,7 +142,7 @@ export default function Reader({
 
     // Try caretRangeFromPoint first (Firefox, Safari, Chrome)
     range = document.caretRangeFromPoint(event.clientX, event.clientY);
-    
+
     if (range) {
       // If startContainer is a text node, use it directly
       if (range.startContainer.nodeType === Node.TEXT_NODE) {
@@ -473,7 +479,7 @@ useEffect(() => {
     };
   }, []);
 
-  
+
 useEffect(() => {
 
     function keepToolbarInViewport() {
@@ -545,7 +551,7 @@ useEffect(() => {
   }, []);
 
 
-  
+
   function startToolbarDrag(event) {
 
     if (event.button !== 0) {
@@ -920,7 +926,7 @@ useEffect(() => {
         className="content"
         aria-label="Article reader"
         ref={contentRef}
-        
+
         onMouseUp={() =>
           window.setTimeout(
             handleSelection,
@@ -1222,6 +1228,7 @@ useEffect(() => {
         pageHighlights={pageHighlights}
         onUpdateUnderline={onUpdateUnderline}
         onRemoveUnderline={onRemoveUnderline}
+        pageKey={`${articleOffset}-${pageEnd}`}
       /></main>
   );
 }
