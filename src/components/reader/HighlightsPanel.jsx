@@ -13,10 +13,16 @@ export default function HighlightsPanel({
   pageHighlights,
   onUpdateUnderline,
   onRemoveUnderline,
+  pageKey,
 }) {
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [collapsed, setCollapsed] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Auto-collapse when page changes (pageKey changes)
+  useEffect(() => {
+    setCollapsed(true);
+  }, [pageKey]);
 
   function startNoteEdit(item) {
     setEditingNoteId(item.id);

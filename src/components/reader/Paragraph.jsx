@@ -249,9 +249,18 @@ function Paragraph({
     if (hasVocabulary) classNames.push("vocabulary-highlight");
     if (hasUnderline) classNames.push("underline-wavy");
 
+    const underlineStyle = hasUnderline ? {
+      textDecorationLine: "underline",
+      textDecorationStyle: "wavy",
+      textDecorationThickness: "1px",
+      textUnderlineOffset: "2px",
+      textDecorationColor: "#eab308",
+    } : undefined;
+
     return (
       <span
         className={classNames.join(" ")}
+        style={underlineStyle}
         key={`${keyPrefix}-seg-${seg.start}-${seg.end}`}
         data-text-start={seg.start - articleOffset}
         onClick={(event) => {
