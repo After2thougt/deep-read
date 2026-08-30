@@ -126,7 +126,7 @@
   text-decoration-line: underline;
   text-decoration-style: wavy;
   text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  text-underline-offset: 4px;
   text-decoration-color: #eab308;
   /* No background-image, no padding-bottom, no box-decoration-break needed */
 }
