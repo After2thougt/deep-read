@@ -157,7 +157,6 @@ function AppRoutes({onLogout, username, authenticated}) {
   const [articleListVersion, setArticleListVersion] = useState(0);
 
   function handleArticleSaved(savedArticle) {
-    console.log("[App handleArticleSaved] savedArticle:", { id: savedArticle.id, title: savedArticle.title });
     clearArticleListCache();
     setArticleListVersion((value) => value + 1);
   }
@@ -179,8 +178,6 @@ function AppRoutes({onLogout, username, authenticated}) {
       tag: "all",
     })
       .then((result) => {
-        console.log("HOME ARTICLES RESULT:", result);
-        console.log("HOME ARTICLES ITEMS:", result.items);
         setHomeArticles(result.items || []);
       })
       .catch((error) => {
@@ -232,18 +229,11 @@ function AppRoutes({onLogout, username, authenticated}) {
   }
 
     function newArticle() {
-      console.log("New article clicked");
-
       setArticle("");
       setArticleTitle("");
       setHighlights([]);
       setArticleBlocks([]);
-
-      console.log("before navigate");
-
       navigate("/articles/new");
-
-      console.log("after navigate");
     }
   function goToArticles() {
     navigate("/articles");

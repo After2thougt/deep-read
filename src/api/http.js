@@ -1,5 +1,4 @@
 export async function apiFetch(url, options = {}) {
-  console.log("[apiFetch] request:", { url, method: options?.method || 'GET', hasBody: !!options?.body });
   const resp = await fetch(url, options);
 
   if (!resp.ok) {
@@ -12,7 +11,5 @@ export async function apiFetch(url, options = {}) {
     return null;
   }
 
-  const data = await resp.json();
-  console.log("[apiFetch] response:", { url, status: resp.status, dataKeys: data ? Object.keys(data) : null, dataId: data?.id });
-  return data;
+  return await resp.json();
 }
