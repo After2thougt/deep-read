@@ -1668,7 +1668,7 @@ function resetFont() {
       {/* =========================================
           Article Editor (only for new articles)
           ========================================= */}
-      {(isNewArticle || !isNewArticle) && (
+      {isNewArticle && (
         <ArticleInput
           article={articleContent}
           title={articleTitleState}
