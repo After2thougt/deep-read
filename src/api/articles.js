@@ -39,22 +39,15 @@ export function prefetchArticles() {
 
 export async function fetchArticle(id) {
   const article = await apiFetch(`/api/articles/${encodeURIComponent(id)}`);
-  console.log("[fetchArticle result highlights]", {
-    count: article.highlights?.length,
-    highlights: article.highlights
-  });
   return normalizeArticle(article);
 }
 
 export async function saveArticle({ id, title, content, highlights = [], blocks }) {
-  console.log("[API saveArticle] request:", { id, title, contentLength: content?.length, blocksLength: blocks?.length, highlightsLength: highlights?.length });
   const row = await apiFetch("/api/articles", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ id, title, content, highlights, ...(Array.isArray(blocks) ? { blocks } : {}) }),
   });
-
-  console.log("[API saveArticle] response:", { id: row.id, title: row.title, contentLength: row.content?.length, blocksLength: row.blocks?.length });
   return normalizeArticle(row);
 }
 

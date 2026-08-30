@@ -400,7 +400,6 @@ async function callTencentTextTranslation(paragraph, target, source = "auto") {
 
   while (attempt < maxRetries) {
     try {
-      console.log('Tencent translate request attempt', attempt + 1, { service, host, action, version, region });
       const response = await sendRequest();
 
       const providerError = response.data?.Response?.Error;
@@ -627,7 +626,6 @@ function extractOutermostJson(text) {
   try {
     const p = JSON.parse(clean);
     if (p && typeof p === 'object') {
-      console.log('[analysis] fast-path full parse, keys:', Object.keys(p));
       return p;
     }
   } catch { /* fall through */ }
@@ -682,7 +680,6 @@ function extractOutermostJson(text) {
           // Log the first few failures for diagnosis.
           if (candidates.length === 0) {
             const ctx = clean.slice(Math.max(0, pos - 20), pos + 200);
-            console.warn('[analysis] parse-fail at pos', pos,
               'errPos=', errPos, 'msg=', String(e.message || e).slice(0, 80),
               'ctx=', JSON.stringify(ctx.slice(0, 120)));
           }
@@ -705,7 +702,6 @@ function extractOutermostJson(text) {
     // Pick largest — root analysis is always the biggest JSON block.
     summaryBearing.sort((a, b) => b.len - a.len);
     const best = summaryBearing[0];
-    console.log('[analysis] selected summary-bearing candidate, keys:', best.keys,
       `(from ${candidates.length} candidates, ${summaryBearing.length} summary-bearing, len=${best.len})`);
     return best.parsed;
   }
@@ -713,7 +709,6 @@ function extractOutermostJson(text) {
   // Fallback — no summary-bearing candidate.  Use the largest overall.
   candidates.sort((a, b) => b.len - a.len);
   const best = candidates[0];
-  console.warn('[analysis] NO summary-bearing candidate — falling back to largest. keys:', best.keys,
     `(from ${candidates.length} candidates, len=${best.len})`);
   return best.parsed;
 }
@@ -763,7 +758,7 @@ grammarExplanation: a concrete, sentence-specific explanation of the grammar and
 literaryAnalysis: evidence-based comment, or say that literary value is limited;
 chineseUnderstanding: natural Chinese meaning.
 The fields sentenceStructure, sentenceStructureGroups, grammarExplanation, and literaryAnalysis are mandatory for every selected sentence. Do not return a separate structure field.
-vocabularyAnalysis: extract 3-8 useful words from the entire current page, each with word, partOfSpeech, level, meaning, usage. meaning MUST be written in English only. 
+vocabularyAnalysis: extract 3-8 useful words from the entire current page, each with word, partOfSpeech, level, meaning, usage. meaning MUST be written in English only.
 Do not provide Chinese translations or bilingual explanations in vocabularyAnalysis.
 The meaning should be a concise English dictionary-style definition suitable for English learners.
 usage should be an English explanation of how the word is used in this context. Prefer C1/C2, literary, classical, formal, uncommon, potentially misleading, or contextually special words. Never include basic words such as the, room, night, and, or was. Use Formal, Literary, Archaic, or Advanced when an exact CEFR level is uncertain.
@@ -894,7 +889,6 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
     } catch (ex) {
       const failedWithResponses = useResponses && ex.response?.status === 403 && String(ex.response?.data?.error?.message || '').includes('免费API限制使用');
       if (failedWithResponses) {
-        console.warn('ChatAnywhere responses endpoint forbidden, retrying with chat completions.');
         endpointUrl = chatCompletionsUrl;
         payload = buildPayload(false);
         response = await sendRequest(endpointUrl, payload);
@@ -920,10 +914,8 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
     }
 
     // Extraction failed — safe fallback.  Never leak raw AI text into summary.
-    console.warn('[analysis] Extraction failed — using safe fallback', {
       responseLength: cleaned.length,
     });
-    console.log('[analysis] Raw response preview:', cleaned.slice(0, 1000));
     return {
       summary: extractFirstSentence(cleaned) || 'AI analysis returned an unexpected format.',
       hardSentences: [],
@@ -948,7 +940,6 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
       /Network Error/i.test(message);
 
     if (isNetworkError) {
-      console.warn('OpenAI network error, returning fallback analysis:', message);
       return buildFallbackAnalysis(text, message);
     }
 
@@ -1026,7 +1017,6 @@ async function callGeminiTextAnalysis(text) {
       return { ...parsed, source: 'gemini' };
     }
 
-    console.warn('[gemini] Extraction failed — using safe fallback');
     return {
       summary: extractFirstSentence(cleaned) || 'AI analysis returned an unexpected format.',
       hardSentences: [],
@@ -1050,7 +1040,6 @@ async function callGeminiTextAnalysis(text) {
       /Network Error/i.test(message);
 
     if (isNetworkError) {
-      console.warn('Gemini network error, returning fallback analysis:', message);
       return buildFallbackAnalysis(text, message);
     }
 
@@ -1427,11 +1416,6 @@ app.post('/api/articles/images', async (req, res) => {
     return res.status(400).json({ error: 'Failed to process image.' });
   }
 
-  // Dev-only: log sharp metadata
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[Sharp metadata]', { width: metadata.width, height: metadata.height, format: metadata.format, size: processedBuffer.length });
-  }
-
   const fileName = `${generateId('image')}.webp`;
   fs.writeFileSync(path.join(tempUploadsRoot, fileName), processedBuffer, { flag: 'wx' });  return res.status(201).json({ path: `/uploads/temp/${fileName}`, url: `/uploads/temp/${fileName}` });
 });
@@ -1443,10 +1427,6 @@ app.get('/api/articles/:id', (req, res) => {
     const tags = db.prepare(`SELECT t.id, t.name FROM article_tags at
       JOIN tags t ON t.id = at.tag_id WHERE at.article_id = ? ORDER BY t.name COLLATE NOCASE`).all(article.id);
         const serialized = serializeArticle(article);
-    console.log("[Backend GET article highlights]", {
-      count: serialized.highlights?.length,
-      highlights: serialized.highlights
-    });
     return res.json({ ...serialized, tags, blocks: getArticleBlocks(article.id) });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
@@ -1455,7 +1435,6 @@ app.get('/api/articles/:id', (req, res) => {
 
 app.post('/api/articles', async (req, res) => {
   const { id, title, content, highlights = [], blocks } = req.body || {};
-  console.log("[Backend POST /api/articles] request:", { id, title, contentLength: content?.length, blocksLength: blocks?.length, highlightsLength: highlights?.length });
   if (typeof title !== 'string' || !title.trim() || typeof content !== 'string') {
     return res.status(400).json({ error: 'Article title and content are required.' });
   }
@@ -1473,11 +1452,9 @@ app.post('/api/articles', async (req, res) => {
               .webp({ quality: 70 })
               .toFile(thumbPath);            processedImages.push(thumbPath);                        block.content = `/uploads/articles/${article.id}/${fileName}`;            block.thumbnail = `/uploads/articles/${article.id}/${thumbFileName}`;          } catch (err) {            console.error('Failed to process image, aborting save:', err.message);            // Cleanup on error            for (const imgPath of processedImages) {              try { fs.unlinkSync(imgPath); } catch {}            }            throw new Error(`Failed to process image ${fileName}: ${err.message}`);          }        }      }    }
 
-    // Use transaction for atomicity (DB operations only)    const tx = db.transaction(() => {      // 1. Upsert article      db.prepare(`INSERT INTO articles (id, title, content, highlights, created_at, updated_at)        VALUES (@id, @title, @content, @highlights, @created_at, @updated_at)        ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,        highlights = excluded.highlights, updated_at = excluded.updated_at`).run(article);      console.log("[Backend] Article inserted/updated with id:", article.id);
       if (Array.isArray(blocks)) {        const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
         // 2. Replace blocks atomically        const previousImages = db.prepare("SELECT content FROM article_blocks WHERE article_id = ? AND type = 'image'").all(article.id);        db.prepare('DELETE FROM article_blocks WHERE article_id = ?').run(article.id);        const insertBlock = db.prepare('INSERT INTO article_blocks (id, article_id, type, content, thumbnail, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');        normalizedBlocks.forEach((block, index) => insertBlock.run(block.id, article.id, block.type, block.content, block.thumbnail || null, index, now));        const nextImages = new Set(normalizedBlocks.filter((block) => block.type === 'image').map((block) => block.content));        for (const row of previousImages) {          if (!nextImages.has(row.content)) removeArticleImageIfUnused(row.content, article.id);        }      }    });
 
-    try {      tx();    } catch (txError) {      // Rollback: delete processed images on transaction failure      for (const imgPath of processedImages) {        try { fs.unlinkSync(imgPath); } catch {}      }      // Also try to remove the article directory if empty      const articleDir = path.join(articlesUploadsRoot, articleId);      try { fs.rmdirSync(articleDir); } catch {}      throw txError;    }    const savedArticle = db.prepare('SELECT * FROM articles WHERE id = ?').get(article.id);    console.log("[Backend] Saved article from DB:", { id: savedArticle.id, title: savedArticle.title, contentLength: savedArticle.content?.length });    const responseData = { ...serializeArticle(savedArticle), blocks: getArticleBlocks(article.id).map(({ id, type, content, sort_order }) => ({ id, type, content, sort_order })) };    console.log("[Backend] Response data:", { id: responseData.id, title: responseData.title, blocksLength: responseData.blocks?.length });    return res.status(201).json(responseData);  } catch (error) {    console.error("[Backend] Error saving article:", error);    return res.status(500).json({ error: 'Internal server error' });  }
 });
 
 app.delete('/api/articles/:id', async (req, res) => {
@@ -1561,13 +1538,13 @@ app.get('/api/vocabulary', async (req, res) => {
 
   try {
     const total = db.prepare(
-      `SELECT COUNT(*) AS count 
+      `SELECT COUNT(*) AS count
        FROM vocabulary v ${where}`
     ).get(...params).count;
 
     const rows = db.prepare(
       `SELECT v.*, a.title AS source_article_title
-       FROM vocabulary v 
+       FROM vocabulary v
        LEFT JOIN articles a ON a.id = v.article_id
        ${where}
        ORDER BY ${orderBy}
@@ -1750,7 +1727,6 @@ app.post('/api/sync', async (req, res) => {
 app.post('/api/translate', async (req, res) => {
   const { text, target = 'zh', articleId, pageNumber = 1 } = req.body || {};
 
-  console.log('translate request query:', req.query || {});
 
   if (typeof text !== 'string' || !text.trim()) {
     return res.status(400).json({ error: 'Please provide text to translate.' });
@@ -1852,12 +1828,10 @@ app.post('/api/analyze', async (req, res) => {
           if (requestId) cancelledAnalysisRequests.delete(requestId);
           return res.json(JSON.parse(cached.analysis));
         } catch (cacheParseError) {
-          console.warn('Ignoring malformed analysis cache entry, re-fetching.');
         }
       }
     }
   } catch (cacheReadError) {
-    console.warn('Analysis cache lookup failed; continuing without cache.');
   }
 
   try {
@@ -1894,11 +1868,9 @@ app.post('/api/analyze', async (req, res) => {
         });
         saveAnalysis();
       } catch (cacheWriteError) {
-        console.warn('Analysis cache save failed; returning the AI result.');
       }
     }
 
-    console.log('[api/analyze] returning analysis keys:', Object.keys(analysis || {}),
       'hardSentences.length:', analysis?.hardSentences?.length,
       'vocabularyAnalysis.length:', analysis?.vocabularyAnalysis?.length,
       'phraseCollocations.length:', analysis?.phraseCollocations?.length);
@@ -1909,7 +1881,6 @@ app.post('/api/analyze', async (req, res) => {
     const isNetworkError = /(?:ETIMEDOUT|ECONNABORTED|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|socket hang up|Network Error|timeout of \d+ms exceeded)/i.test(message);
 
     if (isNetworkError) {
-      console.warn('Analyze network fallback:', message);
       const analysis = buildFallbackAnalysis(text, message);
       return res.json(analysis);
     }

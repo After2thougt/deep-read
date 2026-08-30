@@ -311,7 +311,6 @@ function hasValidAnalysis(value) {
 
   const payload = value;
 
-    console.log("PAGE OFFSET", { articleOffset: pageOffset, currentPage });
 
 return (
     typeof payload.summary === 'string' &&
@@ -465,12 +464,6 @@ function splitBlockPages(blocks) {
 
           
         })
-        console.log("SPLIT PAGE BLOCK", {
-          pageIndex: result.length - 1,
-          textOffset: sourceOffset - chunk.length,
-          contentLength: chunk.length,
-          contentStart: chunk.slice(0,50)
-        });
 ;
 
         current.text += chunk;
@@ -946,11 +939,6 @@ export default function ReaderPage({
 
   // Log blocksState changes
   useEffect(() => {
-    console.log("[ReaderPage blocksState changed]", {
-      length: blocksState.length,
-      images: blocksState.filter(b => b.type === "image").length,
-      blocks: blocksState
-    });
   }, [blocksState]);
 
   const [fontSize, setFontSize] =
@@ -980,19 +968,7 @@ const isNewArticle =
 const articleId = isNewArticle ? null : id;
 
 // Render-time logging for debugging
-console.log("[ReaderPage render]", {
-  pathname: window.location.pathname,
-  id,
-  isNewArticle,
-  articleId,
-  articleContentLength: articleContent?.length,
-  articleTitleState: articleTitleState?.slice(0, 30)
-});
 
-console.log("[render state]", {
-  title: articleTitleState,
-  contentLength: articleContent.length
-});
 
 
 // Load vocabulary
@@ -1010,7 +986,6 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  console.log("Route changed:", location.pathname);
 }, [location.pathname]);
 
 // Load article when articleId changes (from URL)
@@ -1035,7 +1010,6 @@ useEffect(() => {
 // Reset local state when navigating to new article
 useEffect(() => {
   if (isNewArticle) {
-    console.log("[ReaderPage] Resetting state for new article");
     setArticleContent("");
     setArticleTitleState("");
     setHighlightsState([]);
@@ -1136,7 +1110,7 @@ function resetFont() {
 
   // Log pageBlocks (after declaration)
   useEffect(() => {
-    const imageBlocks = pageBlocks ? pageBlocks.filter(b => b.type === "image") : [];    console.log("[ReaderPage pageBlocks]", { length: pageBlocks?.length || 0, images: imageBlocks.length, imageBlocks });  }, [pageBlocks]);
+    const imageBlocks = pageBlocks ? pageBlocks.filter(b => b.type === "image") : [];    ;  }, [pageBlocks]);
 
   const pageOffset = hasBlocks
     ? blockPages
@@ -1165,10 +1139,6 @@ function resetFont() {
           0
         );
 
-  console.log("PAGE OFFSET CALC", {
-    currentPage,
-    pageOffset
-  });
 
 
 
@@ -1342,25 +1312,12 @@ function resetFont() {
             : undefined,
       };
 
-      console.log("[ReaderPage saveCurrentArticle] payload:", {
-        id: payload.id,
-        title: payload.title,
-        contentLength: payload.content?.length,
-        blocksLength: payload.blocks?.length,
-        highlightsLength: payload.highlights?.length
-      });
 
       const savedArticle =
         await saveArticle(
           payload
         );
 
-      console.log("[ReaderPage saveCurrentArticle] savedArticle:", {
-        id: savedArticle.id,
-        title: savedArticle.title,
-        contentLength: savedArticle.content?.length,
-        blocksLength: savedArticle.blocks?.length
-      });
 
       onArticleSaved(savedArticle);
 
@@ -1393,11 +1350,6 @@ function resetFont() {
         });
 
       setHighlightsState(newHighlights);
-      console.log("[ReaderPage highlightsState update]", {
-        action: "add",
-        count: newHighlights.length,
-        highlights: newHighlights
-      });
       onArticleSaved(savedArticle);
     } catch (err) {
       console.error(
@@ -1408,7 +1360,6 @@ function resetFont() {
   }, [articleId, articleTitleState, articleContent, highlightsState, onArticleSaved]);
 
   const removeUnderline = useCallback(async (underlineId) => {
-    console.log('[ReaderPage removeUnderline]', { underlineId, highlightsBefore: highlightsState });
     try {
       const newHighlights = highlightsState.filter(
         (item) => item.id !== underlineId
@@ -1422,11 +1373,6 @@ function resetFont() {
         });
 
       setHighlightsState(newHighlights);
-      console.log("[ReaderPage highlightsState update]", {
-        action: "remove",
-        count: newHighlights.length,
-        highlights: newHighlights
-      });
       onArticleSaved(savedArticle);
     } catch (err) {
       console.error(
@@ -1454,11 +1400,6 @@ function resetFont() {
         });
 
       setHighlightsState(newHighlights);
-      console.log("[ReaderPage highlightsState update]", {
-        action: "update",
-        count: newHighlights.length,
-        highlights: newHighlights
-      });
       onArticleSaved(savedArticle);
     } catch (err) {
       setSaveMessage(
@@ -1740,7 +1681,6 @@ function resetFont() {
           onBlocksChange={setBlocksState}
           onSave={saveCurrentArticle}
           onNewArticle={() => {
-               console.log("ReaderPage New Article");
                 onNewArticle();
               
             }}
