@@ -9,7 +9,7 @@ function useVocabularyHighlights(paragraphText, savedWords, blockStart, paragrap
 
     const highlights = [];
     for (const word of savedWords) {
-      const regex = new RegExp(`\\b${word}\\b`, "gi");
+      const regex = new RegExp(`\\b${word}(?:s|ed|ing)?\\b`, "gi");
       let match;
       while ((match = regex.exec(paragraphText)) !== null) {
         highlights.push({

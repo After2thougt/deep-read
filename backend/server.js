@@ -1977,11 +1977,9 @@ app.get('/api/health', (req, res) => {
   }
 });
 
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.resolve(__dirname, '..', 'dist');
-  app.use(express.static(distPath));
-  app.get(/^(?!\/api\/).*/, (req, res) => res.sendFile(path.join(distPath, 'index.html')));
-}
+const distPath = path.resolve(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+app.get(/^(?!\/api\/).*/, (req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
 if (require.main === module) {
   app.listen(PORT, HOST, () => {
