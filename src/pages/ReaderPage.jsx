@@ -1666,9 +1666,9 @@ function resetFont() {
       ref={readerPageRef}
     >
       {/* =========================================
-          Article Editor (only for new articles)
+          Article Input (edit mode for new articles, collapsed summary for existing)
           ========================================= */}
-      {isNewArticle && (
+      {(isNewArticle || articleId) && (
         <ArticleInput
           article={articleContent}
           title={articleTitleState}

@@ -24,7 +24,9 @@ const path = require("path");
 const fs = require("fs");
 
 const uploadsRoot = path.resolve(__dirname, "..", "uploads", "articles");
+const tempUploadsRoot = path.resolve(__dirname, "..", "uploads", "temp");
 fs.mkdirSync(uploadsRoot, { recursive: true });
+fs.mkdirSync(tempUploadsRoot, { recursive: true });
 
 function normalizeArticleBlocks(articleId, blocks) {
   if (!Array.isArray(blocks) || !blocks.length) {
@@ -680,8 +682,11 @@ function extractOutermostJson(text) {
           // Log the first few failures for diagnosis.
           if (candidates.length === 0) {
             const ctx = clean.slice(Math.max(0, pos - 20), pos + 200);
-              'errPos=', errPos, 'msg=', String(e.message || e).slice(0, 80),
-              'ctx=', JSON.stringify(ctx.slice(0, 120)));
+            console.debug('  candidate parse failed', {
+              errPos: errPos,
+              msg: String(e.message || e).slice(0, 80),
+              ctx: JSON.stringify(ctx.slice(0, 120))
+            });
           }
         }
       }
@@ -702,14 +707,14 @@ function extractOutermostJson(text) {
     // Pick largest — root analysis is always the biggest JSON block.
     summaryBearing.sort((a, b) => b.len - a.len);
     const best = summaryBearing[0];
-      `(from ${candidates.length} candidates, ${summaryBearing.length} summary-bearing, len=${best.len})`);
+    console.debug(`(from ${candidates.length} candidates, ${summaryBearing.length} summary-bearing, len=${best.len})`);
     return best.parsed;
   }
 
   // Fallback — no summary-bearing candidate.  Use the largest overall.
   candidates.sort((a, b) => b.len - a.len);
   const best = candidates[0];
-    `(from ${candidates.length} candidates, len=${best.len})`);
+  console.debug(`(from ${candidates.length} candidates, len=${best.len})`);
   return best.parsed;
 }
 
@@ -824,7 +829,7 @@ function normalizeOpenAIBase(rawBase) {
     .replace(/\/v1$/i, '');
 }
 
-async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 'gpt-5.4-mini') {
+async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 'gpt-4o-mini') {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OpenAI API key is not configured.');
@@ -914,6 +919,7 @@ async function callOpenAITextAnalysis(text, model = process.env.OPENAI_MODEL || 
     }
 
     // Extraction failed — safe fallback.  Never leak raw AI text into summary.
+    console.debug('AI analysis extraction failed, using fallback', {
       responseLength: cleaned.length,
     });
     return {
@@ -1417,7 +1423,8 @@ app.post('/api/articles/images', async (req, res) => {
   }
 
   const fileName = `${generateId('image')}.webp`;
-  fs.writeFileSync(path.join(tempUploadsRoot, fileName), processedBuffer, { flag: 'wx' });  return res.status(201).json({ path: `/uploads/temp/${fileName}`, url: `/uploads/temp/${fileName}` });
+  fs.writeFileSync(path.join(tempUploadsRoot, fileName), processedBuffer, { flag: 'wx' });
+  return res.status(201).json({ path: `/uploads/temp/${fileName}`, url: `/uploads/temp/${fileName}` });
 });
 
 app.get('/api/articles/:id', (req, res) => {
@@ -1439,22 +1446,85 @@ app.post('/api/articles', async (req, res) => {
     return res.status(400).json({ error: 'Article title and content are required.' });
   }
 
+  // Track processed images for potential rollback (must be outside try for catch access)
+  let processedImages = [];
+
   try {
     const now = new Date().toISOString();
-    const articleId = id || generateId('article');    const article = { id: articleId, title: title.trim(), content, highlights: JSON.stringify(highlights), created_at: now, updated_at: now };
+    const articleId = id || generateId('article');
+    const article = { id: articleId, title: title.trim(), content, highlights: JSON.stringify(highlights), created_at: now, updated_at: now };
 
-    // Track processed images for potential rollback
-    const processedImages = [];
+    // UPSERT article (create or update) to satisfy FK constraint
+    db.prepare(`INSERT INTO articles (id, title, content, highlights, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        title = excluded.title,
+        content = excluded.content,
+        highlights = excluded.highlights,
+        updated_at = excluded.updated_at`).run(article.id, article.title, article.content, article.highlights, article.created_at, article.updated_at);
+    const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
 
-    // Process temp images BEFORE transaction (move + generate thumbnails)    if (Array.isArray(blocks)) {      const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);      const articleUploadsDir = path.join(articlesUploadsRoot, article.id);      fs.mkdirSync(articleUploadsDir, { recursive: true });      for (const block of normalizedBlocks) {        if (block.type === 'image' && block.content.startsWith('/uploads/temp/')) {          const fileName = path.basename(block.content);          const srcPath = path.join(tempUploadsRoot, fileName);          const destPath = path.join(articleUploadsDir, fileName);          const thumbFileName = fileName.replace('.webp', '_thumb.webp');          const thumbPath = path.join(articleUploadsDir, thumbFileName);          try {            // Move original image            fs.renameSync(srcPath, destPath);            processedImages.push(destPath);                        // Generate thumbnail (400px max width, quality 70)            await sharp(destPath)
+
+    // Process temp images BEFORE transaction (move + generate thumbnails)
+    if (Array.isArray(blocks)) {
+      
+      const articleUploadsDir = path.join(uploadsRoot, article.id);
+      fs.mkdirSync(articleUploadsDir, { recursive: true });
+      for (const block of normalizedBlocks) {
+        if (block.type === 'image' && block.content.startsWith('/uploads/temp/')) {
+          const fileName = path.basename(block.content);
+          const srcPath = path.join(tempUploadsRoot, fileName);
+          const destPath = path.join(articleUploadsDir, fileName);
+          const thumbFileName = fileName.replace('.webp', '_thumb.webp');
+          const thumbPath = path.join(articleUploadsDir, thumbFileName);
+          try {
+            // Move original image
+            fs.renameSync(srcPath, destPath);
+            processedImages.push(destPath);
+            
+            // Generate thumbnail (400px max width, quality 70)
+            await sharp(destPath)
               .rotate()
               .resize({ width: 400, withoutEnlargement: true })
               .webp({ quality: 70 })
-              .toFile(thumbPath);            processedImages.push(thumbPath);                        block.content = `/uploads/articles/${article.id}/${fileName}`;            block.thumbnail = `/uploads/articles/${article.id}/${thumbFileName}`;          } catch (err) {            console.error('Failed to process image, aborting save:', err.message);            // Cleanup on error            for (const imgPath of processedImages) {              try { fs.unlinkSync(imgPath); } catch {}            }            throw new Error(`Failed to process image ${fileName}: ${err.message}`);          }        }      }    }
+              .toFile(thumbPath);
+            processedImages.push(thumbPath);
+            
+            block.content = `/uploads/articles/${article.id}/${fileName}`;
+            block.thumbnail = `/uploads/articles/${article.id}/${thumbFileName}`;
+          } catch (err) {
+            console.error('Failed to process image, aborting save:', err.message);
+            // Cleanup on error
+            for (const imgPath of processedImages) {
+              try { fs.unlinkSync(imgPath); } catch {}
+            }
+            throw new Error(`Failed to process image ${fileName}: ${err.message}`);
+          }
+        }
+      }
+    }
 
-      if (Array.isArray(blocks)) {        const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
-        // 2. Replace blocks atomically        const previousImages = db.prepare("SELECT content FROM article_blocks WHERE article_id = ? AND type = 'image'").all(article.id);        db.prepare('DELETE FROM article_blocks WHERE article_id = ?').run(article.id);        const insertBlock = db.prepare('INSERT INTO article_blocks (id, article_id, type, content, thumbnail, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');        normalizedBlocks.forEach((block, index) => insertBlock.run(block.id, article.id, block.type, block.content, block.thumbnail || null, index, now));        const nextImages = new Set(normalizedBlocks.filter((block) => block.type === 'image').map((block) => block.content));        for (const row of previousImages) {          if (!nextImages.has(row.content)) removeArticleImageIfUnused(row.content, article.id);        }      }    });
+      if (Array.isArray(blocks)) {
+        // 2. Replace blocks atomically
+        const previousImages = db.prepare("SELECT content FROM article_blocks WHERE article_id = ? AND type = 'image'").all(article.id);
+        db.prepare('DELETE FROM article_blocks WHERE article_id = ?').run(article.id);
+        const insertBlock = db.prepare('INSERT INTO article_blocks (id, article_id, type, content, thumbnail, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        normalizedBlocks.forEach((block, index) => insertBlock.run(block.id, article.id, block.type, block.content, block.thumbnail || null, index, now));
+        const nextImages = new Set(normalizedBlocks.filter((block) => block.type === 'image').map((block) => block.content));
+        for (const row of previousImages) {
+          if (!nextImages.has(row.content)) removeArticleImageIfUnused(row.content, article.id);
+        }
+      }
 
+    return res.json({ id: articleId, title: title.trim(), content, highlights, blocks: normalizedBlocks, created_at: now, updated_at: now });
+  } catch (error) {
+    console.error('POST /api/articles error:', error);
+    // Cleanup processed images on error
+    for (const imgPath of processedImages) {
+      try { fs.unlinkSync(imgPath); } catch {}
+    }
+    return res.status(500).json({ error: 'Failed to save article.' });
+  }
 });
 
 app.delete('/api/articles/:id', async (req, res) => {
@@ -1796,7 +1866,7 @@ app.post('/api/analyze', async (req, res) => {
   const { text, articleId, pageNumber = 1 } = req.body || {};
   const requestId = req.get('X-Analysis-Request-Id');
   const provider = (req.query.provider || process.env.ANALYSIS_PROVIDER || (process.env.OPENAI_API_KEY ? 'openai' : process.env.GOOGLE_GEMINI_API_KEY ? 'gemini' : 'fallback')).toLowerCase();
-  const model = req.query.model || process.env.OPENAI_MODEL || 'gpt-5.4-mini';
+  const model = req.query.model || process.env.OPENAI_MODEL || 'gpt-4o-mini';
   const analysisModel = provider === 'gemini' ? (process.env.GOOGLE_GEMINI_MODEL || 'gemini-flash-latest') : provider === 'openai' ? model : provider;
   const promptVersion = process.env.ANALYSIS_PROMPT_VERSION || 'v4';
 
@@ -1868,14 +1938,17 @@ app.post('/api/analyze', async (req, res) => {
         });
         saveAnalysis();
       } catch (cacheWriteError) {
+        console.debug('Cache write error:', cacheWriteError);
       }
+
+      console.debug('Analysis completed', {
+        'hardSentences.length:': analysis?.hardSentences?.length,
+        'vocabularyAnalysis.length:': analysis?.vocabularyAnalysis?.length,
+        'phraseCollocations.length:': analysis?.phraseCollocations?.length
+      });
+
+      return res.json(analysis);
     }
-
-      'hardSentences.length:', analysis?.hardSentences?.length,
-      'vocabularyAnalysis.length:', analysis?.vocabularyAnalysis?.length,
-      'phraseCollocations.length:', analysis?.phraseCollocations?.length);
-
-    return res.json(analysis);
   } catch (error) {
     const message = String(error?.message || error || '');
     const isNetworkError = /(?:ETIMEDOUT|ECONNABORTED|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|socket hang up|Network Error|timeout of \d+ms exceeded)/i.test(message);
