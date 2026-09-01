@@ -140,7 +140,7 @@ function parseCookies(header) {
 
 function setSessionCookie(res, token) {
   const isProd = process.env.NODE_ENV === 'production';
-  const secure = isProd ? '; Secure' : '';
+  const secure = '';
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(token)}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}; Path=/; HttpOnly; SameSite=Lax${secure}`);
 }
 
@@ -212,7 +212,7 @@ app.post('/api/auth/logout', (req, res) => {
   const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
   if (token) sessions.delete(token);
   const isProd = process.env.NODE_ENV === 'production';
-  const secure = isProd ? '; Secure' : '';
+  const secure = '';
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax${secure}`);
   return res.status(204).end();
 });
