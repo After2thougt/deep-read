@@ -1005,6 +1005,17 @@ useEffect(() => {
   loadArticle();
 }, [articleId]);
 
+// Scroll to top when article content first loads
+useEffect(() => {
+  if (!articleId) return;
+  if (articleLoading) return;
+  if (hasScrolledInitialLoad.current) return;
+  if (articleContent.length === 0 && blocksState.length === 0) return;
+
+  hasScrolledInitialLoad.current = true;
+  scrollReaderToTop();
+}, [articleId, articleLoading, articleContent, blocksState]);
+
 
 // Reset local state when navigating to new article
 useEffect(() => {
@@ -1018,6 +1029,7 @@ useEffect(() => {
     setSaveMessage("");
     setCurrentPage(1);
     setPageJump("1");
+    hasScrolledInitialLoad.current = false;
   }
 }, [isNewArticle]);
 
@@ -1077,6 +1089,9 @@ function resetFont() {
 
   const readerPageRef =
     useRef(null);
+
+  // Track if we've scrolled on initial article load
+  const hasScrolledInitialLoad = useRef(false);
 
 
   const hasBlocks = blocksState.some(
@@ -1170,6 +1185,7 @@ function resetFont() {
     if (currentArticleIdRef.current !== articleId) {
       currentArticleIdRef.current = articleId;
       restorationStatus.current = 'restoring';
+      hasScrolledInitialLoad.current = false;
       return;
     }
 
