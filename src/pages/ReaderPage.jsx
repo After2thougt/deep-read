@@ -937,10 +937,6 @@ export default function ReaderPage({
   const [highlightsState, setHighlightsState] = useState(highlights || []);
   const [blocksState, setBlocksState] = useState(blocks || []);
 
-  // Log blocksState changes
-  useEffect(() => {
-  }, [blocksState]);
-
   const [fontSize, setFontSize] =
   useState(() => {
     return Number(
@@ -985,14 +981,15 @@ useEffect(() => {
   loadVocabulary();
 }, []);
 
-useEffect(() => {
-}, [location.pathname]);
+// Article loading state
+const [articleLoading, setArticleLoading] = useState(Boolean(articleId));
 
 // Load article when articleId changes (from URL)
 useEffect(() => {
   if (!articleId) return; // new article, don't load
 
   async function loadArticle() {
+    setArticleLoading(true);
     try {
       const fullArticle = await fetchArticle(articleId);
       setArticleContent(fullArticle.content || "");
@@ -1001,6 +998,8 @@ useEffect(() => {
       setBlocksState(fullArticle.blocks || []);
     } catch (error) {
       console.error("Failed to load article:", error);
+    } finally {
+      setArticleLoading(false);
     }
   }
   loadArticle();
@@ -1018,6 +1017,7 @@ useEffect(() => {
     setTranslations(null);
     setSaveMessage("");
     setCurrentPage(1);
+    setPageJump("1");
   }
 }, [isNewArticle]);
 
@@ -1052,11 +1052,13 @@ function resetFont() {
 
   const [savedWords, setSavedWords] = useState([]);
 
-  const [currentPage, setCurrentPage] =
-    useState(initialPage);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const [pageJump, setPageJump] =
-    useState(String(initialPage));
+  const [pageJump, setPageJump] = useState("1");
+
+  // Page restoration state: 'idle' | 'restoring' | 'restored'
+  const restorationStatus = useRef('idle');
+  const currentArticleIdRef = useRef(null);
 
   const analysisRequestGeneration =
     useRef(0);
@@ -1110,7 +1112,9 @@ function resetFont() {
 
   // Log pageBlocks (after declaration)
   useEffect(() => {
-    const imageBlocks = pageBlocks ? pageBlocks.filter(b => b.type === "image") : [];    ;  }, [pageBlocks]);
+    const imageBlocks = pageBlocks ? pageBlocks.filter(b => b.type === "image") : [];
+    ;
+  }, [pageBlocks]);
 
   const pageOffset = hasBlocks
     ? blockPages
@@ -1153,47 +1157,75 @@ function resetFont() {
     );
 
 
+  // Single page restoration effect
   useEffect(() => {
     if (!articleId) {
+      restorationStatus.current = 'restored';
+      currentArticleIdRef.current = null;
+      setCurrentPage(1);
+      setPageJump('1');
       return;
     }
 
-    localStorage.setItem(
-      `vocabulary-trainer:article-page:${articleId}`,
-      String(currentPage)
-    );
-  }, [articleId, currentPage]);
+    if (currentArticleIdRef.current !== articleId) {
+      currentArticleIdRef.current = articleId;
+      restorationStatus.current = 'restoring';
+      return;
+    }
 
+    if (
+      articleLoading ||
+      (articleContent.length === 0 && blocksState.length === 0)
+    ) {
+      return;
+    }
 
-  useEffect(() => {
-    setCurrentPage(
-      Math.min(
-        Math.max(initialPage, 1),
-        pages.length
-      )
+    if (pages.length === 0) {
+      return;
+    }
+
+    if (restorationStatus.current === 'restored') {
+      return;
+    }
+
+    const savedPage = localStorage.getItem(
+      `vocabulary-trainer:article-page:${articleId}`
     );
+
+    let page = 1;
+
+    if (savedPage) {
+      const parsed = parseInt(savedPage, 10);
+
+      if (!isNaN(parsed)) {
+        page = Math.min(
+          Math.max(parsed, 1),
+          pages.length
+        );
+      }
+    }
+
+    restorationStatus.current = 'restored';
+
+    setCurrentPage(page);
+    setPageJump(String(page));
   }, [
     articleId,
-    initialPage,
+    articleLoading,
+    articleContent,
+    blocksState,
     pages.length,
   ]);
 
-
+  // Keep pageJump in sync with currentPage
   useEffect(() => {
-    setPageJump(
-      String(currentPage)
-    );
+    setPageJump(String(currentPage));
   }, [currentPage]);
 
-
   useEffect(() => {
-    setCurrentPage((page) =>
-      Math.min(page, pages.length)
-    );
-
     setTranslations(null);
     setAnalysis(null);
-  }, [articleContent, pages.length]);
+  }, [articleContent]);
 
 
   function scrollReaderToTop() {
@@ -1236,6 +1268,13 @@ function resetFont() {
     ++analysisRequestGeneration.current;
 
     setCurrentPage(target);
+
+    if (articleId) {
+      localStorage.setItem(
+        `vocabulary-trainer:article-page:${articleId}`,
+        String(target)
+      );
+    }
 
     setTranslations(null);
     setAnalysis(null);
