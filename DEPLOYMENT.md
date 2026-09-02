@@ -834,6 +834,126 @@ bash deploy/check.sh
 
 ---
 
+## 15. Mihomo External Image Proxy
+
+### 15.1 Why a Proxy is Needed
+
+DeepRead's article editor supports pasting web content with images. When users paste articles from foreign websites (e.g., BBC, NYTimes, GitHub), the images are hosted on external CDNs. Due to:
+
+- **Geo-blocking**: Many foreign CDNs block Chinese IPs
+- **CORS restrictions**: Browsers block direct image downloads from different origins
+- **Hotlink protection**: Some sites require referrer headers
+
+The Node.js backend **must download these images server-side** and save them to local storage (`/uploads/articles/`). Without a proxy, downloads from foreign IPs often timeout or fail.
+
+### 15.2 Image Download Flow
+
+```
+User pastes web article
+       ↓
+Frontend extracts <img> tags
+       ↓
+For each image:
+  - data: URL → direct upload
+  - http(s): URL → POST /api/articles/images/from-url
+       ↓
+Backend fetches via Node.js fetch()
+       ↓
+Mihomo proxy (127.0.0.1:7890) → Foreign CDN
+       ↓
+Image processed (sharp → WebP)
+       ↓
+Saved to /uploads/articles/
+       ↓
+Return local URL to frontend
+```
+
+### 15.3 Mihomo Configuration
+
+| Setting | Value |
+|---------|-------|
+| **HTTP Proxy Port** | 7890 |
+| **SOCKS5 Port** | 7891 |
+| **Mixed Port** | 7892 |
+| **Config Directory** | `/etc/mihomo/` |
+| **GeoIP Database** | `/etc/mihomo/geoip.metadb` |
+| **Systemd Service** | `mihomo.service` |
+| **Bind Address** | `127.0.0.1` (localhost only) |
+
+### 15.4 Environment Variables
+
+The PM2 ecosystem config (`deploy/ecosystem.config.cjs`) sets both uppercase and lowercase variants for maximum compatibility:
+
+```javascript
+env: {
+  HTTP_PROXY: 'http://127.0.0.1:7890',
+  HTTPS_PROXY: 'http://127.0.0.1:7890',
+  ALL_PROXY: 'http://127.0.0.1:7890',
+  http_proxy: 'http://127.0.0.1:7890',
+  https_proxy: 'http://127.0.0.1:7890',
+  all_proxy: 'http://127.0.0.1:7890',
+}
+```
+
+**Why both cases?**
+- Node.js `fetch()` and `axios` use uppercase
+- Some tools (curl, wget, git) use lowercase
+- `ALL_PROXY` / `all_proxy` catches all protocols
+
+### 15.5 Verification Commands
+
+```bash
+# Check Mihomo service
+systemctl status mihomo
+
+# Test proxy manually
+curl -x http://127.0.0.1:7890 -I https://ichef.bbci.co.uk/news/
+
+# Full deployment check (includes proxy test)
+bash deploy/check.sh
+```
+
+Expected output from `check.sh`:
+```
+[OK]  Mihomo binary installed
+[OK]  Mihomo service active
+[OK]  Mihomo config exists
+[OK]  Mihomo geoip exists
+[OK]  Proxy connectivity (BBC test)
+```
+
+### 15.6 Troubleshooting
+
+| Symptom | Cause | Solution |
+|---------|-------|----------|
+| `systemctl is-active mihomo` fails | Config error | Check `journalctl -u mihomo -n 50` |
+| Proxy test times out | No proxy configured | Add proxy servers to `/etc/mihomo/config.yaml` |
+| Image download fails with "connection refused" | Mihomo not running | `sudo systemctl restart mihomo` |
+| `check.sh` shows proxy fail but mihomo is active | Wrong port | Verify `port: 7890` in config.yaml |
+| PM2 app doesn't use proxy | Env not applied | `pm2 reload deepread --update-env` |
+
+**Adding Proxy Servers:**
+Edit `/etc/mihomo/config.yaml` and add your proxy servers under `proxies:`:
+```yaml
+proxies:
+  - name: "my-proxy"
+    type: ss
+    server: 1.2.3.4
+    port: 443
+    cipher: aes-256-gcm
+    password: "your-password"
+
+proxy-groups:
+  - name: "PROXY"
+    type: select
+    proxies:
+      - my-proxy
+      - DIRECT
+```
+Then restart: `sudo systemctl restart mihomo`
+
+---
+
 ## Appendix: Quick Reference Card
 
 ```bash

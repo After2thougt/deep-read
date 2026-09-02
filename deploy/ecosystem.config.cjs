@@ -19,9 +19,14 @@ module.exports = {
         PORT: 3000,
         DATABASE_PATH: '/data/deepread/app.db',
         // Proxy configuration for outbound requests (e.g., downloading remote images)
+        // Uppercase (standard for Node.js fetch, axios, etc.)
         HTTP_PROXY: 'http://127.0.0.1:7890',
         HTTPS_PROXY: 'http://127.0.0.1:7890',
         ALL_PROXY: 'http://127.0.0.1:7890',
+        // Lowercase (some libraries/tools use lowercase)
+        http_proxy: 'http://127.0.0.1:7890',
+        https_proxy: 'http://127.0.0.1:7890',
+        all_proxy: 'http://127.0.0.1:7890',
       },
       // Restart if memory exceeds 500MB
       max_memory_restart: '500M',

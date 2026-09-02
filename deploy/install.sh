@@ -130,9 +130,14 @@ else
   info "Geoip database already exists"
 fi
 
-# Create minimal config.yaml if not exists
+# Create minimal config.yaml if not exists (backup existing first)
 MIHOMO_CONFIG="/etc/mihomo/config.yaml"
-if [ ! -f "$MIHOMO_CONFIG" ]; then
+if [ -f "$MIHOMO_CONFIG" ]; then
+  BACKUP_NAME="/etc/mihomo/config.yaml.backup.$(date +%F-%H%M%S)"
+  info "Existing config found, backing up to: $BACKUP_NAME"
+  sudo cp "$MIHOMO_CONFIG" "$BACKUP_NAME"
+  info "Config backup created. Keeping existing config (not overwriting)."
+else
   info "Creating default Mihomo config..."
   sudo tee "$MIHOMO_CONFIG" > /dev/null <<'EOF'
 port: 7890
