@@ -757,6 +757,83 @@ pm2 restart deepread
 
 ---
 
+## 14. HTTP/IP Environment Compatibility
+
+### 14.1 Browser Secure Context Restrictions
+
+When DeepRead is accessed via **HTTP + IP address** (e.g., `http://1.14.182.59`), the browser does **not** consider it a Secure Context. This affects the availability of certain Web Crypto APIs:
+
+| API | Secure Context Required | HTTP + IP Available? |
+|-----|------------------------|----------------------|
+| `crypto.randomUUID()` | **Yes** | ❌ No |
+| `crypto.getRandomValues()` | No | ✅ Yes |
+| `crypto.subtle` | Yes | ❌ No |
+
+### 14.2 Problem: `crypto.randomUUID()` Unavailable
+
+In HTTP/IP deployments, calling `crypto.randomUUID()` directly throws:
+
+```
+TypeError: crypto.randomUUID is not a function
+```
+
+This breaks ID generation for articles, images, vocabulary, highlights, and other entities.
+
+### 14.3 Solution: Unified ID Generator
+
+The project provides **two unified ID generators** that work in all environments:
+
+**Frontend** (`src/utils/id.js`):
+```javascript
+import { generateId } from '@/utils/id';
+
+const id = generateId('article'); // 'article-l1x2k3-abc123def456'
+```
+
+**Backend** (`backend/server.js`):
+```javascript
+function generateId(prefix = 'id') {
+  try {
+    const bytes = crypto.randomBytes(16); // Node.js always available
+    return `${prefix}-${Date.now().toString(36)}-${bytes.toString('hex')}`;
+  } catch {
+    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+```
+
+### 14.4 Fallback Strategy
+
+| Environment | Method Used |
+|-------------|-------------|
+| HTTPS / localhost | `crypto.randomUUID()` (if available) or `crypto.getRandomValues()` |
+| HTTP + IP | `crypto.getRandomValues()` (if available) or `Math.random()` |
+| Node.js (backend) | `crypto.randomBytes()` (always available) |
+
+**All fallbacks include**:
+- Timestamp (base36 encoded)
+- Cryptographically strong randomness (when available)
+- Fallback to `Math.random()` with sufficient entropy
+
+### 14.5 Migration Guide for New Code
+
+| ❌ Don't Use | ✅ Use Instead |
+|--------------|----------------|
+| `crypto.randomUUID()` | `generateId(prefix)` |
+| `crypto.randomUUID()` | `createId(prefix)` (alias) |
+| `uuid.v4()` | `generateId(prefix)` |
+
+### 14.6 Verification
+
+The deployment check script validates no direct `crypto.randomUUID()` usage:
+
+```bash
+bash deploy/check.sh
+# Includes check: "No direct crypto.randomUUID usage"
+```
+
+---
+
 ## Appendix: Quick Reference Card
 
 ```bash

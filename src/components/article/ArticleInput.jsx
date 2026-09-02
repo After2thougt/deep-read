@@ -943,13 +943,52 @@ async function insertBlocksAtCursor(blocksToInsert) {
     event.target.value = "";
   }
 
-  const startNewArticle = () => {
-    if (onNewArticle) {
-      onNewArticle();
-    } else {
-      console.error("[ArticleInput] onNewArticle prop missing");
-    }
-  };
+const startNewArticle = () => {
+  // 清空编辑器 DOM
+  if (editorRef.current) {
+    editorRef.current.innerHTML = "";
+    editorRef.current.appendChild(createTextBlock(""));
+  }
+
+  // 清空 React state
+  const emptyBlocks = [
+    {
+      type: "text",
+      content: "",
+    },
+  ];
+
+  setBlocks(emptyBlocks);
+
+  // 清空标题
+  if (onTitleChange) {
+    onTitleChange("");
+  }
+
+  // 清空文章内容
+  if (onArticleChange) {
+    onArticleChange("");
+  }
+
+  // 同步 blocks 给父组件
+  if (onBlocksChange) {
+    onBlocksChange(emptyBlocks);
+  }
+
+  // 清理草稿
+  clearDraft();
+
+  // 清理图片选择状态
+  deselectAllImages();
+
+  // 新文章进入编辑状态
+  setIsCollapsed(false);
+
+  // 通知父组件创建新文章
+  if (onNewArticle) {
+    onNewArticle();
+  }
+};
 
   /* ---------- collapsed view ---------- */
 

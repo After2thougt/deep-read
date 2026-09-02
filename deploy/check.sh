@@ -154,6 +154,30 @@ ASSET_COUNT=$(find "$APP_DIR/dist/assets" -type f 2>/dev/null | wc -l)
 [ "$ASSET_COUNT" -gt 0 ] && echo -e "$OK  Frontend assets: $ASSET_COUNT files" || { echo -e "$ERROR  No frontend assets in dist/assets"; ((FAIL_COUNT++)); }
 
 echo ""
+echo "--- Code Quality ---"
+# Check for direct crypto.randomUUID usage (breaks HTTP/IP deployments)
+if grep -R "crypto.randomUUID" "$APP_DIR/src" "$APP_DIR/backend" --exclude="*.map" --exclude="*.md" 2>/dev/null | grep -v "generateId" | grep -v "avoid" | grep -v "Avoids" | grep -v "//" | grep -v "crypto.randomUUID is" | grep -q .; then
+  echo -e "$ERROR  Found direct crypto.randomUUID usage (use generateId() instead)"
+  ((FAIL_COUNT++))
+else
+  echo -e "$OK  No direct crypto.randomUUID usage"
+fi
+
+echo ""
+echo "--- Mihomo Proxy ---"
+check "Mihomo installed" "command -v mihomo"
+check "Mihomo service active" "systemctl is-active --quiet mihomo"
+check "Mihomo config exists" "[ -f /etc/mihomo/config.yaml ]"
+check "Mihomo geoip exists" "[ -f /etc/mihomo/geoip.metadb ]"
+# Test proxy connectivity to foreign site
+if curl -sf -x http://127.0.0.1:7890 -I https://ichef.bbci.co.uk/news/ -o /dev/null --max-time 10 2>/dev/null; then
+  echo -e "$OK  Mihomo proxy connectivity (BBC test)"
+else
+  echo -e "$ERROR  Mihomo proxy connectivity failed (BBC test)"
+  ((FAIL_COUNT++))
+fi
+
+echo ""
 echo "--- Directory Structure & Permissions ---"
 check "App dir exists" "[ -d $APP_DIR ]"
 check "Data dir exists" "[ -d $DATA_DIR ]"
