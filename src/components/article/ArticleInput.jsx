@@ -956,23 +956,10 @@ async function insertBlocksAtCursor(blocksToInsert) {
   if (isCollapsed) {
     const charCount = (article || "").length.toLocaleString();
     return (
+      
       <section className="article-input article-summary">
-        <div>
-          <p className="eyebrow">Current article</p>
-          <strong>{title || "Untitled article"}</strong>
-          <p className="article-meta">{charCount} characters</p>
-          {saveMessage && <p className="save-message">{saveMessage}</p>}
-        </div>
-        <div className="article-actions">
-
-          <button
-            className="secondary-button"
-            onClick={() => setIsCollapsed(false)}
-            type="button"
-          >
-            <Pencil size={18} /> Edit
-          </button>
-          {onBackToArticles && (
+        <div className="article-actions-back">
+        {onBackToArticles && (
             <button
               className="secondary-button back-to-articles"
               onClick={onBackToArticles}
@@ -981,6 +968,26 @@ async function insertBlocksAtCursor(blocksToInsert) {
               <ChevronLeft size={18} /> Back
             </button>
           )}
+
+        </div>
+
+        <div>   
+          <p className="eyebrow">Current article</p>
+          <strong>{title || "Untitled article"}</strong>
+          <p className="article-meta">{charCount} characters</p>
+          {saveMessage && <p className="save-message">{saveMessage}</p>}
+        </div>
+        <div className="article-actions">
+
+          
+          <button
+            className="secondary-button"
+            onClick={() => setIsCollapsed(false)}
+            type="button"
+          >
+            <Pencil size={18} /> Hide
+          </button>
+          
 
 
         </div>
@@ -1028,7 +1035,7 @@ async function insertBlocksAtCursor(blocksToInsert) {
           </button>
         )}
         <label className="upload-button">
-          <Upload size={18} /> Upload TXT
+          <Upload size={18} /> Upload
           <input
             type="file"
             accept=".txt,text/plain"
@@ -1040,7 +1047,7 @@ async function insertBlocksAtCursor(blocksToInsert) {
           onClick={startNewArticle}
           type="button"
         >
-          <FilePlus2 size={18} /> New article
+          <FilePlus2 size={18} /> New
         </button>
         {article && (
           <button
@@ -1048,7 +1055,7 @@ async function insertBlocksAtCursor(blocksToInsert) {
             onClick={() => setIsCollapsed(true)}
             type="button"
           >
-            <ChevronDown size={18} /> Collapse
+            <ChevronDown size={18} /> Hide
           </button>
         )}
         <button
