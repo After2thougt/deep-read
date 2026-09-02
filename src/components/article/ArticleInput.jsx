@@ -985,7 +985,7 @@ async function insertBlocksAtCursor(blocksToInsert) {
             onClick={() => setIsCollapsed(false)}
             type="button"
           >
-            <Pencil size={18} /> Hide
+            <Pencil size={18} /> 
           </button>
           
 
