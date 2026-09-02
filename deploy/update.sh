@@ -46,7 +46,7 @@ cd "$APP_DIR"
 # ============================================================
 # STEP 1: GIT PULL (verify clean working tree)
 # ============================================================
-step "1/6 Git pull"
+step "1/7 Git pull"
 
 info "Fetching origin..."
 git fetch origin
@@ -65,7 +65,7 @@ info "Updated to: $CURRENT_COMMIT"
 # ============================================================
 # STEP 2: DEPENDENCIES
 # ============================================================
-step "2/6 Installing dependencies"
+step "2/7 Installing dependencies"
 
 info "Root npm ci..."
 npm ci
@@ -78,7 +78,7 @@ fi
 # ============================================================
 # STEP 3: DATABASE MIGRATIONS
 # ============================================================
-step "3/6 Running database migrations"
+step "3/7 Running database migrations"
 if [ -f "${APP_DIR}/deploy/migrate.sh" ]; then
   bash "${APP_DIR}/deploy/migrate.sh"
 else
@@ -88,7 +88,7 @@ fi
 # ============================================================
 # STEP 4: FRONTEND BUILD
 # ============================================================
-step "4/6 Building frontend"
+step "4/7 Building frontend"
 
 npm run build
 [ -f dist/index.html ] || error "Frontend build failed: dist/index.html missing"
@@ -96,17 +96,35 @@ ASSET_COUNT=$(find dist/assets -type f 2>/dev/null | wc -l)
 info "Build complete: $ASSET_COUNT assets"
 
 # ============================================================
-# STEP 5: PM2 RELOAD (zero-downtime)
+# STEP 5: RESTART MIHOMO PROXY
 # ============================================================
-step "5/6 Reloading PM2"
+step "5/7 Restarting Mihomo proxy"
+
+if systemctl is-active --quiet mihomo; then
+  info "Restarting Mihomo service..."
+  sudo systemctl restart mihomo
+  sleep 2
+  if systemctl is-active --quiet mihomo; then
+    info "Mihomo service: ACTIVE"
+  else
+    warn "Mihomo service failed to restart. Check: systemctl status mihomo"
+  fi
+else
+  warn "Mihomo service not installed/active. Install with: bash deploy/install.sh"
+fi
+
+# ============================================================
+# STEP 6: PM2 RELOAD (zero-downtime with env update)
+# ============================================================
+step "6/7 Reloading PM2 with updated env"
 
 pm2 reload "$PM2_NAME" --update-env
 sleep 3
 
 # ============================================================
-# STEP 6: HEALTH CHECKS
+# STEP 7: HEALTH CHECKS
 # ============================================================
-step "6/6 Health checks"
+step "7/7 Health checks"
 
 # PM2 status
 if pm2 show "$PM2_NAME" 2>/dev/null | grep -q "online"; then
@@ -128,6 +146,13 @@ if curl -sf http://127.0.0.1:3000/ | grep -q '<!doctype html>'; then
   info "Frontend: OK"
 else
   error "Frontend not served correctly"
+fi
+
+# Test proxy connectivity
+if curl -sf -x http://127.0.0.1:7890 -I https://ichef.bbci.co.uk/news/ -o /dev/null --max-time 10; then
+  info "Mihomo proxy connectivity: OK"
+else
+  warn "Mihomo proxy test failed (may need proxy configuration in config.yaml)"
 fi
 
 echo ""

@@ -76,7 +76,7 @@ info "npm $(npm -v) ✓"
 # ============================================================
 # STEP 1: SYSTEM PACKAGES (require sudo)
 # ============================================================
-step "1/10 Installing system packages"
+step "1/11 Installing system packages"
 sudo apt-get update -qq
 sudo apt-get install -y -qq nginx sqlite3 build-essential curl gnupg2
 
@@ -88,9 +88,151 @@ fi
 info "PM2 $(pm2 -v) ready"
 
 # ============================================================
+# STEP 1b: INSTALL MIHOMO PROXY
+# ============================================================
+step "1b/11 Installing Mihomo proxy"
+
+# Check if mihomo exists
+if ! command -v mihomo &>/dev/null; then
+  info "Mihomo not found, installing v1.19.30..."
+  MIHOMO_VERSION="v1.19.30"
+  MIHOMO_ARCH="linux-amd64"
+  MIHOMO_URL="https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/mihomo-${MIHOMO_VERSION}-${MIHOMO_ARCH}.gz"
+  TMP_FILE="/tmp/mihomo.gz"
+  
+  info "Downloading Mihomo from: $MIHOMO_URL"
+  if ! curl -sfL "$MIHOMO_URL" -o "$TMP_FILE"; then
+    warn "Primary download failed, trying fallback mirror..."
+    MIHOMO_URL="https://ghfast.top/https://github.com/MetaCubeX/mihomo/releases/download/${MIHOMO_VERSION}/mihomo-${MIHOMO_VERSION}-${MIHOMO_ARCH}.gz"
+    curl -sfL "$MIHOMO_URL" -o "$TMP_FILE" || error "Failed to download Mihomo"
+  fi
+  
+  info "Extracting and installing to /usr/local/bin/mihomo..."
+  gunzip -c "$TMP_FILE" > /tmp/mihomo
+  sudo mv /tmp/mihomo /usr/local/bin/mihomo
+  sudo chmod +x /usr/local/bin/mihomo
+  rm -f "$TMP_FILE"
+  info "Mihomo $(mihomo -v 2>&1 | head -1) installed"
+else
+  info "Mihomo already installed: $(mihomo -v 2>&1 | head -1)"
+fi
+
+# Create config directory
+sudo mkdir -p /etc/mihomo
+
+# Download geoip database
+GEOIP_URL="https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.metadb"
+GEOIP_DEST="/etc/mihomo/geoip.metadb"
+if [ ! -f "$GEOIP_DEST" ]; then
+  info "Downloading geoip database..."
+  curl -sfL "$GEOIP_URL" -o "$GEOIP_DEST" || warn "Failed to download geoip database"
+else
+  info "Geoip database already exists"
+fi
+
+# Create minimal config.yaml if not exists
+MIHOMO_CONFIG="/etc/mihomo/config.yaml"
+if [ ! -f "$MIHOMO_CONFIG" ]; then
+  info "Creating default Mihomo config..."
+  sudo tee "$MIHOMO_CONFIG" > /dev/null <<'EOF'
+port: 7890
+socks-port: 7891
+mixed-port: 7892
+allow-lan: false
+bind-address: "127.0.0.1"
+mode: rule
+log-level: info
+ipv6: false
+external-controller: "127.0.0.1:9090"
+secret: ""
+external-ui: ""
+external-ui-url: ""
+
+# DNS
+dns:
+  enable: true
+  listen: "127.0.0.1:5353"
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  default-nameserver:
+    - 223.5.5.5
+    - 114.114.114.114
+  nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  fallback:
+    - https://dns.google/dns-query
+    - https://cloudflare-dns.com/dns-query
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+
+proxies: []
+
+proxy-groups:
+  - name: "PROXY"
+    type: select
+    proxies:
+      - DIRECT
+  - name: "DIRECT"
+    type: select
+    proxies:
+      - DIRECT
+
+rules:
+  - GEOIP,CN,DIRECT
+  - MATCH,PROXY
+
+geoip:
+  url: "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.metadb"
+  path: "/etc/mihomo/geoip.metadb"
+EOF
+  info "Default config created at $MIHOMO_CONFIG (add proxies manually if needed)"
+fi
+
+# Create systemd service
+MIHOMO_SERVICE="/etc/systemd/system/mihomo.service"
+if [ ! -f "$MIHOMO_SERVICE" ]; then
+  info "Creating systemd service for Mihomo..."
+  sudo tee "$MIHOMO_SERVICE" > /dev/null <<'EOF'
+[Unit]
+Description=Mihomo Proxy Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/mihomo -d /etc/mihomo
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  info "Systemd service created"
+fi
+
+# Enable and start Mihomo
+info "Enabling and starting Mihomo service..."
+sudo systemctl daemon-reload
+sudo systemctl enable mihomo
+sudo systemctl restart mihomo
+
+# Wait for mihomo to start
+sleep 2
+if systemctl is-active --quiet mihomo; then
+  info "Mihomo service: ACTIVE"
+else
+  warn "Mihomo service may not be running properly. Check: systemctl status mihomo"
+fi
+
+# ============================================================
 # STEP 2: CLEAN LEGACY DEPLOYMENT
 # ============================================================
-step "2/10 Cleaning legacy deployment artifacts"
+step "2/11 Cleaning legacy deployment artifacts"
 
 # Remove old systemd service (Node should NOT be managed by systemd)
 if [ -f /etc/systemd/system/deepread.service ]; then
@@ -118,7 +260,7 @@ fi
 # ============================================================
 # STEP 3: DIRECTORY STRUCTURE (sudo for creation + chown)
 # ============================================================
-step "3/10 Creating directory structure"
+step "3/11 Creating directory structure"
 
 sudo mkdir -p "$APP_DIR" "$DATA_DIR" "$BACKUP_DIR" "$UPLOAD_DIR" "$LOG_DIR"
 sudo chown -R "$CURRENT_USER:$CURRENT_USER" "$APP_DIR" "$DATA_DIR"
@@ -128,7 +270,7 @@ info "Directories created and owned by $CURRENT_USER"
 # ============================================================
 # STEP 4: CLONE REPOSITORY
 # ============================================================
-step "4/10 Cloning repository"
+step "4/11 Cloning repository"
 
 if [ -d "${APP_DIR}/.git" ]; then
   warn "Repository already exists at $APP_DIR. Skipping clone."
@@ -141,7 +283,7 @@ fi
 # ============================================================
 # STEP 5: ENVIRONMENT CONFIGURATION
 # ============================================================
-step "5/10 Configuring production environment"
+step "5/11 Configuring production environment"
 
 cd "$APP_DIR"
 
@@ -176,7 +318,7 @@ grep -q '^DATABASE_PATH=/data/deepread/app.db' "$ENV_FILE" && info "DATABASE_PAT
 # ============================================================
 # STEP 6: DEPENDENCIES
 # ============================================================
-step "6/10 Installing dependencies"
+step "6/11 Installing dependencies"
 
 info "Root dependencies (npm ci)..."
 npm ci
@@ -191,7 +333,7 @@ fi
 # ============================================================
 # STEP 7: DATABASE MIGRATIONS
 # ============================================================
-step "7/10 Running database migrations"
+step "7/11 Running database migrations"
 if [ -f "${APP_DIR}/deploy/migrate.sh" ]; then
   bash "${APP_DIR}/deploy/migrate.sh"
 else
@@ -201,7 +343,7 @@ fi
 # ============================================================
 # STEP 8: FRONTEND BUILD
 # ============================================================
-step "8/10 Building frontend"
+step "8/11 Building frontend"
 
 npm run build
 [ -f dist/index.html ] || error "Build failed: dist/index.html not found"
@@ -211,7 +353,7 @@ info "Frontend built: $ASSET_COUNT assets"
 # ============================================================
 # STEP 9: NGINX CONFIGURATION (sudo)
 # ============================================================
-step "9/10 Configuring Nginx"
+step "9/11 Configuring Nginx"
 
 [ -f "$NGINX_SRC" ] || error "Nginx template not found: $NGINX_SRC"
 sudo cp "$NGINX_SRC" "$NGINX_DEST"
@@ -225,7 +367,7 @@ info "Nginx configured and reloaded"
 # ============================================================
 # STEP 10: START PM2 (ubuntu user, NO sudo)
 # ============================================================
-step "10/10 Starting application via PM2"
+step "10/11 Starting application via PM2"
 
 [ -f "$ECOSYSTEM_FILE" ] || error "Ecosystem config not found: $ECOSYSTEM_FILE"
 pm2 start "$ECOSYSTEM_FILE"
@@ -241,6 +383,25 @@ if [ -n "$PM2_STARTUP_CMD" ]; then
   warn "============================================================"
 else
   info "PM2 startup already configured or detected automatically"
+fi
+
+# ============================================================
+# STEP 11: VERIFY MIHOMO PROXY WORKS
+# ============================================================
+step "11/11 Verifying Mihomo proxy"
+
+sleep 2
+if systemctl is-active --quiet mihomo; then
+  info "Mihomo service: ACTIVE"
+else
+  warn "Mihomo service not active. Check: systemctl status mihomo"
+fi
+
+# Test proxy connectivity
+if curl -sf -x http://127.0.0.1:7890 -I https://ichef.bbci.co.uk/news/ -o /dev/null --max-time 10; then
+  info "Mihomo proxy connectivity: OK"
+else
+  warn "Mihomo proxy test failed (may need proxy configuration in config.yaml)"
 fi
 
 # ============================================================

@@ -18,6 +18,10 @@ module.exports = {
         HOST: '127.0.0.1',
         PORT: 3000,
         DATABASE_PATH: '/data/deepread/app.db',
+        // Proxy configuration for outbound requests (e.g., downloading remote images)
+        HTTP_PROXY: 'http://127.0.0.1:7890',
+        HTTPS_PROXY: 'http://127.0.0.1:7890',
+        ALL_PROXY: 'http://127.0.0.1:7890',
       },
       // Restart if memory exceeds 500MB
       max_memory_restart: '500M',
