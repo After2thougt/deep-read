@@ -28,6 +28,40 @@ const tempUploadsRoot = path.resolve(__dirname, "..", "uploads", "temp");
 fs.mkdirSync(uploadsRoot, { recursive: true });
 fs.mkdirSync(tempUploadsRoot, { recursive: true });
 
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_DOWNLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * Common image processing: sharp rotate, resize to max 1600px, convert to WebP quality 80
+ * Returns { buffer, metadata, fileName }
+ */
+async function processImageBuffer(buffer, mimeType) {
+  if (!buffer.length || buffer.length > MAX_IMAGE_SIZE) {
+    throw new Error('Image size invalid or exceeds 10 MB limit.');
+  }
+  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
+    throw new Error('Only JPEG, PNG, GIF, and WebP images are allowed.');
+  }
+
+  const processed = sharp(buffer)
+    .rotate()
+    .resize({ width: 1600, withoutEnlargement: true })
+    .webp({ quality: 80 });
+  const processedBuffer = await processed.toBuffer();
+  const metadata = await sharp(processedBuffer).metadata();
+  const fileName = `${generateId('image')}.webp`;
+  return { buffer: processedBuffer, metadata, fileName };
+}
+
+/**
+ * Save processed image to temp uploads and return URL
+ */
+function saveImageToTemp(buffer, fileName) {
+  fs.writeFileSync(path.join(tempUploadsRoot, fileName), buffer, { flag: 'wx' });
+  return `/uploads/temp/${fileName}`;
+}
+
 function normalizeArticleBlocks(articleId, blocks) {
   if (!Array.isArray(blocks) || !blocks.length) {
     const article = db.prepare('SELECT content FROM articles WHERE id = ?').get(articleId);
@@ -1394,37 +1428,114 @@ app.delete('/api/articles/:id/tags/:tagId', (req, res) => {
 
 app.post('/api/articles/images', async (req, res) => {
   const { data, mimeType } = req.body || {};
-  const allowed = new Map([
-    ['image/jpeg', 'webp'],
-    ['image/png', 'webp'],
-    ['image/gif', 'webp'],
-    ['image/webp', 'webp'],
-  ]);
-  const extension = allowed.get(mimeType);
-  if (!extension || typeof data !== 'string') return res.status(400).json({ error: 'Only JPEG, PNG, GIF, and WebP images are allowed.' });
+  if (typeof data !== 'string') return res.status(400).json({ error: 'Invalid image data.' });
   const match = data.match(/^data:([^;]+);base64,(.+)$/);
-  if (!match || match[1] !== mimeType) return res.status(400).json({ error: 'Invalid image data.' });
+  if (!match) return res.status(400).json({ error: 'Invalid image data format.' });
+  const detectedMimeType = match[1];
+  if (detectedMimeType !== mimeType) return res.status(400).json({ error: 'MIME type mismatch.' });
   let buffer;
   try { buffer = Buffer.from(match[2], 'base64'); } catch { return res.status(400).json({ error: 'Invalid image data.' }); }
-  if (!buffer.length || buffer.length > 10 * 1024 * 1024) return res.status(413).json({ error: 'Image must be smaller than 10 MB.' });
 
-  // Process image with sharp: rotate by EXIF, resize max 1600px, convert to WebP quality 80
-  let processedBuffer;
-  let metadata;
   try {
-    const processed = sharp(buffer)
-      .rotate()
-      .resize({ width: 1600, withoutEnlargement: true })
-      .webp({ quality: 80 });
-    processedBuffer = await processed.toBuffer();
-    metadata = await sharp(processedBuffer).metadata();
-  } catch (err) {
+    const { buffer: processedBuffer, fileName } = await processImageBuffer(buffer, mimeType);
+    const tempUrl = saveImageToTemp(processedBuffer, fileName);
+    return res.status(201).json({ path: tempUrl, url: tempUrl });
+  } catch (error) {
+    if (error.message?.includes('exceeds') || error.message?.includes('allowed') || error.message?.includes('invalid')) {
+      return res.status(400).json({ error: error.message });
+    }
     return res.status(400).json({ error: 'Failed to process image.' });
   }
+});
 
-  const fileName = `${generateId('image')}.webp`;
-  fs.writeFileSync(path.join(tempUploadsRoot, fileName), processedBuffer, { flag: 'wx' });
-  return res.status(201).json({ path: `/uploads/temp/${fileName}`, url: `/uploads/temp/${fileName}` });
+/**
+ * POST /api/articles/images/from-url
+ * Download remote image, process it, and save to temp uploads
+ * Security: validates protocol, limits size, validates content-type
+ */
+app.post('/api/articles/images/from-url', async (req, res) => {
+  const { url } = req.body || {};
+  if (typeof url !== 'string' || !url.trim()) {
+    return res.status(400).json({ error: 'URL is required.' });
+  }
+
+  // Basic SSRF protection: only allow http/https
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL.' });
+  }
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    return res.status(400).json({ error: 'Only HTTP/HTTPS URLs are allowed.' });
+  }
+  // Block private IP ranges (basic SSRF mitigation)
+  const hostname = parsedUrl.hostname;
+  const isPrivateIp = /^(10.|192.168.|172.(1[6-9]|2[0-9]|3[0-1]).|127.|169.254.|::1$|fe80::)/i.test(hostname);
+  if (isPrivateIp) {
+    return res.status(400).json({ error: 'Access to private IP addresses is not allowed.' });
+  }
+
+  try {
+    // Download with size limit and timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; DeepRead/1.0)',
+      },
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return res.status(400).json({ error: `Failed to download image: HTTP ${response.status}` });
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      return res.status(400).json({ error: 'URL does not point to an image.' });
+    }
+
+    // Check content-length if available
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && parseInt(contentLength, 10) > MAX_DOWNLOAD_SIZE) {
+      return res.status(413).json({ error: 'Image exceeds maximum download size (10 MB).' });
+    }
+
+    // Stream download with size limit enforcement
+    const chunks = [];
+    let totalSize = 0;
+    const reader = response.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      totalSize += value.length;
+      if (totalSize > MAX_DOWNLOAD_SIZE) {
+        return res.status(413).json({ error: 'Image exceeds maximum download size (10 MB).' });
+      }
+    }
+    const buffer = Buffer.concat(chunks);
+
+    // Process using common function
+    const { buffer: processedBuffer, fileName } = await processImageBuffer(buffer, contentType);
+    
+    // Save to temp
+    const tempUrl = saveImageToTemp(processedBuffer, fileName);
+    
+    return res.status(201).json({ path: tempUrl, url: tempUrl });
+  } catch (error) {
+    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+      return res.status(408).json({ error: 'Image download timed out.' });
+    }
+    if (error.message?.includes('Invalid image data') || error.message?.includes('exceeds') || error.message?.includes('allowed')) {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error('Download image error:', error);
+    return res.status(500).json({ error: 'Failed to download and process image.' });
+  }
 });
 
 app.get('/api/articles/:id', (req, res) => {
