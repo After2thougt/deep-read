@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronLeft, FilePlus2, Pencil, Save, Upload } from "lucide-react";
-import { uploadArticleImage } from "../../api/articles";
+import { uploadArticleImage, uploadArticleImageFromUrl } from "../../api/articles";
 import { initialEditorBlocks, editorSourceSignature } from "./article-editor-draft";
 import useDraft from "../../hooks/useDraft";
 import "./article-editor.css";
@@ -130,7 +130,229 @@ export default function ArticleInput({
     return out.length ? out : [{ type: "text", content: "" }];
   }
 
-  /** Returns the index of `descendant` among the childNodes of `parent`,
+  
+/** Convert data URL to File object for upload */
+function dataUrlToFile(dataUrl, fileName) {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  const mimeType = match[1];
+  const base64 = match[2];
+  const byteString = atob(base64);
+  const arrayBuffer = new ArrayBuffer(byteString.length);
+  const uint8Array = new Uint8Array(arrayBuffer);
+  for (let i = 0; i < byteString.length; i++) {
+    uint8Array[i] = byteString.charCodeAt(i);
+  }
+  const blob = new Blob([arrayBuffer], { type: mimeType });
+  return new File([blob], fileName, { type: mimeType });
+}
+
+/** Parse HTML from clipboard and extract DeepRead blocks in order
+ *  Returns array of { type: 'text'|'image', content, tempSrc? }
+ *  For images: content is the original src, tempSrc marks it needs upload
+ */
+function parseHtmlToBlocks(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  // Remove unwanted elements
+  const unwantedSelectors = 'script, style, noscript, iframe, form, input, button, select, textarea, nav, header, footer, aside, .ad, .advertisement, [class*="ad-"], [id*="ad-"]';
+  doc.querySelectorAll(unwantedSelectors).forEach(el => el.remove());
+  
+  // Get body content
+  const body = doc.body;
+  
+  // We'll traverse the DOM and build blocks in order
+  const blocks = [];
+  
+  function traverse(node) {
+    // Skip comment nodes
+    if (node.nodeType === Node.COMMENT_NODE) return;
+    
+    // Handle text nodes
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent?.trim();
+      if (text) {
+        blocks.push({ type: 'text', content: text });
+      }
+      return;
+    }
+    
+    // Handle element nodes
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = node.tagName.toLowerCase();
+      
+      // Handle images
+      if (tagName === 'img') {
+        const src = node.getAttribute('src') || '';
+        if (src) {
+          blocks.push({ type: 'image', content: src, tempSrc: src });
+        }
+        return;
+      }
+      
+      // Handle block-level elements - add text content, then recurse for nested images
+      const blockTags = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'ul', 'ol', 'li', 'br', 'hr'];
+      const isBlock = blockTags.includes(tagName);
+      
+      // For block elements, get text content first
+      if (isBlock) {
+        // Extract text content (excluding images which we handle separately)
+        let textContent = '';
+        for (const child of node.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) {
+            textContent += child.textContent;
+          }
+        }
+        textContent = textContent.trim();
+        if (textContent) {
+          blocks.push({ type: 'text', content: textContent });
+        }
+      }
+      
+      // Recurse into children
+      for (const child of node.childNodes) {
+        traverse(child);
+      }
+      
+      // Add line break after block elements (except br, hr)
+      if (isBlock && !['br', 'hr'].includes(tagName)) {
+        // We'll let compactBlocks handle empty blocks
+      }
+    }
+  }
+  
+  traverse(body);
+  
+  // Post-process: merge consecutive text blocks
+  const merged = [];
+  for (const block of blocks) {
+    if (block.type === 'text' && merged.length > 0 && merged[merged.length - 1].type === 'text') {
+      merged[merged.length - 1].content += '\n\n' + block.content;
+    } else {
+      merged.push(block);
+    }
+  }
+  
+  return merged.length ? merged : [{ type: 'text', content: '' }];
+}
+
+/** Insert multiple blocks at cursor position, maintaining order */
+async function insertBlocksAtCursor(blocksToInsert) {
+  const sel = window.getSelection();
+  let range = null;
+  if (sel?.rangeCount) {
+    range = sel.getRangeAt(0).cloneRange();
+  }
+  
+  // Find reference node for insertion (the node after which we'll insert)
+  let refNode = null;
+  if (
+    range &&
+    editorRef.current &&
+    editorRef.current.contains(range.commonAncestorContainer)
+  ) {
+    let cursorChild = range.commonAncestorContainer;
+    while (cursorChild && cursorChild.parentNode !== editorRef.current) {
+      cursorChild = cursorChild.parentNode;
+    }
+    if (cursorChild && cursorChild.parentNode === editorRef.current) {
+      // If cursor is inside a text block, insert after that block
+      if (cursorChild.classList?.contains('article-editor-text')) {
+        refNode = cursorChild.nextSibling;
+      } else {
+        refNode = cursorChild;
+      }
+    }
+  }
+  
+  // If no valid cursor position, append to end (refNode = null means append)
+  
+  let lastTextAnchor = null;
+  
+  for (let i = 0; i < blocksToInsert.length; i++) {
+    const block = blocksToInsert[i];
+    
+    if (block.type === 'text') {
+      // Create text block
+      const textBlock = createTextBlock(block.content);
+      if (refNode) {
+        editorRef.current.insertBefore(textBlock, refNode);
+      } else {
+        editorRef.current.appendChild(textBlock);
+      }
+      lastTextAnchor = textBlock;
+      // Next insertion should be after this text block
+      refNode = textBlock.nextSibling;
+    } else if (block.type === 'image') {
+      // Create placeholder for image
+      const placeholder = document.createElement('div');
+      placeholder.className = 'article-editor-image';
+      placeholder.setAttribute('contenteditable', 'false');
+      placeholder.textContent = 'Uploading image…';
+      placeholder.style.cssText = 'padding:16px 12px;color:#64748b;font-style:italic;text-align:center;';
+      
+      // Text anchor after image
+      const textAnchor = createTextBlock();
+      
+      // Insert placeholder, then textAnchor after it
+      if (refNode) {
+        editorRef.current.insertBefore(placeholder, refNode);
+        editorRef.current.insertBefore(textAnchor, refNode);
+      } else {
+        editorRef.current.appendChild(placeholder);
+        editorRef.current.appendChild(textAnchor);
+      }
+      
+      // Upload image
+      let finalUrl = '';
+      try {
+        if (block.tempSrc?.startsWith('data:')) {
+          // Data URL - convert to file and upload
+          const fileName = 'pasted-image-' + Date.now() + '-' + i + '.png';
+          const file = dataUrlToFile(block.tempSrc, fileName);
+          if (file) {
+            const result = await uploadArticleImage(file);
+            finalUrl = result?.url || result?.path || '';
+          }
+        } else if (block.tempSrc?.startsWith('http://') || block.tempSrc?.startsWith('https://')) {
+          // Remote URL - use backend proxy
+          const result = await uploadArticleImageFromUrl(block.tempSrc);
+          finalUrl = result?.url || result?.path || '';
+        } else {
+          // Already a local URL
+          finalUrl = block.tempSrc;
+        }
+        
+        if (finalUrl && placeholder.parentNode) {
+          const newWrapper = createImageWrapper(finalUrl);
+          placeholder.replaceWith(newWrapper);
+        } else if (!finalUrl) {
+          placeholder.textContent = 'Upload failed. Remove this block or try again.';
+          placeholder.style.color = '#b91c1c';
+        }
+      } catch (error) {
+        console.error('Image upload failed:', error);
+        placeholder.textContent = 'Upload failed. Remove this block or try again.';
+        placeholder.style.color = '#b91c1c';
+      }
+      
+      lastTextAnchor = textAnchor;
+      // Next insertion should be after the text anchor
+      refNode = textAnchor.nextSibling;
+    }
+  }
+  
+  // Place cursor in the last text anchor
+  if (lastTextAnchor) {
+    placeCursorInBlock(lastTextAnchor);
+  }
+  
+  ensureTrailingTextBlock();
+  syncNow();
+}
+
+/** Returns the index of `descendant` among the childNodes of `parent`,
    *  walking up through intermediate ancestors. */
   function childNodeIndexOf(parent, descendant) {
     let el = descendant;
@@ -346,7 +568,11 @@ export default function ArticleInput({
     const newBlocks = serializeDOMToBlocks();
     setBlocks(newBlocks);
     if (onBlocksChange) {
-      const imageBlocks = newBlocks.filter(b => b.type === "image");      ;      onBlocksChange(newBlocks);    }    if (onArticleChange) onArticleChange(blocksToText(newBlocks));
+      const imageBlocks = newBlocks.filter(b => b.type === "image");
+      ;
+      onBlocksChange(newBlocks);
+    }
+    if (onArticleChange) onArticleChange(blocksToText(newBlocks));
   }
 
   function handleInput() {
@@ -356,22 +582,60 @@ export default function ArticleInput({
       const newBlocks = serializeDOMToBlocks();
       const text = blocksToText(newBlocks);
       setBlocks(newBlocks);
-      if (onBlocksChange) {        const imageBlocks = newBlocks.filter(b => b.type === "image");        ;        onBlocksChange(newBlocks);      }      if (onArticleChange) onArticleChange(text);
+      if (onBlocksChange) {
+        const imageBlocks = newBlocks.filter(b => b.type === "image");
+        ;
+        onBlocksChange(newBlocks);
+      }
+      if (onArticleChange) onArticleChange(text);
     }, 300);
   }
 
   async function handlePaste(e) {
-    const items = e.clipboardData?.items;
-    if (!items) return;
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
 
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (!file) continue;
-        await insertImageAtCursor(file);
-        return;
+    const items = clipboardData.items;
+    
+    // First priority: direct image files (existing behavior)
+    if (items) {
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (!file) continue;
+          await insertImageAtCursor(file);
+          return;
+        }
       }
+    }
+
+    // Second priority: HTML content (web page copy)
+    const html = clipboardData.getData("text/html");
+    if (html) {
+      e.preventDefault();
+      
+      // Parse HTML to blocks
+      const blocks = parseHtmlToBlocks(html);
+      
+      // Check if there are any images to upload
+      const hasImages = blocks.some(b => b.type === 'image' && b.tempSrc);
+      
+      if (hasImages) {
+        // Insert blocks with upload handling
+        await insertBlocksAtCursor(blocks);
+      } else {
+        // Text only - insert as text blocks
+        const textContent = blocks
+          .filter(b => b.type === 'text')
+          .map(b => b.content)
+          .join('\n\n');
+        
+        // Insert at cursor
+        document.execCommand('insertText', false, textContent);
+        setTimeout(() => handleInput(), 10);
+      }
+      return;
     }
 
     // Plain-text paste: let browser handle it, then sync
@@ -714,7 +978,7 @@ export default function ArticleInput({
               onClick={onBackToArticles}
               type="button"
             >
-              <ChevronLeft size={18} /> Back to Articles
+              <ChevronLeft size={18} /> Back
             </button>
           )}
 
@@ -760,7 +1024,7 @@ export default function ArticleInput({
             onClick={onBackToArticles}
             type="button"
           >
-            <ChevronLeft size={18} /> Back to Articles
+            <ChevronLeft size={18} /> Back
           </button>
         )}
         <label className="upload-button">

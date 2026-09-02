@@ -65,6 +65,14 @@ export async function uploadArticleImage(file) {
   });
 }
 
+export async function uploadArticleImageFromUrl(url) {
+  return apiFetch('/api/articles/images/from-url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+}
+
 export async function removeArticle(id) {
   await apiFetch(`/api/articles/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
