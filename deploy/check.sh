@@ -165,15 +165,17 @@ fi
 
 echo ""
 echo "--- Mihomo Proxy ---"
-check "Mihomo installed" "command -v mihomo"
+check "Mihomo binary installed" "command -v mihomo"
 check "Mihomo service active" "systemctl is-active --quiet mihomo"
 check "Mihomo config exists" "[ -f /etc/mihomo/config.yaml ]"
 check "Mihomo geoip exists" "[ -f /etc/mihomo/geoip.metadb ]"
-# Test proxy connectivity to foreign site
+
+# Proxy connectivity test
+echo -n "  [INFO] Testing proxy connectivity... "
 if curl -sf -x http://127.0.0.1:7890 -I https://ichef.bbci.co.uk/news/ -o /dev/null --max-time 10 2>/dev/null; then
-  echo -e "$OK  Mihomo proxy connectivity (BBC test)"
+  echo -e "$OK  Proxy connectivity (BBC test)"
 else
-  echo -e "$ERROR  Mihomo proxy connectivity failed (BBC test)"
+  echo -e "$ERROR  Proxy connectivity failed (BBC test)"
   ((FAIL_COUNT++))
 fi
 
