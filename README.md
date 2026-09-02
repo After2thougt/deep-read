@@ -6,9 +6,9 @@ DeepRead helps you read English articles with built-in translation, grammar anal
 
 ## Features
 
-- **Article Reading** — Clean, distraction-free reading experience with pagination
-- **Translation** — Full-page and paragraph-level translation (Baidu, Tencent, OpenAI)
-- **AI Analysis** — Sentence-level grammar breakdown, key points, vocabulary extraction, literary analysis (OpenAI, Gemini)
+- **Article Reading** — Clean, distraction-free reading experience
+- **Translation** — Full-page and paragraph-level translation (Baidu LLM)
+- **AI Analysis** — Sentence-level grammar breakdown, key points, vocabulary extraction,phrase collocations (OpenAI)
 - **Grammar Analysis** — Difficulty rating, sentence structure mapping, Chinese explanations
 - **Vocabulary Management** — Spaced repetition (SM-2), context-aware saving, export to Eudic
 - **Dictionary Integration** — Merriam-Webster, Eudic sync, Wiktionary fallback
