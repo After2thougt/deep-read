@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "../utils/storage";
+import { generateId } from "../utils/id";
 
 const PREFIX = "deep-read-draft";
 const SAVE_DEBOUNCE = 1500;
@@ -12,7 +13,7 @@ export default function useDraft(articleId) {
   /* ---------- key helpers ---------- */
 
   function getTempId() {
-    if (!tempIdRef.current) tempIdRef.current = crypto.randomUUID();
+    if (!tempIdRef.current) tempIdRef.current = generateId("temp");
     return tempIdRef.current;
   }
 
