@@ -378,6 +378,33 @@ step "10/11 Starting application via PM2"
 pm2 start "$ECOSYSTEM_FILE"
 pm2 save
 
+# ============================================================
+# STEP 10b: AUTOMATIC GITHUB DEPLOYMENT
+# ============================================================
+step "10b/11 Configuring automatic GitHub deployment"
+
+DEPLOY_SERVICE="${APP_DIR}/deploy/deepread-deploy.service"
+DEPLOY_TIMER="${APP_DIR}/deploy/deepread-deploy.timer"
+DEPLOY_SCRIPT="${APP_DIR}/deploy/deepread-deploy.sh"
+
+[ -f "$DEPLOY_SERVICE" ] || error "Missing deployment service: $DEPLOY_SERVICE"
+[ -f "$DEPLOY_TIMER" ] || error "Missing deployment timer: $DEPLOY_TIMER"
+[ -f "$DEPLOY_SCRIPT" ] || error "Missing deployment script: $DEPLOY_SCRIPT"
+
+chmod +x "$DEPLOY_SCRIPT"
+
+sudo cp "$DEPLOY_SERVICE" /etc/systemd/system/deepread-deploy.service
+sudo cp "$DEPLOY_TIMER" /etc/systemd/system/deepread-deploy.timer
+
+sudo systemctl daemon-reload
+sudo systemctl enable deepread-deploy.timer
+sudo systemctl restart deepread-deploy.timer
+
+if systemctl is-active --quiet deepread-deploy.timer; then
+    info "Automatic GitHub deployment: ACTIVE"
+else
+    warn "Automatic GitHub deployment timer is not active"
+fi
 # PM2 systemd startup for ubuntu user (auto-configures on boot)
 info "Configuring PM2 startup for user: $PM2_USER, home: $PM2_HOME"
 PM2_STARTUP_CMD=$(pm2 startup systemd -u "$PM2_USER" --hp "$PM2_HOME" 2>&1 | grep '^sudo' || true)
