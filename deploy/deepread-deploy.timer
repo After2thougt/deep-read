@@ -1,0 +1,10 @@
+[Unit]
+Description=Check DeepRead GitHub updates every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=deepread-deploy.service
+
+[Install]
+WantedBy=timers.target

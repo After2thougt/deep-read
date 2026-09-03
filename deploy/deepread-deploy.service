@@ -1,0 +1,8 @@
+[Unit]
+Description=DeepRead automatic deployment
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/opt/deepread/app
+ExecStart=/opt/deepread/app/deploy/deepread-deploy.sh
