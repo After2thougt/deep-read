@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const https = require("https");
 const crypto = require("crypto");
 const sharp = require("sharp");
+const { ProxyAgent } = require("undici");
 
 function generateId(prefix = 'id') {
   // Avoid crypto.randomUUID() because some runtimes/polyfills may not expose it.
@@ -1482,6 +1483,7 @@ app.post('/api/articles/images/from-url', async (req, res) => {
     const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
     
     const response = await fetch(url, {
+      dispatcher: new ProxyAgent("http://127.0.0.1:7890"),
       signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; DeepRead/1.0)',
