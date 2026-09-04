@@ -1,9 +1,9 @@
 [Unit]
-Description=Check DeepRead GitHub updates every minute
+Description=Check DeepRead GitHub updates every 5 minutes
 
 [Timer]
 OnBootSec=1min
-OnUnitActiveSec=1min
+OnUnitActiveSec=5min
 Unit=deepread-deploy.service
 
 [Install]
