@@ -1450,9 +1450,11 @@ app.post('/api/articles/images', async (req, res) => {
 });
 
 /**
+ * /**
  * POST /api/articles/images/from-url
  * Download remote image, process it, and save to temp uploads
  * Security: validates protocol, limits size, validates content-type
+ * Proxy: configurable via IMAGE_DOWNLOAD_PROXY env var (e.g., http://127.0.0.1:7890)
  */
 app.post('/api/articles/images/from-url', async (req, res) => {
   const { url } = req.body || {};
@@ -1477,27 +1479,45 @@ app.post('/api/articles/images/from-url', async (req, res) => {
     return res.status(400).json({ error: 'Access to private IP addresses is not allowed.' });
   }
 
+  // Build fetch options with optional proxy and proper headers
+  const fetchOptions = {
+    signal: AbortSignal.timeout(15000), // 15 second timeout (modern fetch)
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; DeepRead/1.0)',
+      'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7',
+      'Referer': parsedUrl.origin, // Helps with hotlink protection
+    },
+  };
+
+  // Optional proxy via environment variable
+  const proxyUrl = process.env.IMAGE_DOWNLOAD_PROXY;
+  if (proxyUrl) {
+    try {
+      fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+    } catch (e) {
+      console.warn('[ImageDownload] Invalid proxy URL, ignoring:', proxyUrl);
+    }
+  }
+
   try {
-    // Download with size limit and timeout
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-    
-    const response = await fetch(url, {
-      dispatcher: new ProxyAgent("http://127.0.0.1:7890"),
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; DeepRead/1.0)',
-      },
-    });
-    clearTimeout(timeout);
+    const response = await fetch(url, fetchOptions);
 
     if (!response.ok) {
-      return res.status(400).json({ error: `Failed to download image: HTTP ${response.status}` });
+      const errMsg = `Failed to download image: HTTP ${response.status} ${response.statusText}`;
+      console.error('[ImageDownload] HTTP error', { url, status: response.status, statusText: response.statusText });
+      return res.status(400).json({ error: errMsg });
     }
 
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.startsWith('image/')) {
+      console.error('[ImageDownload] Invalid content-type', { url, contentType });
       return res.status(400).json({ error: 'URL does not point to an image.' });
+    }
+    // Strict MIME type validation against allowed types
+    if (!ALLOWED_MIME_TYPES.has(contentType)) {
+      console.error('[ImageDownload] Disallowed MIME type', { url, contentType, allowed: [...ALLOWED_MIME_TYPES] });
+      return res.status(400).json({ error: `Unsupported image format: ${contentType}. Only JPEG, PNG, GIF, WebP are allowed.` });
     }
 
     // Check content-length if available
@@ -1520,6 +1540,11 @@ app.post('/api/articles/images/from-url', async (req, res) => {
       }
     }
     const buffer = Buffer.concat(chunks);
+    if (!buffer.length) {
+      console.error('[ImageDownload] Empty image data', { url });
+      return res.status(400).json({ error: 'Downloaded image is empty.' });
+    }
+    console.log('[ImageDownload] Downloaded', { url, contentType, size: buffer.length, finalUrl: response.url });
 
     // Process using common function
     const { buffer: processedBuffer, fileName } = await processImageBuffer(buffer, contentType);
@@ -1529,13 +1554,21 @@ app.post('/api/articles/images/from-url', async (req, res) => {
     
     return res.status(201).json({ path: tempUrl, url: tempUrl });
   } catch (error) {
-    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+    if (error.name === 'AbortError' || error.name === 'TimeoutError' || error.code === 'ETIMEDOUT') {
+      console.error('[ImageDownload] Timeout', { url, error: error.message });
       return res.status(408).json({ error: 'Image download timed out.' });
     }
     if (error.message?.includes('Invalid image data') || error.message?.includes('exceeds') || error.message?.includes('allowed')) {
       return res.status(400).json({ error: error.message });
     }
-    console.error('Download image error:', error);
+    // Detailed error logging for debugging
+    console.error('[ImageDownload] Failed', {
+      url,
+      message: error.message,
+      code: error.code,
+      cause: error.cause?.message,
+      stack: error.stack,
+    });
     return res.status(500).json({ error: 'Failed to download and process image.' });
   }
 });

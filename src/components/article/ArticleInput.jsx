@@ -162,19 +162,25 @@ function parseHtmlToBlocks(html) {
   // Get body content
   const body = doc.body;
   
-  // We'll traverse the DOM and build blocks in order
+  // We'll traverse the DOM in-order and build blocks sequentially
+  // This avoids double-processing text nodes inside block elements
   const blocks = [];
+  let currentText = '';
+  
+  function flushText() {
+    if (currentText.trim()) {
+      blocks.push({ type: 'text', content: currentText.trim() });
+      currentText = '';
+    }
+  }
   
   function traverse(node) {
     // Skip comment nodes
     if (node.nodeType === Node.COMMENT_NODE) return;
     
-    // Handle text nodes
+    // Handle text nodes - accumulate text
     if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent?.trim();
-      if (text) {
-        blocks.push({ type: 'text', content: text });
-      }
+      currentText += node.textContent;
       return;
     }
     
@@ -182,8 +188,9 @@ function parseHtmlToBlocks(html) {
     if (node.nodeType === Node.ELEMENT_NODE) {
       const tagName = node.tagName.toLowerCase();
       
-      // Handle images
+      // Handle images - flush accumulated text first, then add image block
       if (tagName === 'img') {
+        flushText();
         const src = node.getAttribute('src') || '';
         if (src) {
           blocks.push({ type: 'image', content: src, tempSrc: src });
@@ -191,50 +198,34 @@ function parseHtmlToBlocks(html) {
         return;
       }
       
-      // Handle block-level elements - add text content, then recurse for nested images
+      // Handle block-level elements - they create paragraph boundaries
       const blockTags = ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'ul', 'ol', 'li', 'br', 'hr'];
       const isBlock = blockTags.includes(tagName);
       
-      // For block elements, get text content first
       if (isBlock) {
-        // Extract text content (excluding images which we handle separately)
-        let textContent = '';
-        for (const child of node.childNodes) {
-          if (child.nodeType === Node.TEXT_NODE) {
-            textContent += child.textContent;
-          }
-        }
-        textContent = textContent.trim();
-        if (textContent) {
-          blocks.push({ type: 'text', content: textContent });
-        }
+        // Block elements create paragraph boundaries - flush current text
+        flushText();
       }
       
-      // Recurse into children
+      // Recurse into children (for nested images, etc.)
       for (const child of node.childNodes) {
         traverse(child);
       }
       
-      // Add line break after block elements (except br, hr)
+      // After block elements, add paragraph break (except br, hr which are inline-ish)
       if (isBlock && !['br', 'hr'].includes(tagName)) {
-        // We'll let compactBlocks handle empty blocks
+        // Paragraph boundary - text after this will start a new block
+        // flushText already called above, so next text starts fresh
       }
     }
   }
   
   traverse(body);
   
-  // Post-process: merge consecutive text blocks
-  const merged = [];
-  for (const block of blocks) {
-    if (block.type === 'text' && merged.length > 0 && merged[merged.length - 1].type === 'text') {
-      merged[merged.length - 1].content += '\n\n' + block.content;
-    } else {
-      merged.push(block);
-    }
-  }
+  // Flush any remaining text
+  flushText();
   
-  return merged.length ? merged : [{ type: 'text', content: '' }];
+  return blocks.length ? blocks : [{ type: 'text', content: '' }];
 }
 
 /** Insert multiple blocks at cursor position, maintaining order */
