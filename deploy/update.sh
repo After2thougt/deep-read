@@ -131,10 +131,18 @@ else
 fi
 
 # Test proxy connectivity from PM2 process perspective
-if curl -sf -x http://127.0.0.1:7890 -I https://ichef.bbci.co.uk/news/ -o /dev/null --max-time 10; then
-  info "Mihomo proxy connectivity: OK"
+# Test Mihomo proxy connectivity
+PROXY_STATUS=$(curl -sS \
+  -x http://127.0.0.1:7890 \
+  -o /dev/null \
+  -w '%{http_code}' \
+  https://www.bbc.com/ \
+  --max-time 10 || true)
+
+if [[ "$PROXY_STATUS" =~ ^[2-5][0-9][0-9]$ ]]; then
+  info "Mihomo proxy connectivity: OK (HTTP $PROXY_STATUS)"
 else
-  warn "Mihomo proxy test failed (may need proxy configuration in config.yaml)"
+  warn "Mihomo proxy test failed (HTTP $PROXY_STATUS)"
 fi
 
 echo ""
