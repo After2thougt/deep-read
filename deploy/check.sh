@@ -46,7 +46,7 @@ check() {
     return 0
   else
     echo -e "$ERROR  $label"
-    ((FAIL_COUNT++))
+    ((FAIL_COUNT++)) || true
     return 1
   fi
 }
@@ -59,7 +59,7 @@ check_warn() {
     return 0
   else
     echo -e "$WARN  $label"
-    ((WARN_COUNT++))
+    ((WARN_COUNT++)) || true
     return 1
   fi
 }
@@ -95,7 +95,7 @@ if [ -n "$PM2_USER" ] && [ "$PM2_USER" = "ubuntu" ]; then
   echo -e "$OK  PM2 running as ubuntu user"
 elif [ -n "$PM2_USER" ]; then
   echo -e "$ERROR  PM2 running as '$PM2_USER', expected 'ubuntu'"
-  ((FAIL_COUNT++))
+  ((FAIL_COUNT++)) || true
 else
   # Fallback: check PM2 daemon user via ps
   PM2_PID=$(pm2 show $PM2_NAME 2>/dev/null | grep 'pid' | head -1 | awk -F: '{print $2}' | xargs || echo "")
@@ -105,14 +105,14 @@ else
       echo -e "$OK  PM2 process owned by ubuntu"
     elif [ -n "$PM2_PROCESS_USER" ]; then
       echo -e "$ERROR  PM2 process owned by '$PM2_PROCESS_USER', expected 'ubuntu'"
-      ((FAIL_COUNT++))
+      ((FAIL_COUNT++)) || true
     else
       echo -e "$WARN  Could not determine PM2 process owner"
-      ((WARN_COUNT++))
+      ((WARN_COUNT++)) || true
     fi
   else
     echo -e "$WARN  Could not determine PM2 process owner"
-    ((WARN_COUNT++))
+    ((WARN_COUNT++)) || true
   fi
 fi
 
@@ -120,7 +120,7 @@ echo ""
 echo "--- Application Health ---"
 check "Health API responds" "curl -sf $HEALTH_ENDPOINT"
 HEALTH_RESP=$(curl -s "$HEALTH_ENDPOINT" 2>/dev/null || echo "")
-[ "$HEALTH_RESP" = '{"status":"ok"}' ] && echo -e "$OK  Health API returns OK" || { echo -e "$ERROR  Health API unexpected response: $HEALTH_RESP"; ((FAIL_COUNT++)); }
+[ "$HEALTH_RESP" = '{"status":"ok"}' ] && echo -e "$OK  Health API returns OK" || { echo -e "$ERROR  Health API unexpected response: $HEALTH_RESP"; ((FAIL_COUNT++)) || true; }
 
 check "Frontend served (port 3000)" "curl -sf http://127.0.0.1:3000/ | grep -q '<!doctype html>'"
 
@@ -130,7 +130,7 @@ if [ -n "$ASSET_JS" ]; then
   check "Frontend JS asset reachable" "curl -sf http://127.0.0.1:3000$ASSET_JS -o /dev/null"
 else
   echo -e "$WARN  Could not detect frontend JS asset reference"
-  ((WARN_COUNT++))
+  ((WARN_COUNT++)) || true
 fi
 
 echo ""
@@ -151,14 +151,14 @@ echo ""
 echo "--- Frontend Build ---"
 check "dist/index.html exists" "[ -f $APP_DIR/dist/index.html ]"
 ASSET_COUNT=$(find "$APP_DIR/dist/assets" -type f 2>/dev/null | wc -l)
-[ "$ASSET_COUNT" -gt 0 ] && echo -e "$OK  Frontend assets: $ASSET_COUNT files" || { echo -e "$ERROR  No frontend assets in dist/assets"; ((FAIL_COUNT++)); }
+[ "$ASSET_COUNT" -gt 0 ] && echo -e "$OK  Frontend assets: $ASSET_COUNT files" || { echo -e "$ERROR  No frontend assets in dist/assets"; ((FAIL_COUNT++)) || true; }
 
 echo ""
 echo "--- Code Quality ---"
 # Check for direct crypto.randomUUID usage (breaks HTTP/IP deployments)
 if grep -R "crypto.randomUUID" "$APP_DIR/src" "$APP_DIR/backend" --exclude="*.map" --exclude="*.md" 2>/dev/null | grep -v "generateId" | grep -v "avoid" | grep -v "Avoids" | grep -v "//" | grep -v "crypto.randomUUID is" | grep -q .; then
   echo -e "$ERROR  Found direct crypto.randomUUID usage (use generateId() instead)"
-  ((FAIL_COUNT++))
+  ((FAIL_COUNT++)) || true
 else
   echo -e "$OK  No direct crypto.randomUUID usage"
 fi
@@ -168,15 +168,15 @@ echo "--- Mihomo Proxy ---"
 check "Mihomo binary installed" "command -v mihomo"
 check "Mihomo service active" "systemctl is-active --quiet mihomo"
 check "Mihomo config exists" "[ -f /etc/mihomo/config.yaml ]"
-check "Mihomo geoip exists" "[ -f /etc/mihomo/geoip.metadb ]"
+check_warn "Mihomo geoip exists" "[ -f /etc/mihomo/geoip.metadb ]"
 
 # Proxy connectivity test
 echo -n "  [INFO] Testing proxy connectivity... "
-if curl -sf -x http://127.0.0.1:7890 -I https://ichef.bbci.co.uk/news/ -o /dev/null --max-time 10 2>/dev/null; then
+if curl -sf -x http://127.0.0.1:7890 https://www.bbc.com -o /dev/null --connect-timeout 10 --max-time 20 2>/dev/null; then
   echo -e "$OK  Proxy connectivity (BBC test)"
 else
   echo -e "$ERROR  Proxy connectivity failed (BBC test)"
-  ((FAIL_COUNT++))
+  ((FAIL_COUNT++)) || true
 fi
 
 echo ""

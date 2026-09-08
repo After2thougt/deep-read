@@ -1,5 +1,5 @@
 // PM2 Ecosystem Configuration for DeepRead
-// Usage: pm2 start deploy/ecosystem.config.js
+// Usage: pm2 start deploy/ecosystem.config.cjs
 
 const path = require('path');
 
@@ -38,8 +38,8 @@ module.exports = {
       // Logging
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
-      out_file: '/dev/null',
-      error_file: '/dev/null',
+      out_file: '/data/deepread/logs/deepread-out.log',
+      error_file: '/data/deepread/logs/deepread-error.log',
       // Wait for app to be ready
       wait_ready: false,
       listen_timeout: 5000,

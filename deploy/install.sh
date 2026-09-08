@@ -125,7 +125,17 @@ GEOIP_URL="https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/geoip.me
 GEOIP_DEST="/etc/mihomo/geoip.metadb"
 if [ ! -f "$GEOIP_DEST" ]; then
   info "Downloading geoip database..."
-  curl -sfL "$GEOIP_URL" -o "$GEOIP_DEST" || warn "Failed to download geoip database"
+  GEOIP_TMP="/tmp/geoip.metadb"
+  if curl -sfL "$GEOIP_URL" -o "$GEOIP_TMP"; then
+    sudo cp "$GEOIP_TMP" "$GEOIP_DEST"
+    sudo chown root:root "$GEOIP_DEST"
+    sudo chmod 644 "$GEOIP_DEST"
+    rm -f "$GEOIP_TMP"
+    info "Geoip database installed"
+  else
+    rm -f "$GEOIP_TMP"
+    warn "Failed to download geoip database"
+  fi
 else
   info "Geoip database already exists"
 fi
@@ -249,11 +259,10 @@ if [ -f /etc/systemd/system/deepread.service ]; then
   info "Legacy systemd service removed"
 fi
 
-# Remove old PM2 process if exists
-if pm2 list 2>/dev/null | grep -q "$PM2_NAME"; then
-  warn "Removing existing PM2 process: $PM2_NAME"
-  pm2 stop "$PM2_NAME" 2>/dev/null || true
-  pm2 delete "$PM2_NAME" 2>/dev/null || true
+# Do NOT delete an existing production PM2 process here.
+# It will be reloaded after the new build succeeds.
+if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+  info "Existing PM2 process found: $PM2_NAME — will reload after deployment."
 fi
 
 # Remove legacy nginx site
@@ -268,6 +277,7 @@ fi
 step "3/11 Creating directory structure"
 
 sudo mkdir -p "$APP_DIR" "$DATA_DIR" "$BACKUP_DIR" "$UPLOAD_DIR" "$LOG_DIR"
+sudo mkdir -p "$APP_DIR/uploads/articles"
 sudo chown -R "$CURRENT_USER:$CURRENT_USER" "$APP_DIR" "$DATA_DIR"
 sudo chmod 755 "$APP_DIR" "$DATA_DIR" "$BACKUP_DIR" "$UPLOAD_DIR" "$LOG_DIR"
 info "Directories created and owned by $CURRENT_USER"
@@ -375,7 +385,14 @@ info "Nginx configured and reloaded"
 step "10/11 Starting application via PM2"
 
 [ -f "$ECOSYSTEM_FILE" ] || error "Ecosystem config not found: $ECOSYSTEM_FILE"
-pm2 start "$ECOSYSTEM_FILE"
+
+if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+  info "Reloading existing PM2 process: $PM2_NAME"
+  pm2 reload "$ECOSYSTEM_FILE" --update-env
+else
+  info "Starting PM2 process: $PM2_NAME"
+  pm2 start "$ECOSYSTEM_FILE"
+fi
 pm2 save
 
 # ============================================================
@@ -407,15 +424,14 @@ else
 fi
 # PM2 systemd startup for ubuntu user (auto-configures on boot)
 info "Configuring PM2 startup for user: $PM2_USER, home: $PM2_HOME"
-PM2_STARTUP_CMD=$(pm2 startup systemd -u "$PM2_USER" --hp "$PM2_HOME" 2>&1 | grep '^sudo' || true)
+PM2_STARTUP_CMD=$(pm2 startup systemd -u "$PM2_USER" --hp "$PM2_HOME" 2>&1 | grep '^sudo' | tail -1 || true)
 if [ -n "$PM2_STARTUP_CMD" ]; then
-  warn "============================================================"
-  warn "  To enable PM2 auto-start on boot, run this command:"
-  warn "  $PM2_STARTUP_CMD"
-  warn "============================================================"
+  info "Applying PM2 systemd startup configuration..."
+  eval "$PM2_STARTUP_CMD"
 else
-  info "PM2 startup already configured or detected automatically"
+  info "PM2 startup already configured or no additional command required"
 fi
+pm2 save
 
 # ============================================================
 # STEP 11: VERIFY MIHOMO PROXY WORKS
@@ -430,7 +446,7 @@ else
 fi
 
 # Test proxy connectivity
-if curl -sf -x http://127.0.0.1:7890 -I https://ichef.bbci.co.uk/news/ -o /dev/null --max-time 10; then
+if curl -sf -x http://127.0.0.1:7890 https://www.bbc.com -o /dev/null --connect-timeout 10 --max-time 20; then
   info "Mihomo proxy connectivity: OK"
 else
   warn "Mihomo proxy test failed (may need proxy configuration in config.yaml)"
