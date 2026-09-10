@@ -1470,7 +1470,7 @@ function resetFont() {
       return;
     }
 
-    if (!article.trim()) {
+    if (!pageContent.trim()) {
       return;
     }
 
@@ -1531,7 +1531,7 @@ function resetFont() {
       return;
     }
 
-    if (!article.trim()) {
+    if (!pageContent.trim()) {
       return;
     }
 
