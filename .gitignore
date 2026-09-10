@@ -46,5 +46,6 @@ USER.md
 openclaw-workspace-state.json
 
 # Runtime files
-cookie.txt
+cookies.txt
 uploads/
+login_payload.json
