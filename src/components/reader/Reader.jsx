@@ -125,6 +125,9 @@ export default function Reader({
   analyzing = false,
   theme = "light",
   setTheme,
+  initialHighlightId = null,
+  initialHighlightStart = null,
+  initialHighlightEnd = null,
 }) {
 
   const contentRef = useRef(null);
@@ -344,6 +347,156 @@ export default function Reader({
       articleOffset,
     ]
   );
+
+  // Scroll to highlight on mount or when initialHighlightId changes
+  // Only runs when the highlight is actually on the current page (articleOffset <= start < pageEnd)
+  useEffect(() => {
+    if (!initialHighlightId) return;
+
+    // Find the target highlight
+    const targetHighlight = highlights.find(h => h.id === initialHighlightId);
+    if (!targetHighlight) return;
+
+    // Check if highlight is on the current page
+    // Highlight start/end are absolute positions in the full article
+    // articleOffset and pageEnd define the current page's range
+    const isOnCurrentPage = targetHighlight.start < pageEnd && targetHighlight.end > articleOffset;
+    if (!isOnCurrentPage) {
+      // Highlight is not on this page - wait for page change
+      return;
+    }
+
+    // Wait for the content to be rendered
+    const scrollToHighlight = () => {
+      const content = contentRef.current;
+      if (!content) return;
+
+      // Find all elements with data-text-start in the content
+      const elements = content.querySelectorAll('[data-text-start]');
+      let startElement = null;
+      let endElement = null;
+
+      for (const el of elements) {
+        const elStart = Number(el.dataset.textStart);
+        const elText = el.textContent || '';
+        const elEnd = elStart + elText.length;
+
+        // Check if this element overlaps with our highlight range
+        if (elStart < targetHighlight.end && elEnd > targetHighlight.start) {
+          if (!startElement) startElement = el;
+          endElement = el;
+        }
+      }
+
+      if (startElement) {
+        // Create a range that covers the highlight
+        const range = document.createRange();
+
+        // Find the exact text nodes and offsets within the startElement
+        const walker = document.createTreeWalker(
+          startElement,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
+
+        let startNode = null;
+        let startOffset = 0;
+        let endNode = null;
+        let endOffset = 0;
+
+        let currentPos = Number(startElement.dataset.textStart);
+
+        let node;
+        while (node = walker.nextNode()) {
+          const nodeLength = node.textContent.length;
+          const nodeStart = currentPos;
+          const nodeEnd = currentPos + nodeLength;
+
+          // Check if highlight start falls in this node
+          if (!startNode && targetHighlight.start >= nodeStart && targetHighlight.start <= nodeEnd) {
+            startNode = node;
+            startOffset = targetHighlight.start - nodeStart;
+          }
+
+          // Check if highlight end falls in this node
+          if (!endNode && targetHighlight.end >= nodeStart && targetHighlight.end <= nodeEnd) {
+            endNode = node;
+            endOffset = targetHighlight.end - nodeStart;
+          }
+
+          currentPos = nodeEnd;
+          if (startNode && endNode) break;
+        }
+
+        if (startNode && endNode) {
+          range.setStart(startNode, startOffset);
+          range.setEnd(endNode, endOffset);
+
+          // Get the bounding rect of the range
+          const rect = range.getBoundingClientRect();
+
+          // Scroll the element into view
+          const contentSection = content.querySelector('.content');
+          if (contentSection) {
+            const sectionRect = contentSection.getBoundingClientRect();
+            const scrollTop = contentSection.scrollTop;
+
+            // Calculate where the highlight is relative to the section
+            const highlightTop = rect.top - sectionRect.top + scrollTop;
+            const highlightBottom = highlightTop + rect.height;
+            const visibleTop = scrollTop;
+            const visibleBottom = scrollTop + contentSection.clientHeight;
+
+            // If highlight is not fully visible, scroll to it
+            if (highlightTop < visibleTop || highlightBottom > visibleBottom) {
+              contentSection.scrollTop = Math.max(0, highlightTop - contentSection.clientHeight / 3);
+            }
+          }
+
+          // Add a temporary visual emphasis
+          highlightElements(range);
+        }
+      }
+    };
+
+    // Use requestAnimationFrame to wait for render
+    const rafId = requestAnimationFrame(scrollToHighlight);
+    return () => cancelAnimationFrame(rafId);
+  }, [initialHighlightId, initialHighlightStart, initialHighlightEnd, highlights, articleOffset, pageEnd]);
+
+  // Add temporary visual emphasis to a highlight
+  function highlightElements(range) {
+    try {
+      // Create a temporary highlight marker
+      const marker = document.createElement('span');
+      marker.className = 'note-jump-highlight';
+      marker.style.cssText = 'background: #fef08a; border-radius: 2px; pointer-events: none; transition: background 1s ease-out;';
+      
+      // Clone the range contents and wrap with marker
+      const fragment = range.cloneContents();
+      marker.appendChild(fragment);
+      
+      // Replace the range with the marker
+      range.deleteContents();
+      range.insertNode(marker);
+      
+      // Remove the marker after animation, restoring original text
+      setTimeout(() => {
+        if (marker.parentNode) {
+          const parent = marker.parentNode;
+          while (marker.firstChild) {
+            parent.insertBefore(marker.firstChild, marker);
+          }
+          parent.removeChild(marker);
+          parent.normalize();
+        }
+      }, 1500);
+    } catch (e) {
+      // Silently ignore any DOM manipulation errors
+      console.debug('Highlight emphasis failed:', e);
+    }
+  }
 
 useEffect(() => {
 

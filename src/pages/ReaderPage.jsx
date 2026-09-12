@@ -963,6 +963,19 @@ const isNewArticle =
 
 const articleId = isNewArticle ? null : id;
 
+// Extract highlight info from location state (passed from Notes page)
+const [initialHighlightId, setInitialHighlightId] = useState(null);
+const [initialHighlightStart, setInitialHighlightStart] = useState(null);
+const [initialHighlightEnd, setInitialHighlightEnd] = useState(null);
+
+useEffect(() => {
+  if (location.state && location.state.highlightId) {
+    setInitialHighlightId(location.state.highlightId);
+    setInitialHighlightStart(location.state.highlightStart);
+    setInitialHighlightEnd(location.state.highlightEnd);
+  }
+}, [location]);
+
 // Render-time logging for debugging
 
 
@@ -1161,15 +1174,68 @@ function resetFont() {
 
 
 
+  // Calculate target page for highlight jump
+  const targetHighlightPage = useMemo(() => {
+    if (initialHighlightStart == null || initialHighlightEnd == null) return null;
+
+    // Calculate cumulative character offsets for each page
+    const pageOffsets = [];
+    let cumulative = 0;
+
+    if (hasBlocks) {
+      for (const page of blockPages) {
+        pageOffsets.push({
+          start: cumulative,
+          end: cumulative + page.text.length,
+        });
+        cumulative += page.text.length;
+      }
+    } else {
+      for (const page of pages) {
+        pageOffsets.push({
+          start: cumulative,
+          end: cumulative + page.length,
+        });
+        cumulative += page.length;
+      }
+    }
+
+    // Find the page that contains the highlight start
+    for (let i = 0; i < pageOffsets.length; i++) {
+      const { start, end } = pageOffsets[i];
+      if (initialHighlightStart >= start && initialHighlightStart < end) {
+        return i + 1; // 1-indexed page number
+      }
+      // Handle edge case: highlight at exact end of last page
+      if (i === pageOffsets.length - 1 && initialHighlightStart === end) {
+        return i + 1;
+      }
+    }
+
+    // Fallback: if highlight is beyond all pages, go to last page
+    if (pageOffsets.length > 0) {
+      return pageOffsets.length;
+    }
+
+    return null;
+  }, [hasBlocks, blockPages, pages, initialHighlightStart, initialHighlightEnd]);
+
+  // Navigate to target page when it's calculated and different from current
+  useEffect(() => {
+    if (targetHighlightPage && targetHighlightPage !== currentPage) {
+      changePage(targetHighlightPage);
+    }
+  }, [targetHighlightPage, currentPage]);
+
+  // Track when we've completed the highlight jump navigation
+  const highlightJumpCompleted = useRef(false);
+
+  // Reset highlight jump state when article changes
+  useEffect(() => {
+    highlightJumpCompleted.current = false;
+  }, [articleId]);
+
   const dictionaryExpanded =
-    analyzing ||
-    translating ||
-    Boolean(
-      (analysis &&
-        !studyResultsCollapsed) ||
-        (translations &&
-          !translationCollapsed)
-    );
 
 
   // Single page restoration effect
@@ -1872,6 +1938,9 @@ function resetFont() {
             }
             theme={theme}
             setTheme={setTheme}
+            initialHighlightId={initialHighlightId}
+            initialHighlightStart={initialHighlightStart}
+            initialHighlightEnd={initialHighlightEnd}
           />
 
           

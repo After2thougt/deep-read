@@ -1302,7 +1302,7 @@ app.get('/api/articles', async (req, res) => {
 
   try {
     const total = db.prepare(`SELECT COUNT(*) AS count FROM articles a ${where}`).get(...params).count;
-    const rows = db.prepare(`SELECT a.id, a.title,  a.created_at, a.updated_at, length(a.content) AS content_length
+    const rows = db.prepare(`SELECT a.id, a.title, a.highlights, a.created_at, a.updated_at, length(a.content) AS content_length
       FROM articles a ${where} ORDER BY ${sort} LIMIT ? OFFSET ?`)
       .all(...params, limit, (page - 1) * limit);
     const ids = rows.map((row) => row.id);
@@ -1322,7 +1322,15 @@ app.get('/api/articles', async (req, res) => {
       FROM tags t LEFT JOIN article_tags at ON at.tag_id = t.id
       GROUP BY t.id ORDER BY t.name COLLATE NOCASE`).all();
     return res.json({
-      items: rows.map((row) => ({ ...row, tags: tagsByArticle.get(row.id) || [] })),
+      items: rows.map((row) => {
+        let highlights = [];
+        try {
+          highlights = row.highlights ? JSON.parse(row.highlights) : [];
+        } catch {
+          highlights = [];
+        }
+        return { ...row, highlights, tags: tagsByArticle.get(row.id) || [] };
+      }),
       tags,
       total,
       allTotal,

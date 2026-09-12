@@ -7,6 +7,8 @@ import VocabularyPage from "./pages/VocabularyPage";
 import ArticlesPage from "./pages/ArticlesPage";
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
+import NotesPage from "./pages/NotesPage";
+import ArticleNotesPage from "./pages/ArticleNotesPage";
 import MigrationBanner from "./components/reader/MigrationBanner";
 import { fetchVocabulary } from "./api/vocabulary";
 import UserMenu from "./components/ui/UserMenu";
@@ -278,6 +280,13 @@ function AppRoutes({onLogout, username, authenticated}) {
             Vocabulary
           </NavLink>
 
+          <NavLink
+            to="/notes"
+            className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
+          >
+            Notes
+          </NavLink>
+
           <UserMenu
             username={username}
             onLogout={onLogout}
@@ -360,6 +369,14 @@ function AppRoutes({onLogout, username, authenticated}) {
         <Route
           path="/vocabulary"
           element={<VocabularyPage />}
+        />
+        <Route
+          path="/notes"
+          element={<NotesPage />}
+        />
+        <Route
+          path="/notes/:articleId"
+          element={<ArticleNotesPage />}
         />
         <Route
           path="/profile"

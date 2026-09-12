@@ -262,7 +262,7 @@ function Paragraph({
         className={classNames.join(" ")}
         style={underlineStyle}
         key={`${keyPrefix}-seg-${seg.start}-${seg.end}`}
-        data-text-start={seg.start - articleOffset}
+        data-text-start={seg.start}
         onClick={(event) => {
           const word = extractWordAtClick(event);
           if (word) onSelectWord(word);
