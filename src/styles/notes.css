@@ -340,6 +340,10 @@
   outline-offset: 2px;
 }
 
+[data-theme="dark"] .highlight-card:hover {
+  background: var(--bg-hover);
+}
+
 /* Highlight text - reading style, serif */
 .highlight-text {
   margin: 0;
@@ -352,7 +356,6 @@
   font-size: 16px;
   color: #222;
 }
-
 
 
 /* Note - inline with highlight, subtle */

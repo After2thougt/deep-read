@@ -124,7 +124,7 @@ export default function ArticleNotesPage() {
       <header className="notes-header">
         <Link to="/notes" className="back-link" aria-label="Back to Highlights">
           <ChevronLeft size={18} />
-          <span>Highlights</span>
+          <span>Back</span>
         </Link>
         <h1 className="article-title-main">{article.title}</h1>
         <time className="article-date" dateTime={article.updatedAt}>
