@@ -454,34 +454,28 @@
    Tag popup
 ========================= */
 
-.tag-popover-overlay {
-  position: absolute;
-
-  top: 180px;
-  right: 20px;
-
-  z-index: 20;
+.article-tags {
+  position: relative;
 }
 
+.add-tag-wrapper {
+  position: relative;
+  display: inline-block;
+}
 
 .tag-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
   width: 220px;
-
   padding: 10px;
-
   border: 1px solid #e2e8f0;
-
   border-radius: 12px;
-
   background: white;
-
-  box-shadow:
-    0 10px 25px rgba(15,23,42,.12);
-
-  animation:
-    tag-popover-show .15s ease-out;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+  z-index: 100;
+  animation: tag-popover-show 0.15s ease-out;
 }
-
 
 @keyframes tag-popover-show {
 

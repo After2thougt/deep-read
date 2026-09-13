@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
 import { ArrowUpDown, BookOpen, Check, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, X as XIcon } from "lucide-react";
 import { addArticleTag, clearArticleListCache, createTag, deleteTag, fetchArticle, fetchArticles, removeArticleTag, removeArticle, renameTag } from "../api/articles";
 import ConfirmModal from "../components/ui/ConfirmModal";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PAGE_SIZE = 10;
 
@@ -64,6 +64,7 @@ export default function ArticlesPage({
   const [error, setError] = useState("");
   const [articleToDelete, setArticleToDelete] = useState(null);
   const [editingArticle, setEditingArticle] = useState(null);
+  const tagPopoverRef = useRef(null);
   const [managing, setManaging] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,6 +145,22 @@ export default function ArticlesPage({
     } catch (err) { setError(err.message || "Unable to delete article."); }
   }
 
+  useEffect(() => {
+  if (!editingArticle) return;
+
+  const handleOutsideClick = (event) => {
+    if (!tagPopoverRef.current?.contains(event.target)) {
+      setEditingArticle(null);
+    }
+  };
+
+  document.addEventListener("mousedown", handleOutsideClick);
+
+  return () => {
+    document.removeEventListener("mousedown", handleOutsideClick);
+  };
+}, [editingArticle]);
+
   return <section className="articles-page">
     <div><p className="eyebrow">Your reading library</p><h2>Saved Articles</h2></div>
 
@@ -174,13 +191,120 @@ export default function ArticlesPage({
     {loading && !articles.length && <p className="side-message">Loading articles...</p>}
     {!loading && !articles.length && <p className="empty-vocabulary">{total ? "No articles match this tag." : "No saved articles yet."}</p>}
 
-    {articles.length > 0 && <div className="article-list">{articles.map((article) => <article className="article-list-item" key={article.id}>
-      <button className="article-open-button" onClick={() => openArticle(article)}><BookOpen size={20} /><span><strong>{article.title}</strong><small>{Number(article.contentLength || 0).toLocaleString()} characters · Created {new Date(article.createdAt).toLocaleDateString()} · Updated {new Date(article.updatedAt).toLocaleDateString()}</small></span></button>
-      <button className="icon-button" onClick={() => setArticleToDelete(article)} aria-label={`Delete ${article.title}`}><Trash2 size={18} /></button>
-      <div className="article-tags">{article.tags?.length ? article.tags.map((tag) => <span className="article-tag" key={tag.id}>{tag.name}</span>) : <span className="untagged-label">unlabel</span>}<button type="button" className="add-tag-button" onClick={() => setEditingArticle(article)}>+ Add tag</button></div>
-    </article>)}</div>}
+{articles.length > 0 && (
+  <div className="article-list">
+    {articles.map((article) => (
+      <article className="article-list-item" key={article.id}>
+        <button
+          className="article-open-button"
+          onClick={() => openArticle(article)}
+        >
+          <BookOpen size={20} />
+          <span>
+            <strong>{article.title}</strong>
+            <small>
+              {Number(article.contentLength || 0).toLocaleString()} characters ·
+              Created {new Date(article.createdAt).toLocaleDateString()} ·
+              Updated {new Date(article.updatedAt).toLocaleDateString()}
+            </small>
+          </span>
+        </button>
+
+        <button
+          className="icon-button"
+          onClick={() => setArticleToDelete(article)}
+          aria-label={`Delete ${article.title}`}
+        >
+          <Trash2 size={18} />
+        </button>
+
+        <div className="article-tags">
+  {article.tags?.length
+    ? article.tags.map((tag) => (
+        <span className="article-tag" key={tag.id}>
+          {tag.name}
+        </span>
+      ))
+    : <span className="untagged-label">unlabel</span>
+  }
+
+  <div
+    className="add-tag-wrapper"
+    ref={editingArticle?.id === article.id ? tagPopoverRef : null}
+  >
+    <button
+      type="button"
+      className="add-tag-button"
+      onClick={() => setEditingArticle(article)}
+    >
+      + Add tag
+    </button>
+
+    {editingArticle?.id === article.id && (
+      <div className="tag-popover">
+        <div className="tag-manager-header">
+          <h3>Add tag</h3>
+
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => setEditingArticle(null)}
+            aria-label="Close"
+          >
+            <XIcon size={18} />
+          </button>
+        </div>
+
+        {tags.map((tag) => (
+          <button
+            type="button"
+            className={`tag-option ${
+              (editingArticle.tags || []).some(
+                (item) => item.id === tag.id
+              )
+                ? "is-selected"
+                : ""
+            }`}
+            key={tag.id}
+            onClick={() => toggleArticleTag(editingArticle, tag)}
+          >
+            {(editingArticle.tags || []).some(
+              (item) => item.id === tag.id
+            ) ? (
+              <Check size={15} />
+            ) : (
+              <span className="tag-option-empty" />
+            )}
+
+            {tag.name}
+          </button>
+        ))}
+
+        <div className="tag-create-row">
+          <input
+            value={newTagName}
+            onChange={(event) => setNewTagName(event.target.value)}
+            placeholder="New tag"
+          />
+
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={addTag}
+          >
+            <Plus size={15} />
+            New tag
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+      </article>
+    ))}
+  </div>
+)}
     {totalPages > 1 && <div className="list-pagination"><button type="button" className="vocabulary-page-button" onClick={() => setPage((value) => value - 1)} disabled={page === 1} aria-label="Previous page"><ChevronLeft size={17} /></button><span>Page {page} of {totalPages}</span><button type="button" className="vocabulary-page-button" onClick={() => setPage((value) => value + 1)} disabled={page === totalPages} aria-label="Next page"><ChevronRight size={17} /></button></div>}
-    {editingArticle && <div className="tag-popover-overlay" onClick={() => setEditingArticle(null)}><div className="tag-popover" onClick={(event) => event.stopPropagation()}><div className="tag-manager-header"><h3>Add tag</h3><button className="icon-button" type="button" onClick={() => setEditingArticle(null)} aria-label="Close"><XIcon size={18} /></button></div>{tags.map((tag) => <button type="button" className={`tag-option ${(editingArticle.tags || []).some((item) => item.id === tag.id) ? "is-selected" : ""}`} key={tag.id} onClick={() => toggleArticleTag(editingArticle, tag)}>{(editingArticle.tags || []).some((item) => item.id === tag.id) ? <Check size={15} /> : <span className="tag-option-empty" />}{tag.name}</button>)}<div className="tag-create-row"><input value={newTagName} onChange={(event) => setNewTagName(event.target.value)} placeholder="New tag" /><button className="secondary-button" type="button" onClick={addTag}><Plus size={15} />New tag</button></div></div></div>}
     <ConfirmModal open={articleToDelete !== null} title="Delete article?" message={<>Are you sure you want to delete <strong>"{articleToDelete?.title}"</strong>?</>} onCancel={() => setArticleToDelete(null)} onConfirm={() => deleteArticle(articleToDelete)} />
   </section>;
 }
