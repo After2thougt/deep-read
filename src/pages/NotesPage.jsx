@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchArticles } from "../api/articles";
-import { clearArticleListCache } from "../api/articles";
 import { ChevronRight } from "lucide-react";
 
 export default function NotesPage() {
@@ -48,7 +47,7 @@ export default function NotesPage() {
       grouped.sort((a, b) => b.latestHighlightTime - a.latestHighlightTime);
       setArticlesWithHighlights(grouped);
     } catch (err) {
-      setError(err.message || "Failed to load notes.");
+      setError(err.message || "Failed to load highlight.");
     } finally {
       setLoading(false);
     }
@@ -65,17 +64,17 @@ export default function NotesPage() {
   }
 
   function getNoteCountLabel(count) {
-    return `${count} ${count === 1 ? "note" : "notes"}`;
+    return `${count} ${count === 1 ? "highlight" : "highlights"}`;
   }
 
   if (loading) {
     return (
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
-          <h1>Notes</h1>
+          <h1>Highlights</h1>
           <p className="notes-subtitle">Reading highlights</p>
         </header>
-        <p className="notes-loading">Loading notes...</p>
+        <p className="notes-loading">Loading highlights...</p>
       </section>
     );
   }
@@ -84,7 +83,7 @@ export default function NotesPage() {
     return (
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
-          <h1>Notes</h1>
+          <h1>Highlights</h1>
           <p className="notes-subtitle">Reading highlights</p>
         </header>
         <p className="notes-error">{error}</p>
@@ -96,11 +95,11 @@ export default function NotesPage() {
     return (
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
-          <h1>Notes</h1>
+          <h1>Highlights</h1>
           <p className="notes-subtitle">Reading highlights</p>
         </header>
         <div className="notes-empty">
-          <p>No notes yet</p>
+          <p>No highlights yet</p>
           <p className="notes-empty-hint">Highlight something while reading, and it will appear here.</p>
         </div>
       </section>
@@ -110,7 +109,7 @@ export default function NotesPage() {
   return (
     <section className="notes-page notes-overview-page">
       <header className="notes-header">
-        <h1>Notes</h1>
+        <h1>Highlights</h1>
         <p className="notes-subtitle">Reading highlights</p>
       </header>
 

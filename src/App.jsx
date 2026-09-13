@@ -284,7 +284,7 @@ function AppRoutes({onLogout, username, authenticated}) {
             to="/notes"
             className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
           >
-            Notes
+            Highlight
           </NavLink>
 
           <UserMenu
