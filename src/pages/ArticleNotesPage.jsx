@@ -41,7 +41,29 @@ export default function ArticleNotesPage() {
   event.stopPropagation();
 
   try {
-    await navigator.clipboard.writeText(highlight.text);
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(highlight.text);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = highlight.text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "0";
+      textarea.setAttribute("readonly", "");
+
+      document.body.appendChild(textarea);
+
+      textarea.focus();
+      textarea.select();
+
+      const successful = document.execCommand("copy");
+
+      document.body.removeChild(textarea);
+
+      if (!successful) {
+        throw new Error("Copy command failed");
+      }
+    }
 
     setCopiedHighlightId(highlight.id);
 
