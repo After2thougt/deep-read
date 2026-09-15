@@ -1,25 +1,101 @@
 import React, { useMemo } from "react";
 
 // Memoized vocabulary highlights per paragraph
-function useVocabularyHighlights(paragraphText, savedWords, blockStart, paragraphStart) {
+function useVocabularyHighlights(
+  paragraphText,
+  savedWords,
+  blockStart,
+  paragraphStart
+) {
   return useMemo(() => {
     if (!savedWords || savedWords.length === 0 || !paragraphText) {
       return [];
     }
 
     const highlights = [];
+
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function getWordForms(word) {
+      const normalized = word.toLowerCase().trim();
+
+      if (!normalized) {
+        return [];
+      }
+
+      const forms = new Set([normalized]);
+
+      // Plural / third-person singular
+      if (/[sxz]$|(?:ch|sh)$/.test(normalized)) {
+        forms.add(`${normalized}es`);
+      } else if (/[^aeiou]y$/.test(normalized)) {
+        forms.add(`${normalized.slice(0, -1)}ies`);
+      } else {
+        forms.add(`${normalized}s`);
+      }
+
+      // Past tense / past participle
+      if (/[^aeiou]y$/.test(normalized)) {
+        forms.add(`${normalized.slice(0, -1)}ied`);
+      } else if (/e$/.test(normalized)) {
+        forms.add(`${normalized}d`);
+      } else {
+        forms.add(`${normalized}ed`);
+      }
+
+      // Present participle
+      if (/ie$/.test(normalized)) {
+        forms.add(`${normalized.slice(0, -2)}ying`);
+      } else if (/e$/.test(normalized) && !/ee$/.test(normalized)) {
+        forms.add(`${normalized.slice(0, -1)}ing`);
+      } else {
+        forms.add(`${normalized}ing`);
+      }
+
+      // Adverb
+      if (/y$/.test(normalized)) {
+        forms.add(`${normalized.slice(0, -1)}ily`);
+      } else {
+        forms.add(`${normalized}ly`);
+      }
+
+      return [...forms];
+    }
+
     for (const word of savedWords) {
-      const regex = new RegExp(`\\b${word}(?:s|es|ed|ing|ly)?\\b`, "gi");
+      const forms = getWordForms(word);
+
+      if (forms.length === 0) {
+        continue;
+      }
+
+      const pattern = forms
+        .sort((a, b) => b.length - a.length)
+        .map(escapeRegExp)
+        .join("|");
+
+      const regex = new RegExp(`\\b(?:${pattern})\\b`, "gi");
+
       let match;
       while ((match = regex.exec(paragraphText)) !== null) {
         highlights.push({
-          start: blockStart + paragraphStart + match.index,
-          end: blockStart + paragraphStart + match.index + match[0].length,
+          start:
+            blockStart +
+            paragraphStart +
+            match.index,
+          end:
+            blockStart +
+            paragraphStart +
+            match.index +
+            match[0].length,
           text: match[0],
-          type: "vocabulary"
+          type: "vocabulary",
         });
       }
     }
+
     return highlights;
   }, [paragraphText, savedWords, blockStart, paragraphStart]);
 }
