@@ -76,7 +76,7 @@ function isHighlighted(start, end, highlights) {
       item.start < end &&
       item.end > start
   );
-}function getTextPosition(container, offset, root) {
+}function getTextPosition(container, offset, root, articleOffset = 0) {
   const textNode =
     container.nodeType === Node.TEXT_NODE
       ? container
@@ -102,7 +102,7 @@ function isHighlighted(start, end, highlights) {
     return null;
   }
 
-  return start + offset;
+  return start + offset - articleOffset;
 }
 
 
@@ -782,7 +782,8 @@ useEffect(() => {
       getTextPosition(
         range.startContainer,
         range.startOffset,
-        root
+        root,
+        articleOffset
       );
 
 
@@ -790,7 +791,8 @@ useEffect(() => {
       getTextPosition(
         range.endContainer,
         range.endOffset,
-        root
+        root,
+        articleOffset
       );
 
 

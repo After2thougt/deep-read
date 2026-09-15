@@ -1460,8 +1460,10 @@ function resetFont() {
 
 
   const saveUnderline = useCallback(async (underline) => {
+
     try {
       const newHighlights = [...highlightsState, underline];
+
       const savedArticle =
         await saveArticle({
           id: articleId,
@@ -1469,6 +1471,8 @@ function resetFont() {
           content: articleContent,
           highlights: newHighlights,
         });
+
+
 
       setHighlightsState(newHighlights);
       onArticleSaved(savedArticle);
@@ -1696,45 +1700,44 @@ function resetFont() {
 
 
   const selectWord = useCallback(async (word) => {
-    setLastWord(word);
+  setLastWord(word);
+  setWordStatus("loading");
+  setWordError("");
 
-    setWordStatus("loading");
-    setWordError("");
+  setSelectedWord(null);
+  setSaved(false);
+  setSynced(false);
+  setSyncMessage("");
 
-    setSelectedWord(null);
-    setSaved(false);
-    setSynced(false);
-    setSyncMessage("");
+  try {
+    const result = await getWordDefinition(word);
 
-    try {
-      const result =
-        await getWordDefinition(
-          word
-        );
-
-      const entry = {
-        ...result,
-        word:
-          result.word || word,
-      };
-
-      setSelectedWord(entry);
-
-      setSaved(
-        await isVocabularySaved(
-          entry.word
-        )
-      );
-
-      setWordStatus("success");
-    } catch {
-      setWordError(
-        "Unable to look up this word. Please try again."
-      );
-
+    if (result?.found === false) {
+      setWordError("No dictionary entry found.");
       setWordStatus("error");
+      return;
     }
-  }, []);
+
+    const entry = {
+      ...result,
+      word: result.word || word,
+    };
+
+    setSelectedWord(entry);
+
+    setSaved(
+      await isVocabularySaved(entry.word)
+    );
+
+    setWordStatus("success");
+  } catch {
+    setWordError(
+      "Unable to look up this word. Please try again."
+    );
+
+    setWordStatus("error");
+  }
+}, []);
 
 
   async function saveSelectedWord() {

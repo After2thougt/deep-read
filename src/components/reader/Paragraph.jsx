@@ -74,6 +74,18 @@ function useParagraphSegments(paragraph, blockStart, articleOffset, pageHighligh
         }
       }
 
+      const hasUnderline = types.has("underline");
+      
+      // Debug: only log segments that have underline or are near new highlights
+      if (hasUnderline) {
+        for (const hl of overlappingHighlights) {
+          if (hl.type === "underline" && hl.start <= segStart && hl.end >= segEnd) {
+            
+            break;
+          }
+        }
+      }
+
       segments.push({
         start: segStart,
         end: segEnd,
@@ -263,6 +275,7 @@ function Paragraph({
         style={underlineStyle}
         key={`${keyPrefix}-seg-${seg.start}-${seg.end}`}
         data-text-start={seg.start}
+        data-text-end={seg.end}
         onClick={(event) => {
           const word = extractWordAtClick(event);
           if (word) onSelectWord(word);

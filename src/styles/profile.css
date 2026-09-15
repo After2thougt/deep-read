@@ -147,7 +147,6 @@
 .profile-action-button:hover:not(:disabled) {
   background: var(--hover-bg, rgba(0,0,0,0.04));
 
-  border-color: var(--primary-color, #4f46e5);
 
   transform: translateY(-1px);
 }
@@ -173,7 +172,6 @@
 
 .profile-action-button--danger:hover {
   background: rgba(220,38,38,0.08);
-  border-color: rgba(220,38,38,0.4);
 }
 
 

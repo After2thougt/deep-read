@@ -1218,17 +1218,29 @@ app.get("/api/dictionary/:word", async (req, res) => {
   const word = req.params.word.trim().toLowerCase();
 
   if (!/^[a-z]+(?:'[a-z]+)?$/i.test(word)) {
-    return res.status(400).json({ error: "Please provide a single English word." });
+    return res.status(400).json({
+      error: "Please provide a single English word.",
+    });
   }
 
   try {
-    return res.json(await lookupWord(word));
+    const result = await lookupWord(word);
+
+    return res.json({
+      found: true,
+      ...result,
+    });
   } catch (error) {
     if (error.status === 404) {
-      return res.status(404).json({ error: `No dictionary entry found for “${word}”.` });
+      return res.json({
+        found: false,
+        word,
+      });
     }
 
-    return res.status(502).json({ error: "Dictionary service is temporarily unavailable." });
+    return res.status(502).json({
+      error: "Dictionary service is temporarily unavailable.",
+    });
   }
 });
 
@@ -1723,6 +1735,34 @@ app.delete('/api/articles/:id/analysis', async (req, res) => {
     return res.json({ deleted: result.changes });
   } catch (error) {
     return res.status(500).json({ error: 'Unable to clear the analysis cache.' });
+  }
+});
+
+app.get('/api/vocabulary/check/:word', async (req, res) => {
+  const word = req.params.word?.trim().toLowerCase();
+
+  if (!word) {
+    return res.status(400).json({ saved: false });
+  }
+
+  try {
+    const entry = db
+      .prepare('SELECT 1 FROM vocabulary WHERE word = ? LIMIT 1')
+      .get(word);
+
+    return res.json({ saved: Boolean(entry) });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/vocabulary/version', async (req, res) => {
+  try {
+    res.json({ version: 1 });
+  } catch (err) {
+    console.error('Failed to get vocabulary version:', err);
+    res.status(500).json({ error: 'Failed to get vocabulary version' });
   }
 });
 

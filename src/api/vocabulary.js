@@ -31,10 +31,12 @@ export function clearVocabularyCache() {
 }
 
 export async function isVocabularySaved(word) {
-  const resp = await fetch(`/api/vocabulary/${encodeURIComponent(word.toLowerCase())}`);
-  return resp.ok;
-}
+  const payload = await apiFetch(
+    `/api/vocabulary/check/${encodeURIComponent(word.toLowerCase())}`
+  );
 
+  return Boolean(payload.saved);
+}
 export async function saveVocabulary(entry) {
   const row = await apiFetch("/api/vocabulary", {
     method: "POST",
