@@ -3,7 +3,7 @@ import {
   MessageSquare,
   Pencil,
   Trash2,
-  ChevronDown
+  Copy
 } from "lucide-react";
 
 import ConfirmModal from "../ui/ConfirmModal";
@@ -18,8 +18,9 @@ export default function HighlightsPanel({
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [collapsed, setCollapsed] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [copiedHighlightId, setCopiedHighlightId] = useState(null);
 
-  // Auto-collapse when page changes (pageKey changes)
+  // Auto-collapse when page changes
   useEffect(() => {
     setCollapsed(true);
   }, [pageKey]);
@@ -35,6 +36,22 @@ export default function HighlightsPanel({
 
   function cancelNote() {
     setEditingNoteId(null);
+  }
+
+  async function copyHighlight(item) {
+    if (!item.text) return;
+
+    try {
+      await navigator.clipboard.writeText(item.text.trim());
+
+      setCopiedHighlightId(item.id);
+
+      setTimeout(() => {
+        setCopiedHighlightId(null);
+      }, 1500);
+    } catch (error) {
+      console.error("Failed to copy highlight:", error);
+    }
   }
 
   if (pageHighlights.length === 0) {
@@ -57,21 +74,59 @@ export default function HighlightsPanel({
               </span>
             </h3>
           </div>
-          <div className={`accordion-chevron ${collapsed ? "" : "open"}`}></div>
+
+          <div
+            className={`accordion-chevron ${
+              collapsed ? "" : "open"
+            }`}
+          ></div>
         </div>
 
-        <div className={`accordion-content ${!collapsed ? "expanded" : ""}`}>
+        <div
+          className={`accordion-content ${
+            !collapsed ? "expanded" : ""
+          }`}
+        >
           <div className="accordion-content-inner">
             {pageHighlights.map((item) => (
               <article className="underline-note" key={item.id}>
-                <p className="highlight-text">
-                  <span>{item.text.trim()}</span>
-                </p>
+
+                <div className="highlight-text-wrapper">
+                  <p className="highlight-text">
+                    <span>{item.text.trim()}</span>
+                  </p>
+
+                  <button
+                    type="button"
+                    className={`copy-highlight-button ${
+                      copiedHighlightId === item.id ? "copied" : ""
+                    }`}
+                    onClick={() => copyHighlight(item)}
+                    title={
+                      copiedHighlightId === item.id
+                        ? "Copied"
+                        : "Copy highlight"
+                    }
+                    aria-label={
+                      copiedHighlightId === item.id
+                        ? "Copied"
+                        : "Copy highlight"
+                    }
+                  >
+                    {copiedHighlightId === item.id ? (
+                      "✓"
+                    ) : (
+                      <Copy size={15} />
+                    )}
+                  </button>
+                </div>
 
                 {editingNoteId === item.id ? (
                   <NoteEditor
                     note={item.note || ""}
-                    onSave={(noteText) => saveNote(item, noteText)}
+                    onSave={(noteText) =>
+                      saveNote(item, noteText)
+                    }
                     onCancel={cancelNote}
                   />
                 ) : (
@@ -79,7 +134,10 @@ export default function HighlightsPanel({
                     {item.note && (
                       <div className="saved-note">
                         <MessageSquare size={16} />
-                        {item.note}
+
+                        <span className="saved-note-text">
+                          {item.note}
+                        </span>
                       </div>
                     )}
 
@@ -96,7 +154,9 @@ export default function HighlightsPanel({
                       <button
                         className="text-button delete-underline"
                         type="button"
-                        onClick={() => setDeleteTarget(item.id)}
+                        onClick={() =>
+                          setDeleteTarget(item.id)
+                        }
                         title="Remove underline"
                       >
                         <Trash2 size={16} />

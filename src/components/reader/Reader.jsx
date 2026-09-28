@@ -339,7 +339,8 @@ export default function Reader({
     () =>
       highlights.filter(
         (item) =>
-          item.start < pageEnd &&          item.end > articleOffset
+          item.start < pageEnd &&
+          item.end > articleOffset
       ),
     [
       highlights,
