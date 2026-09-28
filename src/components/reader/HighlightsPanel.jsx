@@ -39,20 +39,43 @@ export default function HighlightsPanel({
   }
 
   async function copyHighlight(item) {
-    if (!item.text) return;
+  if (!item.text) return;
 
-    try {
-      await navigator.clipboard.writeText(item.text.trim());
+  try {
+    const text = item.text.trim();
 
-      setCopiedHighlightId(item.id);
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
 
-      setTimeout(() => {
-        setCopiedHighlightId(null);
-      }, 1500);
-    } catch (error) {
-      console.error("Failed to copy highlight:", error);
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "0";
+
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      const success = document.execCommand("copy");
+
+      textarea.remove();
+
+      if (!success) {
+        throw new Error("Copy command failed");
+      }
     }
+
+    setCopiedHighlightId(item.id);
+
+    setTimeout(() => {
+      setCopiedHighlightId(null);
+    }, 1500);
+  } catch (error) {
+    console.error("Failed to copy highlight:", error);
   }
+}
 
   if (pageHighlights.length === 0) {
     return null;
