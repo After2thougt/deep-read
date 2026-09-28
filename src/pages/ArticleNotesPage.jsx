@@ -12,6 +12,10 @@ export default function ArticleNotesPage() {
   const [error, setError] = useState("");
   const [selectedHighlightId, setSelectedHighlightId] = useState(null);
   const [copiedHighlightId, setCopiedHighlightId] = useState(null);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const highlightsPerPage = 10;
 
   useEffect(() => {
     loadArticleNotes();
@@ -28,8 +32,12 @@ export default function ArticleNotesPage() {
       }
       setArticle(result);
       const articleHighlights = result.highlights || [];
-      const sortedHighlights = [...articleHighlights].sort((a, b) => (a.start || 0) - (b.start || 0));
+      const sortedHighlights = [...articleHighlights].sort(
+        (a, b) => (a.start || 0) - (b.start || 0)
+      );
+
       setHighlights(sortedHighlights);
+      setCurrentPage(1);
     } catch (err) {
       setError(err.message || "Failed to load notes.");
     } finally {
@@ -98,6 +106,19 @@ export default function ArticleNotesPage() {
     return `${count} ${count === 1 ? "note" : "notes"}`;
   }
 
+  const totalPages = Math.ceil(highlights.length / highlightsPerPage);
+
+  const startIndex = (currentPage - 1) * highlightsPerPage;
+
+  const currentHighlights = highlights.slice(
+  startIndex,
+  startIndex + highlightsPerPage
+  );
+
+function goToPage(page) {
+  setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+}
+
   if (loading) {
     return (
       <section className="notes-page article-notes-page">
@@ -162,58 +183,101 @@ export default function ArticleNotesPage() {
       ) : (
         <div className="notes-list">
           <div className="article-card highlight-list-card">
-            <div className="highlight-cards">
-              {highlights.map((highlight) => (
-  <div
-  key={highlight.id}
-  className={`highlight-card ${
-    selectedHighlightId === highlight.id ? "is-selected" : ""
-  }`}
-  onClick={() => handleHighlightClick(highlight)}
-  tabIndex={0}
-  onKeyDown={(e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      handleHighlightClick(highlight);
-    }
-  }}
->
-  <Highlighter
-    className="highlight-note-icon"
-    size={18}
-    aria-hidden="true"
-  />
+  <div className="highlight-cards">
+    {currentHighlights.map((highlight) => (
+      <div
+        key={highlight.id}
+        className={`highlight-card ${
+          selectedHighlightId === highlight.id ? "is-selected" : ""
+        }`}
+        onClick={() => handleHighlightClick(highlight)}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleHighlightClick(highlight);
+          }
+        }}
+      >
+        <Highlighter
+          className="highlight-note-icon"
+          size={18}
+          aria-hidden="true"
+        />
 
-  <div className="highlight-card-content">
-    <p className="highlight-text">{highlight.text}</p>
+        <div className="highlight-card-content">
+          <p className="highlight-text">{highlight.text}</p>
+        </div>
+
+        <button
+          type="button"
+          className="highlight-copy-button"
+          onClick={(event) => handleCopyHighlight(event, highlight)}
+          aria-label={
+            copiedHighlightId === highlight.id
+              ? "Copied"
+              : "Copy highlight"
+          }
+          title={
+            copiedHighlightId === highlight.id
+              ? "Copied"
+              : "Copy"
+          }
+        >
+          {copiedHighlightId === highlight.id ? (
+            <Check size={16} />
+          ) : (
+            <Copy size={16} />
+          )}
+        </button>
+      </div>
+    ))}
   </div>
 
-  <button
-    type="button"
-    className="highlight-copy-button"
-    onClick={(event) => handleCopyHighlight(event, highlight)}
-    aria-label={
-      copiedHighlightId === highlight.id
-        ? "Copied"
-        : "Copy highlight"
-    }
-    title={
-      copiedHighlightId === highlight.id
-        ? "Copied"
-        : "Copy"
-    }
-  >
-    {copiedHighlightId === highlight.id ? (
-      <Check size={16} />
-    ) : (
-      <Copy size={16} />
-    )}
-  </button>
+  {totalPages > 1 && (
+  <div className="pagination-controls">
+    <button
+      type="button"
+      className="pagination-button"
+      onClick={() => goToPage(currentPage - 1)}
+      disabled={currentPage === 1}
+      aria-label="Previous page"
+    >
+      ‹
+    </button>
+
+    {Array.from({ length: totalPages }, (_, index) => {
+      const page = index + 1;
+
+      return (
+        <button
+          key={page}
+          type="button"
+          className={`pagination-page ${
+            currentPage === page ? "is-current" : ""
+          }`}
+          onClick={() => goToPage(page)}
+          aria-current={currentPage === page ? "page" : undefined}
+        >
+          {page}
+        </button>
+      );
+    })}
+
+    <button
+      type="button"
+      className="pagination-button"
+      onClick={() => goToPage(currentPage + 1)}
+      disabled={currentPage === totalPages}
+      aria-label="Next page"
+    >
+      ›
+    </button>
+  </div>
+)}
 </div>
-))}
-            </div>
           </div>
-        </div>
+
       )}
     </section>
   );
