@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, FilePlus2, Pencil, Save, Upload } from "lucide-react";
 import { uploadArticleImage, uploadArticleImageFromUrl } from "../../api/articles";
 import { initialEditorBlocks, editorSourceSignature } from "./article-editor-draft";
 import useDraft from "../../hooks/useDraft";
 import "./article-editor.css";
 import { useLocation } from "react-router-dom";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronLeft,
+  FilePlus2,
+  FileText,
+  Pencil,
+  Save,
+  Upload,
+} from "lucide-react";
 
 export default function ArticleInput({
   title,
@@ -984,46 +993,52 @@ const startNewArticle = () => {
   /* ---------- collapsed view ---------- */
 
   if (isCollapsed) {
-    const charCount = (article || "").length.toLocaleString();
-    return (
-      
-      <section className="article-input article-summary">
-        <div className="article-actions-back">
+  const charCount = (article || "").length.toLocaleString();
+
+  return (
+    <section className="article-input article-summary">
+      <div className="article-summary-header">
         {onBackToArticles && (
-            <button
-              className="secondary-button back-to-articles"
-              onClick={onBackToArticles}
-              type="button"
-            >
-              <ChevronLeft size={18} /> Back
-            </button>
-          )}
-
-        </div>
-
-        <div>   
-          <p className="eyebrow">Current article</p>
-          <strong>{title || "Untitled article"}</strong>
-          <p className="article-meta">{charCount} characters</p>
-          {saveMessage && <p className="save-message">{saveMessage}</p>}
-        </div>
-        <div className="article-actions">
-
-          
           <button
-            className="secondary-button"
-            onClick={() => setIsCollapsed(false)}
+            className="back-to-articles"
+            onClick={onBackToArticles}
             type="button"
           >
-            <Pencil size={18} /> 
+            <ArrowLeft size={15} />
+            <span>Back to articles</span>
           </button>
-          
+        )}
+      </div>
 
-
+      <div className="article-summary-content">
+        <div className="article-summary-icon">
+          <FileText size={21} />
         </div>
-      </section>
-    );
-  }
+
+        <div className="article-summary-info">
+          <p className="eyebrow">Current article</p>
+          <strong>{title || "Untitled article"}</strong>
+          <p className="article-meta">
+            {charCount} characters
+          </p>
+          {saveMessage && (
+            <p className="save-message">{saveMessage}</p>
+          )}
+        </div>
+
+        <button
+          className="article-edit-button"
+          onClick={() => setIsCollapsed(false)}
+          type="button"
+          aria-label="Edit article"
+          title="Edit article"
+        >
+          <Pencil size={17} />
+        </button>
+      </div>
+    </section>
+  );
+}
 
   /* ---------- editor view ---------- */
 
@@ -1057,15 +1072,17 @@ const startNewArticle = () => {
       <div className="article-actions">
         {onBackToArticles && (
           <button
-            className="secondary-button back-to-articles"
+            className="back-to-articles"
             onClick={onBackToArticles}
             type="button"
           >
-            <ChevronLeft size={18} /> Back
+            <ArrowLeft size={16} />
+            <span>Back to articles</span>
           </button>
         )}
+
         <label className="upload-button">
-          <Upload size={18} /> Upload
+          <Upload size={16} /> Upload
           <input
             type="file"
             accept=".txt,text/plain"
@@ -1077,15 +1094,17 @@ const startNewArticle = () => {
           onClick={startNewArticle}
           type="button"
         >
-          <FilePlus2 size={18} /> New
+          <FilePlus2 size={16} /> New
         </button>
         {article && (
           <button
-            className="secondary-button"
+            className="secondary-button collapse-button"
             onClick={() => setIsCollapsed(true)}
             type="button"
+            aria-label="Collapse article editor"
+            title="Collapse"
           >
-            <ChevronDown size={18} /> Hide
+            <ChevronDown size={15} />
           </button>
         )}
         <button
@@ -1094,7 +1113,7 @@ const startNewArticle = () => {
           type="button"
           disabled={isSaving || !hasContent}
         >
-          <Save size={18} /> {isSaving ? "Saving..." : "Save "}
+          <Save size={16} /> {isSaving ? "Saving..." : "Save "}
         </button>
       </div>
 

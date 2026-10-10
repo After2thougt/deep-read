@@ -30,6 +30,7 @@ import ArticleInput from "../components/article/ArticleInput";
 import DictionaryCard from "../components/ui/DictionaryCard";
 import Reader from "../components/reader/Reader";
 import ConfirmModal from "../components/ui/ConfirmModal";
+import { Trash2 } from "lucide-react";
 
 
 function structureTokens(value) {
@@ -520,7 +521,7 @@ function StudyResults({
             type="button"
             onClick={onClear}
           >
-            <X size={15} />
+            <Trash2 size={12} />
             Clear
           </button>
 
@@ -543,8 +544,8 @@ function StudyResults({
             />
 
             {collapsed
-              ? "Show AI Analyze"
-              : "Hide AI Analyze"}
+              ? "Show Analyze"
+              : "Hide Analyze"}
           </button>
         </div>
       </div>
