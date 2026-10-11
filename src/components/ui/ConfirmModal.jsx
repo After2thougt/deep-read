@@ -1,4 +1,5 @@
 import { Trash2, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 export default function ConfirmModal({
   open,
@@ -9,6 +10,26 @@ export default function ConfirmModal({
   confirmText = "Delete",
   icon,
 }) {
+  const cancelButtonRef = useRef(null);
+  const previousActiveElement = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    previousActiveElement.current = document.activeElement;
+    cancelButtonRef.current?.focus();
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onCancel();
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousActiveElement.current?.focus?.();
+    };
+  }, [open, onCancel]);
+
   if (!open) {
     return null;
   }
@@ -21,6 +42,9 @@ export default function ConfirmModal({
       <div
         className="delete-modal"
         onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
       >
         <button
           className="delete-modal-close"
@@ -34,7 +58,7 @@ export default function ConfirmModal({
           {icon ? icon : <Trash2 size={22} strokeWidth={2} />}
         </div>
 
-        <h3>{title}</h3>
+        <h3 id="confirm-modal-title">{title}</h3>
 
         <p>{message}</p>
 
@@ -42,6 +66,7 @@ export default function ConfirmModal({
           <button
             className="delete-cancel-button"
             onClick={onCancel}
+            ref={cancelButtonRef}
           >
             Cancel
           </button>

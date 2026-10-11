@@ -402,6 +402,14 @@
   background: #f8fafc;
 }
 
+.icon-button.article-delete-button {
+  color: #748568;
+}
+
+.icon-button.article-delete-button:hover {
+  color: #c75d5d;
+}
+
 .article-meta {
   display: flex;
   flex-wrap: wrap;
@@ -556,7 +564,7 @@
 
   border-color: #93c5fd;
 
-  color: #2563eb;
+  color: #7f9075;
 
   font-weight: 600;
 }
@@ -587,7 +595,7 @@
 
   background: #eff6ff;
 
-  color: #2563eb;
+  color: #7f9075;
 
   font-weight: 600;
 }
@@ -876,60 +884,62 @@
 ========================= */
 
 .tag-create-row {
-
   display: flex;
-
   gap: 6px;
-
   margin-top: 10px;
-
   padding-top: 10px;
-
   border-top: 1px solid #e2e8f0;
 }
 
-
 .tag-create-row input {
-
   flex: 1;
-
   min-width: 0;
-
   padding: 6px 8px;
-
   border: 1px solid #cbd5e1;
-
   border-radius: 7px;
-
   outline: none;
-
   font-size: .82rem;
 }
 
-
 .tag-create-row input:focus {
-
   border-color: #93c5fd;
-
-  box-shadow:
-    0 0 0 3px rgba(147,197,253,.25);
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, .25);
 }
-
 
 .tag-create-row button {
-
   padding: 6px 9px;
-
+  border: 1px solid #2563eb;
   border-radius: 7px;
-
+  background: #2563eb;
+  color: #fff;
   font-size: .8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
 }
 
+.tag-create-row button:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.tag-create-row button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
 
 .tag-create-row .secondary-button {
-
   white-space: nowrap;
+  background: transparent;
+  color: #64748b;
+  border-color: #cbd5e1;
 }
+
+.tag-create-row .secondary-button:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #334155;
+}
+
 
 
 /* =========================

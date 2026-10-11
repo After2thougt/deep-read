@@ -71,8 +71,9 @@ export default function NotesPage() {
     return (
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
+          <p className="notes-subtitle">Your Reading highlights</p>
           <h1>Highlights</h1>
-          <p className="notes-subtitle">Reading highlights</p>
+          
         </header>
         <p className="notes-loading">Loading highlights...</p>
       </section>
@@ -83,8 +84,9 @@ export default function NotesPage() {
     return (
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
+          <p className="notes-subtitle">Your Reading highlights</p>
           <h1>Highlights</h1>
-          <p className="notes-subtitle">Reading highlights</p>
+          
         </header>
         <p className="notes-error">{error}</p>
       </section>
@@ -95,8 +97,9 @@ export default function NotesPage() {
     return (
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
+          <p className="notes-subtitle">Your Reading highlights</p>
           <h1>Highlights</h1>
-          <p className="notes-subtitle">Reading highlights</p>
+          
         </header>
         <div className="notes-empty">
           <p>No highlights yet</p>
@@ -109,8 +112,9 @@ export default function NotesPage() {
   return (
     <section className="notes-page notes-overview-page">
       <header className="notes-header">
+        <p className="notes-subtitle">Your Reading highlights</p>
         <h1>Highlights</h1>
-        <p className="notes-subtitle">Reading highlights</p>
+        
       </header>
 
       <div className="notes-overview-list">

@@ -134,6 +134,7 @@ export default function ArticlesPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [articleToDelete, setArticleToDelete] = useState(null);
+  const [tagToDelete, setTagToDelete] = useState(null);
   const [editingArticle, setEditingArticle] = useState(null);
   const tagPopoverRef = useRef(null);
   const [managing, setManaging] = useState(false);
@@ -212,10 +213,15 @@ export default function ArticlesPage({
       setArticles((current) => current.map((article) => ({ ...article, tags: (article.tags || []).map((item) => item.id === tag.id ? { ...item, name } : item) })));
     } catch (err) { setError(err.message || "Unable to rename tag."); }
   }
-  async function remove(tag) {
-    if (!window.confirm(`Delete tag "${tag.name}"? Articles will be kept.`)) return;
+  function remove(tag) {
+    setTagToDelete(tag);
+  }
+  async function deleteSelectedTag() {
+    const tag = tagToDelete;
+    if (!tag) return;
     try {
       await deleteTag(tag.id); clearArticleListCache(); setTags((current) => current.filter((item) => item.id !== tag.id));
+      setTagToDelete(null);
       if (selectedTag === String(tag.id)) selectTag("all"); else loadArticles();
     } catch (err) { setError(err.message || "Unable to delete tag."); }
   }
@@ -299,7 +305,7 @@ export default function ArticlesPage({
             onClick={() => setArticleToDelete(article)}
             aria-label={`Delete ${article.title}`}
           >
-            <Trash2 size={18} />
+            <Trash2 size={16} />
           </button>
         </div>
 
@@ -412,5 +418,13 @@ export default function ArticlesPage({
     />
     </div>
     <ConfirmModal open={articleToDelete !== null} title="Delete article?" message={<>Are you sure you want to delete <strong>"{articleToDelete?.title}"</strong>?</>} onCancel={() => setArticleToDelete(null)} onConfirm={() => deleteArticle(articleToDelete)} />
+    <ConfirmModal
+      open={tagToDelete !== null}
+      title="Delete tag?"
+      message={<>Delete <strong>"{tagToDelete?.name}"</strong>? Articles will be kept.</>}
+      confirmText="Delete tag"
+      onCancel={() => setTagToDelete(null)}
+      onConfirm={deleteSelectedTag}
+    />
   </section>;
 }

@@ -353,6 +353,12 @@
 
 .vocabulary-delete-button {
   flex: 0 0 auto;
+  color:#748568;
+}
+
+.vocabulary-delete-button:hover {
+  
+  color:#c75d5d;
 }
 
 .list-pagination {
