@@ -3,15 +3,183 @@
 ========================================================= */
 
 .articles-page {
-  max-width: 760px;
-
+  width: 100%;
+  max-width: 1100px;
+  min-width: 0;
+  margin: 0 auto;
   padding: 28px;
-
   background: #fff;
-  border-radius: 18px;
+  border: 1px solid #eae8e2;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
+}
 
-  box-shadow: 0 5px 20px rgb(15 23 42 / 8%);
-  position: relative;
+.articles-page-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  gap: 32px;
+  align-items: start;
+}
+
+.articles-main {
+  min-width: 0;
+}
+
+.articles-sidebar {
+  min-width: 0;
+}
+
+.sidebar-module {
+  padding: 0 0 22px;
+  border-bottom: 1px solid #eae8e2;
+}
+
+.sidebar-module + .sidebar-module {
+  padding-top: 22px;
+}
+
+.sidebar-module:last-child {
+  border-bottom: 0;
+}
+
+.sidebar-module-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #748568;
+}
+
+.sidebar-module-heading h3 {
+  margin: 0;
+  color: #3d3d3a;
+  font-size: .82rem;
+  font-weight: 650;
+  letter-spacing: .02em;
+}
+
+.article-stat-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.article-stat-list div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.article-stat-list dt {
+  color: #85847d;
+  font-size: .78rem;
+}
+
+.article-stat-list dd {
+  margin: 0;
+  color: #3d3d3a;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.sidebar-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.sidebar-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #eae8e2;
+  border-radius: 999px;
+  color: #5f625b;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: .75rem;
+}
+
+.sidebar-tag span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-tag small {
+  color: #85847d;
+  font-size: .68rem;
+}
+
+.sidebar-tag:hover,
+.sidebar-tag.is-active {
+  border-color: #aab5a2;
+  color: #748568;
+  background: #f6f8f4;
+}
+
+.sidebar-clear-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  color: #748568;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: .75rem;
+}
+
+.sidebar-clear-button:hover {
+  color: #596a54;
+}
+
+.sidebar-empty {
+  margin: 14px 0 0;
+  color: #85847d;
+  font-size: .78rem;
+}
+
+.recent-article-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.recent-article {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  color: #3d3d3a;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.recent-article:hover strong {
+  color: #748568;
+}
+
+.recent-article strong {
+  overflow: hidden;
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-article time {
+  color: #85847d;
+  font-size: .72rem;
 }
 
 .article-search-bar {
@@ -141,17 +309,14 @@
 }
 
 .article-list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  display: grid;
+  gap: 8px;
 
-  padding: 8px;
+  padding: 12px 14px 10px;
 
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-
-  background: #ffffff;
+  border: 1px solid #EAE8E2;
+  border-radius: 10px;
+  background: #fff;
 
   transition:
     border-color 0.2s ease,
@@ -160,18 +325,25 @@
 }
 
 .article-list-item:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  
+  background: #fcfbf8;
+  border-color: #d8d4ca;
+}
+
+.article-card-header {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 10px;
 }
 
 .article-open-button {
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 12px;
+  min-width: 0;
+  gap: 9px;
 
-  padding: 10px;
+  padding: 2px 0;
 
   border: 0;
 
@@ -183,11 +355,73 @@
 
 .article-open-button span {
   display: grid;
-  gap: 5px;
+  min-width: 0;
+  gap: 3px;
+}
+
+.article-open-button strong {
+  overflow-wrap: anywhere;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .article-open-button small {
+  display: block;
+  overflow-wrap: anywhere;
   color: #64748b;
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+.article-delete-button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-top: 1px;
+  padding: 5px;
+  color: #94a3b8;
+}
+
+.article-delete-button:hover {
+  color: #64748b;
+  background: #f8fafc;
+}
+
+.article-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  min-width: 0;
+  padding-left: 29px;
+  color: #64748b;
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+.article-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  padding-left: 29px;
+  color: #64748b;
+  font-size: .84rem;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.article-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+
+.article-meta svg {
+  flex: 0 0 auto;
+  color: #94a3b8;
 }
 
 /* =========================================================
@@ -354,29 +588,17 @@
    Article card tags
 ========================= */
 
-.article-list-item {
-  flex-wrap: wrap;
-}
-
-
-.article-list-item > .article-open-button {
-  min-width: min(100%, 280px);
-}
-
-
 .article-tags {
   display: flex;
-
-  flex: 1 1 100%;
-
+  position: relative;
   flex-wrap: wrap;
 
   align-items: center;
 
-  gap: 6px;
+  gap: 5px 6px;
 
   padding:
-    0 10px 9px 42px;
+    0 0 2px 29px;
 }
 
 
@@ -386,6 +608,7 @@
   align-items: center;
 
   padding: 3px 8px;
+  max-width: 100%;
 
   border-radius: 999px;
 
@@ -394,6 +617,7 @@
   color: #475569;
 
   font-size: .72rem;
+  overflow-wrap: anywhere;
 }
 
 
@@ -418,7 +642,7 @@
 
   align-items: center;
 
-  padding: 3px 6px;
+  padding: 3px 5px;
 
   border: 0;
 
@@ -431,6 +655,7 @@
   cursor: pointer;
 
   font-size: .75rem;
+  white-space: nowrap;
 
   transition:
     background .15s ease,
@@ -453,10 +678,6 @@
 /* =========================
    Tag popup
 ========================= */
-
-.article-tags {
-  position: relative;
-}
 
 .add-tag-wrapper {
   position: relative;

@@ -80,6 +80,12 @@ function getArticleBlocks(articleId) {
   return article ? [{ type: 'text', content: article.content, sort_order: 0 }] : [];
 }
 
+function getArticlePreview(content) {
+  const source = String(content || '');
+  const paragraphs = source.match(/<(p|div|li|h[1-6]|blockquote)\b[^>]*>[\s\S]*?<\/\1>/gi) || source.split(/\n\s*\n/);
+  return paragraphs.find((paragraph) => paragraph.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').trim())?.trim() || '';
+}
+
 function removeArticleImageIfUnused(imagePath, excludedArticleId) {
   const normalizedPath = String(imagePath || '');
   const relative = normalizedPath.startsWith('/uploads/articles/')
@@ -1314,7 +1320,7 @@ app.get('/api/articles', async (req, res) => {
 
   try {
     const total = db.prepare(`SELECT COUNT(*) AS count FROM articles a ${where}`).get(...params).count;
-    const rows = db.prepare(`SELECT a.id, a.title, a.highlights, a.created_at, a.updated_at, length(a.content) AS content_length
+    const rows = db.prepare(`SELECT a.id, a.title, a.content, a.highlights, a.created_at, a.updated_at, length(a.content) AS content_length
       FROM articles a ${where} ORDER BY ${sort} LIMIT ? OFFSET ?`)
       .all(...params, limit, (page - 1) * limit);
     const ids = rows.map((row) => row.id);
@@ -1341,7 +1347,8 @@ app.get('/api/articles', async (req, res) => {
         } catch {
           highlights = [];
         }
-        return { ...row, highlights, tags: tagsByArticle.get(row.id) || [] };
+        const { content, ...article } = row;
+        return { ...article, content_preview: getArticlePreview(content), highlights, tags: tagsByArticle.get(row.id) || [] };
       }),
       tags,
       total,

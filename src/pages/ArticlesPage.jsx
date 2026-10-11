@@ -1,12 +1,16 @@
-import { ArrowUpDown, BookOpen, Check, ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, X as XIcon } from "lucide-react";
+import { ArrowUpDown, BarChart3, BookOpen, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Hash, ListFilter, Pencil, Plus, RotateCcw, Search, Trash2, X as XIcon } from "lucide-react";
 import { addArticleTag, clearArticleListCache, createTag, deleteTag, fetchArticle, fetchArticles, removeArticleTag, removeArticle, renameTag } from "../api/articles";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const PAGE_SIZE = 10;
 
-function ArticleSearchBar({ onSearch, onClear }) {
+function ArticleSearchBar({ onSearch, onClear, resetKey }) {
   const [input, setInput] = useState("");
+
+  useEffect(() => {
+    setInput("");
+  }, [resetKey]);
 
   function doSearch() {
     const q = input.trim();
@@ -48,6 +52,73 @@ function TagPill({ tag, active, onClick, onPrefetch, managing, onRename, onDelet
   </div>;
 }
 
+function ArticlePreview({ value }) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const container = document.createElement("div");
+  container.innerHTML = value;
+  const text = (container.textContent || "").replace(/\s+/g, " ").trim();
+  return text ? <p className="article-preview">{text}</p> : null;
+}
+
+function ArticleSidebar({ allTotal, total, tags, selectedTag, hasSearch, onSelectTag, onClearFilters, recentArticles, onOpenArticle }) {
+  return (
+    <aside className="articles-sidebar" aria-label="Article library tools">
+      <section className="sidebar-module">
+        <div className="sidebar-module-heading">
+          <BarChart3 size={16} />
+          <h3>Reading library</h3>
+        </div>
+        <dl className="article-stat-list">
+          <div><dt>Saved articles</dt><dd>{allTotal}</dd></div>
+          <div><dt>Current results</dt><dd>{total}</dd></div>
+        </dl>
+      </section>
+
+      <section className="sidebar-module">
+        <div className="sidebar-module-heading">
+          <ListFilter size={16} />
+          <h3>Quick filters</h3>
+        </div>
+        <div className="sidebar-tag-list">
+          {tags.length ? tags.map((tag) => (
+            <button
+              type="button"
+              className={`sidebar-tag ${selectedTag === String(tag.id) ? "is-active" : ""}`}
+              key={tag.id}
+              onClick={() => onSelectTag(String(tag.id))}
+            >
+              <span>{tag.name}</span>
+              <small>{tag.article_count ?? 0}</small>
+            </button>
+          )) : <p className="sidebar-empty">No tags yet.</p>}
+        </div>
+        {(selectedTag !== "all" || hasSearch) && (
+          <button type="button" className="sidebar-clear-button" onClick={onClearFilters}>
+            <RotateCcw size={13} /> Clear filters
+          </button>
+        )}
+      </section>
+
+      <section className="sidebar-module">
+        <div className="sidebar-module-heading">
+          <Clock3 size={16} />
+          <h3>Recently updated</h3>
+        </div>
+        {recentArticles.length ? (
+          <div className="recent-article-list">
+            {recentArticles.map((article) => (
+              <button type="button" className="recent-article" key={article.id} onClick={() => onOpenArticle(article)}>
+                <strong>{article.title}</strong>
+                <time dateTime={article.updatedAt}>{new Date(article.updatedAt).toLocaleDateString()}</time>
+              </button>
+            ))}
+          </div>
+        ) : <p className="sidebar-empty">No recent articles.</p>}
+      </section>
+    </aside>
+  );
+}
+
 export default function ArticlesPage({
   onOpenArticle,
   refreshVersion = 0,
@@ -69,6 +140,8 @@ export default function ArticlesPage({
   const [newTagName, setNewTagName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [sort, setSort] = useState(""); // '' = recently updated (default)
+  const [recentArticles, setRecentArticles] = useState([]);
+  const [searchResetKey, setSearchResetKey] = useState(0);
 
   const loadArticles = useCallback(async () => {
     try {
@@ -91,6 +164,19 @@ export default function ArticlesPage({
   useEffect(() => {
   loadArticles();
 }, [loadArticles, refreshVersion]);
+
+  const loadRecentArticles = useCallback(async () => {
+    try {
+      const result = await fetchArticles({ page: 1, limit: 3, tag: "all" });
+      setRecentArticles(result.items || []);
+    } catch {
+      setRecentArticles([]);
+    }
+  }, [refreshVersion]);
+
+  useEffect(() => {
+    loadRecentArticles();
+  }, [loadRecentArticles]);
   function prefetchTag(tag) {
     fetchArticles({ page: 1, limit: PAGE_SIZE, tag }).catch(() => {});
   }
@@ -141,6 +227,7 @@ export default function ArticlesPage({
     try {
       setError(""); await removeArticle(article.id); clearArticleListCache(); setArticleToDelete(null);
       setTags((current) => current.map((tag) => ({ ...tag, article_count: (article.tags || []).some((item) => item.id === tag.id) ? Math.max(0, Number(tag.article_count || 0) - 1) : tag.article_count })));
+      loadRecentArticles();
       if (articles.length === 1 && page > 1) setPage((value) => value - 1); else loadArticles();
     } catch (err) { setError(err.message || "Unable to delete article."); }
   }
@@ -164,8 +251,11 @@ export default function ArticlesPage({
   return <section className="articles-page">
     <div><p className="eyebrow">Your reading library</p><h2>Saved Articles</h2></div>
 
+    <div className="articles-page-layout">
+    <main className="articles-main">
     <div className="article-controls-row">
     <ArticleSearchBar
+      resetKey={searchResetKey}
       onSearch={(q) => { setSearchQuery(q); setPage(1); }}
       onClear={() => { setSearchQuery(""); setPage(1); }}
     />
@@ -195,28 +285,31 @@ export default function ArticlesPage({
   <div className="article-list">
     {articles.map((article) => (
       <article className="article-list-item" key={article.id}>
-        <button
-          className="article-open-button"
-          onClick={() => openArticle(article)}
-        >
-          <BookOpen size={20} />
-          <span>
-            <strong>{article.title}</strong>
-            <small>
-              {Number(article.contentLength || 0).toLocaleString()} characters ·
-              Created {new Date(article.createdAt).toLocaleDateString()} ·
-              Updated {new Date(article.updatedAt).toLocaleDateString()}
-            </small>
-          </span>
-        </button>
+        <div className="article-card-header">
+          <button
+            className="article-open-button"
+            onClick={() => openArticle(article)}
+          >
+            <BookOpen size={20} />
+            <span><strong>{article.title}</strong></span>
+          </button>
 
-        <button
-          className="icon-button"
-          onClick={() => setArticleToDelete(article)}
-          aria-label={`Delete ${article.title}`}
-        >
-          <Trash2 size={18} />
-        </button>
+          <button
+            className="icon-button article-delete-button"
+            onClick={() => setArticleToDelete(article)}
+            aria-label={`Delete ${article.title}`}
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
+
+        <ArticlePreview value={article.contentPreview} />
+
+        <div className="article-meta" aria-label="Article details">
+          <span><Hash size={13} />{Number(article.contentLength || 0).toLocaleString()} characters</span>
+          <span><CalendarDays size={13} />Created {new Date(article.createdAt).toLocaleDateString()}</span>
+          <span><Clock3 size={13} />Updated {new Date(article.updatedAt).toLocaleDateString()}</span>
+        </div>
 
         <div className="article-tags">
   {article.tags?.length
@@ -225,7 +318,7 @@ export default function ArticlesPage({
           {tag.name}
         </span>
       ))
-    : <span className="untagged-label">unlabel</span>
+    : <span className="untagged-label">暂无标签</span>
   }
 
   <div
@@ -305,6 +398,19 @@ export default function ArticlesPage({
   </div>
 )}
     {totalPages > 1 && <div className="list-pagination"><button type="button" className="vocabulary-page-button" onClick={() => setPage((value) => value - 1)} disabled={page === 1} aria-label="Previous page"><ChevronLeft size={17} /></button><span>Page {page} of {totalPages}</span><button type="button" className="vocabulary-page-button" onClick={() => setPage((value) => value + 1)} disabled={page === totalPages} aria-label="Next page"><ChevronRight size={17} /></button></div>}
+    </main>
+    <ArticleSidebar
+      allTotal={allTotal}
+      total={total}
+      tags={tags}
+      selectedTag={selectedTag}
+      hasSearch={Boolean(searchQuery)}
+      onSelectTag={(tag) => { setSearchQuery(""); setSearchResetKey((value) => value + 1); selectTag(tag); }}
+      onClearFilters={() => { setSearchQuery(""); setSearchResetKey((value) => value + 1); selectTag("all"); }}
+      recentArticles={recentArticles}
+      onOpenArticle={openArticle}
+    />
+    </div>
     <ConfirmModal open={articleToDelete !== null} title="Delete article?" message={<>Are you sure you want to delete <strong>"{articleToDelete?.title}"</strong>?</>} onCancel={() => setArticleToDelete(null)} onConfirm={() => deleteArticle(articleToDelete)} />
   </section>;
 }

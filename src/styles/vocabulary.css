@@ -3,7 +3,15 @@
 ========================================================= */
 
 .vocabulary-page {
-  max-width: 760px;
+  width: 100%;
+  max-width: 1136px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #eae8e2;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
 }
 
 .vocabulary-header {
@@ -23,7 +31,7 @@
 .vocabulary-controls {
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 18px;
 }
@@ -37,6 +45,7 @@
   min-width: 0;
 
   width: 100%;
+  min-width: min(100%, 260px);
   height: 42px;
 
   padding: 0 12px;
@@ -201,9 +210,8 @@
 
   padding: 13px 14px;
 
-  border: 1px solid #e2e8f0;
+  border: 1px solid #EAE8E2;
   border-radius: 10px;
-
   background: #fff;
 
   transition:
@@ -212,8 +220,8 @@
 }
 
 .vocabulary-item:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  border-color: #d8d4ca;
+  box-shadow: none;
 }
 
 .vocabulary-word-content {

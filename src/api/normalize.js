@@ -6,6 +6,7 @@ export function normalizeArticle(row) {
     id: row.id,
     title: row.title,
     content: row.content,
+    contentPreview: row.content_preview ?? row.contentPreview,
     blocks: Array.isArray(row.blocks) ? row.blocks : [],
     highlights: row.highlights ?? [],
     tags: Array.isArray(row.tags) ? row.tags : [],

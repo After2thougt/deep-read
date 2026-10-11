@@ -250,16 +250,18 @@ function AppRoutes({onLogout, username, authenticated}) {
   return (
     <>
       <header className="app-header">
-        <h1>
-          <BookOpen />
-          Turn pages, Open minds.
+        <h1 className="app-brand">
+          <span className="app-brand-mark" aria-hidden="true">
+            <BookOpen />
+          </span>
+          <span className="app-brand-copy">Turn pages, Open minds.</span>
         </h1>
 
-        <nav aria-label="Main navigation">
+        <nav className="app-nav" aria-label="Main navigation">
           <NavLink
             to="/"
             className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
-            onClick={() => navigate("/")}
+            end
           >
             Home
           </NavLink>
@@ -286,15 +288,14 @@ function AppRoutes({onLogout, username, authenticated}) {
           >
             Highlight
           </NavLink>
+        </nav>
 
+        <div className="app-header-actions">
           <UserMenu
             username={username}
             onLogout={onLogout}
-        />
-
-        </nav>
-            
-        
+          />
+        </div>
       </header>
 
       <MigrationBanner />

@@ -180,8 +180,23 @@
   }
 
   .app-header {
-    align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 12px;
+    padding-top: 16px;
+  }
+
+  .app-nav {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    gap: 6px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .nav-button {
+    flex: 0 0 auto;
   }
 
   .article-summary {
@@ -217,9 +232,36 @@
   font-size:.72rem;
   }
 
+  .article-meta {
+    padding-left: 0;
+  }
+
+  .article-preview {
+    padding-left: 0;
+  }
+
   .article-tag:hover {
   background:#e2e8f0;
 }
+
+}
+
+@media (max-width: 900px) {
+  .articles-page-layout {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 22px;
+  }
+}
+
+@media (max-width: 700px) {
+  .articles-page-layout {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .articles-sidebar {
+    order: 2;
+  }
 }
 
 @media (max-width: 700px) {
@@ -322,14 +364,26 @@
 }
 
 @media (max-width: 560px) {
-  .vocabulary-controls {
+  .vocabulary-page .vocabulary-controls {
     gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 2px;
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .vocabulary-search {
-    min-width: 180px;
+  .vocabulary-page .vocabulary-search {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .vocabulary-page .vocabulary-sort,
+  .vocabulary-page .vocabulary-group-control {
+    align-self: flex-start;
+  }
+
+  .articles-page,
+  .vocabulary-page {
+    width: 100%;
+    padding: 20px;
   }
 }
 
@@ -349,6 +403,11 @@
   .articles-page {
     padding: 16px;
     border-radius: 14px;
+  }
+
+  .articles-page,
+  .vocabulary-page {
+    padding: 16px;
   }
 
   .pagination-jump {
