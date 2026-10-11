@@ -18,7 +18,20 @@
 ========================================================= */
 
 .notes-overview-page {
+  width: 100%;
+  max-width: 1100px;
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #eae8e2;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
   gap: 20px;
+}
+
+[data-theme="dark"] .notes-overview-page {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .notes-overview-list {

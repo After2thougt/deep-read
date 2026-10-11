@@ -275,6 +275,7 @@
 
   .vocabulary-sidebar {
     order: 2;
+    margin-top: 0;
   }
 }
 

@@ -57,30 +57,44 @@
   letter-spacing: .02em;
 }
 
+
 .article-stat-list {
   display: grid;
-  gap: 10px;
-  margin: 16px 0 0;
+  gap: 9px;
+  margin: 14px 0 0;
 }
 
-.article-stat-list div {
+.article-stat-list > div {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .article-stat-list dt {
   color: #85847d;
-  font-size: .78rem;
+  font-size: .76rem;
+  font-weight: 450;
+  line-height: 1.4;
 }
 
 .article-stat-list dd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
   margin: 0;
-  color: #3d3d3a;
-  font-size: 1.1rem;
-  font-weight: 650;
+  border-radius: 50%;
+  background: #f3f1eb;
+  color: #57564f;
+  font-size: .75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
+
 
 .sidebar-tag-list {
   display: flex;
