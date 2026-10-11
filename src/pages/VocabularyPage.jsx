@@ -1,9 +1,60 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Search, Trash2, X } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, Clock3, ListFilter, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { fetchVocabulary, removeVocabulary } from "../api/vocabulary";
 import ConfirmModal from "../components/ui/ConfirmModal";
 
 const PAGE_SIZE = 10;
+
+function VocabularySidebar({ allTotal, total, sort, groupBy, recentWords, onSortChange, onGroupChange, onClear, onSelectWord }) {
+  return (
+    <aside className="vocabulary-sidebar" aria-label="Vocabulary tools">
+      <section className="sidebar-module">
+        <div className="sidebar-module-heading">
+          <BarChart3 size={16} />
+          <h3>Vocabulary library</h3>
+        </div>
+        <dl className="article-stat-list">
+          <div><dt>Saved words</dt><dd>{allTotal}</dd></div>
+          <div><dt>Current results</dt><dd>{total}</dd></div>
+        </dl>
+      </section>
+
+      <section className="sidebar-module">
+        <div className="sidebar-module-heading">
+          <ListFilter size={16} />
+          <h3>Quick filters</h3>
+        </div>
+        <div className="vocabulary-sidebar-options">
+          <button type="button" className={sort === "recent" ? "is-active" : ""} onClick={() => onSortChange("recent")}>Recently added</button>
+          <button type="button" className={sort === "az" ? "is-active" : ""} onClick={() => onSortChange("az")}>A–Z</button>
+          <button type="button" className={groupBy === "article" ? "is-active" : ""} onClick={() => onGroupChange("article")}>Group by article</button>
+        </div>
+        {(sort !== "recent" || groupBy !== "none") && (
+          <button type="button" className="sidebar-clear-button" onClick={onClear}>
+            <RotateCcw size={13} /> Clear filters
+          </button>
+        )}
+      </section>
+
+      <section className="sidebar-module">
+        <div className="sidebar-module-heading">
+          <Clock3 size={16} />
+          <h3>Recently added</h3>
+        </div>
+        {recentWords.length ? (
+          <div className="recent-word-list">
+            {recentWords.map((item) => (
+              <button type="button" className="recent-word" key={item.word} onClick={() => onSelectWord(item.word)}>
+                <strong>{item.word}</strong>
+                {item.definition && <span>{item.definition}</span>}
+              </button>
+            ))}
+          </div>
+        ) : <p className="sidebar-empty">No saved words yet.</p>}
+      </section>
+    </aside>
+  );
+}
 
 export default function VocabularyPage() {
   const [words, setWords] = useState([]);
@@ -17,6 +68,8 @@ export default function VocabularyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [wordToDelete, setWordToDelete] = useState(null);
+  const [recentWords, setRecentWords] = useState([]);
+  const [allTotal, setAllTotal] = useState(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { setSearch(searchQuery); setPage(1); }, 250);
@@ -40,6 +93,18 @@ export default function VocabularyPage() {
 
   useEffect(() => { loadVocabulary(); }, [loadVocabulary]);
 
+  const loadRecentWords = useCallback(async () => {
+    try {
+      const result = await fetchVocabulary({ page: 1, limit: 5, sort: "recent", search: "" });
+      setRecentWords(result.items || []);
+      setAllTotal(result.total || 0);
+    } catch {
+      setRecentWords([]);
+    }
+  }, []);
+
+  useEffect(() => { loadRecentWords(); }, [loadRecentWords]);
+
   useEffect(() => {
     if (totalPages > page) fetchVocabulary({ page: page + 1, limit: PAGE_SIZE, sort, search }).catch(() => {});
     if (page > 1) fetchVocabulary({ page: page - 1, limit: PAGE_SIZE, sort, search }).catch(() => {});
@@ -50,6 +115,7 @@ export default function VocabularyPage() {
       setError("");
       await removeVocabulary(word);
       setWordToDelete(null);
+      loadRecentWords();
       if (words.length === 1 && page > 1) {
         setPage((value) => value - 1);
       } else {
@@ -62,6 +128,8 @@ export default function VocabularyPage() {
 
   function changeSort(nextSort) { setSort(nextSort); setPage(1); }
   function changeGroup(nextGroup) { setGroupBy(nextGroup); setPage(1); }
+  function clearFilters() { setSearchQuery(""); setSearch(""); setSort("recent"); setGroupBy("none"); setPage(1); }
+  function selectRecentWord(word) { setSearchQuery(word); setSearch(word); setPage(1); }
 
   // Group words by article for display (only when groupBy === "article")
   const articleGroups = useMemo(() => {
@@ -94,6 +162,8 @@ export default function VocabularyPage() {
   }
 
   return <section className="vocabulary-page">
+    <div className="vocabulary-page-layout">
+    <main className="vocabulary-main">
     <div className="vocabulary-header"><div><p className="eyebrow">Your saved words</p><h2>Vocabulary</h2></div><div className="vocabulary-pagination"><span className="vocabulary-count">{groupBy === "article" ? `${articleGroups.length} ${articleGroups.length === 1 ? "article" : "articles"} · ` : ""}{total} {total === 1 ? "word" : "words"}</span><button type="button" className="vocabulary-page-button" onClick={goToPreviousPage} disabled={currentPage <= 1} aria-label="Previous page"><ChevronLeft size={17} /></button><button type="button" className="vocabulary-page-button" onClick={goToNextPage} disabled={currentPage >= currentTotalPages} aria-label="Next page"><ChevronRight size={17} /></button></div></div>
     <div className="vocabulary-controls"><div className="vocabulary-search"><Search size={18} /><input type="text" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search words..." aria-label="Search vocabulary" />{searchQuery && <button type="button" className="search-clear" onClick={() => setSearchQuery("")} aria-label="Clear search"><X size={15} /></button>}</div><div className="vocabulary-sort" aria-label="Sort vocabulary"><button type="button" className={sort === "recent" ? "is-active" : ""} onClick={() => changeSort("recent")}>Recently Added</button><button type="button" className={sort === "az" ? "is-active" : ""} onClick={() => changeSort("az")}>A-Z</button></div><label className="vocabulary-group-control">Group<select value={groupBy} onChange={(event) => changeGroup(event.target.value)} aria-label="Group vocabulary"><option value="none">None</option><option value="article">By Article</option></select></label></div>
     {loading && !words.length && <p className="side-message">Loading vocabulary...</p>}
@@ -101,6 +171,19 @@ export default function VocabularyPage() {
     {!loading && !error && total === 0 && <p className="empty-vocabulary">{search ? `No words match “${search}”.` : "No saved words yet. Look up a word in the reader, then save it here."}</p>}
     {groupBy === "article" && articleGroups.length > 0 && <div className="article-vocabulary-groups">{articleGroups.map((group) => <section className="article-vocabulary-group" key={group.title}><header className="article-vocabulary-group__header"><strong>{group.title}</strong><span>{group.items.length} {group.items.length === 1 ? "word" : "words"}</span></header><div className="vocabulary-list">{group.items.map((item) => <article className="vocabulary-item" key={item.word.toLowerCase()}><div className="vocabulary-word-content"><div className="vocabulary-word-row"><h3>{item.word}</h3>{item.phonetic && <span className="phonetic">{item.phonetic}</span>}</div><p className="vocabulary-definition">{item.definition || item.definitions?.[0] || "No definition available."}</p><small>Saved {new Date(item.savedAt).toLocaleDateString()}</small></div><button className="icon-button vocabulary-delete-button" onClick={() => setWordToDelete(item.word)} aria-label={`Remove ${item.word}`}><Trash2 size={17} /></button></article>)}</div></section>)}</div>}
     {groupBy === "none" && words.length > 0 && <div className="vocabulary-list">{words.map((item) => <article className="vocabulary-item" key={item.word.toLowerCase()}><div className="vocabulary-word-content"><div className="vocabulary-word-row"><h3>{item.word}</h3>{item.phonetic && <span className="phonetic">{item.phonetic}</span>}</div><p className="vocabulary-definition">{item.definition || item.definitions?.[0] || "No definition available."}</p>{item.sourceArticleTitle && <small>From: {item.sourceArticleTitle}</small>}<small>Saved {new Date(item.savedAt).toLocaleDateString()}</small></div><button className="icon-button vocabulary-delete-button" onClick={() => setWordToDelete(item.word)} aria-label={`Remove ${item.word}`}><Trash2 size={17} /></button></article>)}</div>}
+    </main>
+    <VocabularySidebar
+      allTotal={allTotal}
+      total={total}
+      sort={sort}
+      groupBy={groupBy}
+      recentWords={recentWords}
+      onSortChange={changeSort}
+      onGroupChange={changeGroup}
+      onClear={clearFilters}
+      onSelectWord={selectRecentWord}
+    />
+    </div>
     <ConfirmModal open={wordToDelete !== null} title="Remove saved word?" message={<>Are you sure you want to remove <strong>"{wordToDelete}"</strong>?</>} onCancel={() => setWordToDelete(null)} onConfirm={() => removeWord(wordToDelete)} />
   </section>;
 }

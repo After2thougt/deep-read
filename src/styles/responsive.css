@@ -251,6 +251,11 @@
     grid-template-columns: minmax(0, 1fr) 220px;
     gap: 22px;
   }
+
+  .vocabulary-page-layout {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 22px;
+  }
 }
 
 @media (max-width: 700px) {
@@ -260,6 +265,15 @@
   }
 
   .articles-sidebar {
+    order: 2;
+  }
+
+  .vocabulary-page-layout {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .vocabulary-sidebar {
     order: 2;
   }
 }

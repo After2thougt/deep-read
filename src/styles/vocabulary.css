@@ -14,6 +14,82 @@
   box-shadow: 0 2px 8px rgb(15 23 42 / 4%);
 }
 
+.vocabulary-page-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  gap: 32px;
+  align-items: start;
+}
+
+.vocabulary-main,
+.vocabulary-sidebar {
+  min-width: 0;
+}
+
+.vocabulary-sidebar-options {
+  display: grid;
+  gap: 4px;
+  margin-top: 14px;
+}
+
+.vocabulary-sidebar-options button {
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 7px;
+  color: #5f625b;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: .78rem;
+  text-align: left;
+}
+
+.vocabulary-sidebar-options button:hover,
+.vocabulary-sidebar-options button.is-active {
+  color: #748568;
+  background: #f6f8f4;
+}
+
+.recent-word-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.recent-word {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  color: #3d3d3a;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.recent-word:hover strong {
+  color: #748568;
+}
+
+.recent-word strong {
+  overflow: hidden;
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-word span {
+  overflow: hidden;
+  color: #85847d;
+  font-size: .72rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vocabulary-header {
   display: flex;
   align-items: flex-end;
