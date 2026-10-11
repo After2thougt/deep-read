@@ -247,6 +247,19 @@
   color: var(--text-success);
 }
 
+[data-theme="dark"] .article-summary-icon {
+  background: #0f172a;
+}
+
+[data-theme="dark"] .article-stat-list dd {
+  background: #0f172a;
+}
+
+/* Article title */
+[data-theme="dark"] strong {
+  color: white;
+}
+
 /* Dictionary Card */
 [data-theme="dark"] .dictionary {
   background: var(--bg-card);
