@@ -52,9 +52,9 @@
 .pagination-page:hover {
   background: #f8fafc;
 
-  border-color: #cbd5e1;
+  border-color: #959596;
 
-  color: #2563eb;
+  color: #111;
 
   transform: translateY(-1px);
 

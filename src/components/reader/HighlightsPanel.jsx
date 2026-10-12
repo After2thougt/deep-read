@@ -198,9 +198,8 @@ export default function HighlightsPanel({
         open={Boolean(deleteTarget)}
         title="Remove underline?"
         message={[
-          "Are you sure you want to remove this highlight?",
-          <br key="br" />,
-          "If there is a note, the note will be deleted too."
+          "This will delete the highlight and any content you created.",
+          
         ]}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => {

@@ -417,7 +417,7 @@ export default function ArticlesPage({
       onOpenArticle={openArticle}
     />
     </div>
-    <ConfirmModal open={articleToDelete !== null} title="Delete article?" message={<>Are you sure you want to delete <strong>"{articleToDelete?.title}"</strong>?</>} onCancel={() => setArticleToDelete(null)} onConfirm={() => deleteArticle(articleToDelete)} />
+    <ConfirmModal open={articleToDelete !== null} title="Delete article?" message={<>This will delete <strong>"{articleToDelete?.title}"</strong>.</>} onCancel={() => setArticleToDelete(null)} onConfirm={() => deleteArticle(articleToDelete)} />
     <ConfirmModal
       open={tagToDelete !== null}
       title="Delete tag?"

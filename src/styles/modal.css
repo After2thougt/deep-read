@@ -167,9 +167,9 @@ padding:2px 8px;
 
 border-radius:20px;
 
-background:#dbeafe;
+background:#fffbeb;
 
-color:#2563eb;
+color:black;
 
 }
 
@@ -529,7 +529,7 @@ overflow-y:auto;
 
   background: rgba(15, 23, 42, 0.45);
 
-  backdrop-filter: blur(3px);
+  backdrop-filter: none;
 }
 
 .delete-modal {

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 export default function ConfirmModal({
   open,
   title = "Delete item?",
-  message = "Are you sure you want to delete this item?",
+  message = "This will delete this item.",
   onCancel,
   onConfirm,
   confirmText = "Delete",
