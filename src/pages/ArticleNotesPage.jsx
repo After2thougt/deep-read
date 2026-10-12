@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { fetchArticle } from "../api/articles";
-import { ChevronLeft, Highlighter, Copy, Check } from "lucide-react";
+import { ArrowLeft, Highlighter, Copy, Check } from "lucide-react";
 
 export default function ArticleNotesPage() {
   const { articleId } = useParams();
@@ -124,7 +124,7 @@ function goToPage(page) {
       <section className="notes-page article-notes-page">
         <header className="notes-header">
           <Link to="/notes" className="back-link" aria-label="Back to Highlights">
-            <ChevronLeft size={18} />
+            <ArrowLeft size={15} />
             <span>Highlights</span>
           </Link>
           <h1>Loading...</h1>
@@ -138,7 +138,7 @@ function goToPage(page) {
       <section className="notes-page article-notes-page">
         <header className="notes-header">
           <Link to="/notes" className="back-link" aria-label="Back to Highlights">
-            <ChevronLeft size={18} />
+            <ArrowLeft size={15} />
             <span>Highlights</span>
           </Link>
           <h1>Error</h1>
@@ -153,7 +153,7 @@ function goToPage(page) {
       <section className="notes-page article-notes-page">
         <header className="notes-header">
           <Link to="/notes" className="back-link" aria-label="Back to Highlights">
-            <ChevronLeft size={18} />
+            <ArrowLeft size={15} />
             <span>Highlights</span>
           </Link>
           <h1>Article not found</h1>
@@ -166,7 +166,7 @@ function goToPage(page) {
     <section className="notes-page article-notes-page">
       <header className="notes-header">
         <Link to="/notes" className="back-link" aria-label="Back to Highlights">
-          <ChevronLeft size={18} />
+          <ArrowLeft size={15} />
           <span>Back to highlight</span>
         </Link>
         <h1 className="article-title-main">{article.title}</h1>

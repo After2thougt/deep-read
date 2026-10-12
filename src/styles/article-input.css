@@ -44,7 +44,8 @@
   min-height: 24px;
 }
 
-.article-summary .back-to-articles {
+.article-summary .back-to-articles,
+.article-notes-page .back-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -59,16 +60,23 @@
   transition: color 0.18s ease;
 }
 
-.article-summary .back-to-articles:hover {
+.article-summary .back-to-articles:hover,
+.article-notes-page .back-link:hover {
   color: #7f9075;
 }
 
-.article-summary .back-to-articles svg {
+.article-summary .back-to-articles svg,
+.article-notes-page .back-link svg {
   transition: transform 0.18s ease;
 }
 
-.article-summary .back-to-articles:hover svg {
+.article-summary .back-to-articles:hover svg,
+.article-notes-page .back-link:hover svg {
   transform: translateX(-3px);
+}
+
+.article-notes-page .back-link {
+  text-decoration: none;
 }
 
 .article-summary-content {

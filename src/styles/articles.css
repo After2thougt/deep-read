@@ -90,7 +90,6 @@
   background: #f3f1eb;
   color: #57564f;
   font-size: .75rem;
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -303,7 +302,7 @@
 
 .article-sort-select {
   padding: 6px 10px;
-  border: 1px solid #d7e0eb;
+  border: 1px solid #eae8e2;
   border-radius: 6px;
   color: #334155;
   background: #fff;
@@ -314,7 +313,7 @@
 }
 
 .article-sort-select:focus {
-  border-color: #93c5fd;
+  border-color: #eae8e2;
 }
 
 .article-list {
@@ -504,7 +503,7 @@
 
   white-space: nowrap;
 
-  font-size: .8rem;
+  font-size: 0.75rem;
 
   transition:
     background .15s ease,
@@ -536,7 +535,7 @@
 
   white-space: nowrap;
 
-  font-size: .8rem;
+  font-size: .75rem;
 
   transition:
     background .15s ease,
@@ -547,7 +546,7 @@
 
 
 .tag-pill:hover {
-  background: #f8fafc;
+  background: rgb(246, 248, 244);
 
   border-color: #cbd5e1;
 
@@ -561,13 +560,10 @@
 
 
 .tag-pill.is-active {
-  background: #eff6ff;
-
-  border-color: #93c5fd;
-
+  background: #f3f1eb;
+  border-color: #eae8e2;
   color: #7f9075;
-
-  font-weight: 600;
+ 
 }
 
 .tag-filter span,
@@ -578,9 +574,8 @@
 
 
 .tag-filter:hover {
-  background: #f8fafc;
-
-  border-color: #cbd5e1;
+  background: rgb(246, 248, 244);
+  border-color: #ebeae4;
 
  
 }
@@ -592,18 +587,14 @@
 
 
 .tag-filter.is-active {
-  border-color: #93c5fd;
-
-  background: #eff6ff;
-
+  border-color: #eae8e2;
+  background: rgb(246, 248, 244);
   color: #7f9075;
-
-  font-weight: 600;
 }
 
 
 .tag-filter.is-active:hover {
-  background: #dbeafe;
+  background: #f3f1eb;
 }
 
 
@@ -795,11 +786,9 @@
 
 
 .tag-tool-button:hover {
-  background: #eff6ff;
-
-  border-color: #93c5fd;
-
-  color: #2563eb;
+  background: #f3f1eb;
+  border-color: #eae8e2;
+  color: #95a38b;
 }
 
 

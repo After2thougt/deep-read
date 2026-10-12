@@ -260,6 +260,17 @@
   color: white;
 }
 
+/* article edit button */
+[data-theme="dark"] .article-edit-button {
+  background: #1e293b;
+  border-color: #787a7d;
+}
+
+[data-theme="dark"] .article-edit-button {
+  background: #1e293b;
+  border-color: #787a7d;
+}
+
 /* Dictionary Card */
 [data-theme="dark"] .dictionary {
   background: var(--bg-card);
@@ -577,11 +588,11 @@
 }
 
 [data-theme="dark"] .accordion-header {
-  background: var(--bg-hover);
+  background: #1e293b;
 }
 
 [data-theme="dark"] .accordion-header:hover {
-  background: var(--bg-accent-hover);
+  background: rgb(51, 65, 85);
 }
 
 [data-theme="dark"] .accordion-header:focus-visible {

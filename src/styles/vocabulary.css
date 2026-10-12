@@ -269,7 +269,7 @@
 
 .vocabulary-sort button.is-active {
  
-  background: #eff6ff;
+  background: #f6f8f4;
 }
 
 .vocabulary-list {
@@ -378,32 +378,26 @@
 .vocabulary-page-button {
   display: inline-flex !important;
   flex: 0 0 28px !important;
-
   flex-direction: row !important;
   align-items: center;
   justify-content: center;
-
   width: 28px;
   min-width: 28px;
   max-width: 28px;
   height: 28px;
-
   padding: 0;
-
   border: 1px solid #e2e8f0;
   border-radius: 7px;
-
   background: #fff;
   color: #475569;
-
   font-size: 20px;
   line-height: 1;
   box-sizing: border-box;
-  margin-right: 5px;
+  margin-right: 3px;
 }
 
 .vocabulary-page-button:hover:not(:disabled) {
-  background: #f8fafc;
+  background: #f3f1eb;
   border-color: #cbd5e1;
 }
 
