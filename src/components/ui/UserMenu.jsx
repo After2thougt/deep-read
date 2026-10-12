@@ -37,9 +37,7 @@ export default function UserMenu({ username, onLogout }) {
 
       {open && (
         <div className="user-dropdown">
-          <div className="user-name">
-            {username || "Guest"}
-          </div>
+         
 
           <button onClick={() => navigate("/about")}>
             <Info size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
