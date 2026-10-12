@@ -56,7 +56,8 @@
   color: var(--text-primary);
 }
 
-[data-theme="dark"] .tag-filter.is-active,.tag-pill.is-active {
+[data-theme="dark"] .tag-filter.is-active,
+[data-theme="dark"] .tag-pill.is-active {
   background: var(--bg-accent);
   border-color: #546075;
   color: var(--text-accent);
@@ -1174,6 +1175,12 @@
   color: var(--text-secondary);
 }
 
+[data-theme="dark"] .empty-vocabulary {
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
 /* Home Page */
 [data-theme="dark"] .home-page {
   /* inherits page background */
@@ -1687,6 +1694,11 @@
 [data-theme="dark"] .home-word-card:hover {
   border-color: var(--border-hover);
   box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .home-vocabulary-empty button:hover {
+  border-color: #546075;
+  background: var(--bg-secondary);
 }
 
 [data-theme="dark"] .home-word-card__word {

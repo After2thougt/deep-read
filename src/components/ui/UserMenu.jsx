@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, LogOut, UserCog } from "lucide-react";
+import { Lock, User, LogOut, Info } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
+import PasswordModal from "./PasswordModal";
 
 export default function UserMenu({ username, onLogout }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -39,9 +41,14 @@ export default function UserMenu({ username, onLogout }) {
             {username || "Guest"}
           </div>
 
-          <button onClick={() => navigate("/profile")}>
-            <UserCog size={16} style={{marginRight: "6px", verticalAlign: "middle"}} />
-            Profile
+          <button onClick={() => navigate("/about")}>
+            <Info size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+            About Website
+          </button>
+
+          <button onClick={() => { setOpen(false); setShowPasswordModal(true); }}>
+            <Lock size={16} style={{marginRight: "6px", verticalAlign: "middle"}} />
+            Change Password
           </button>
 
 
@@ -63,6 +70,13 @@ export default function UserMenu({ username, onLogout }) {
           onLogout();
         }}
         confirmText="Logout"
+      />
+
+      <PasswordModal
+        open={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSubmit={() => setShowPasswordModal(false)}
+        title="Change Password"
       />
     </div>
   );

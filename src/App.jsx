@@ -380,7 +380,7 @@ function AppRoutes({onLogout, username, authenticated}) {
           element={<ArticleNotesPage />}
         />
         <Route
-          path="/profile"
+          path="/about"
           element={
             <ProfilePage
               username={username}

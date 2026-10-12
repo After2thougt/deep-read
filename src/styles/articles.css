@@ -549,22 +549,12 @@
   background: rgb(246, 248, 244);
 
   border-color: #cbd5e1;
-
-  
 }
-
 
 .tag-pill:active {
   transform: scale(.96);
 }
 
-
-.tag-pill.is-active {
-  background: #f3f1eb;
-  border-color: #eae8e2;
-  color: #7f9075;
- 
-}
 
 .tag-filter span,
 .tag-pill span {
@@ -572,31 +562,33 @@
   font-size: .68rem;
 }
 
-
-.tag-filter:hover {
+.tag-filter:hover,
+.tag-pill:hover {
   background: rgb(246, 248, 244);
   border-color: #ebeae4;
-
- 
 }
 
-
-.tag-filter:active {
+.tag-filter:active,
+.tag-pill:active {
   transform: scale(.96);
 }
 
-
-.tag-filter.is-active {
+.tag-filter.is-active,
+.tag-pill.is-active {
   border-color: #eae8e2;
   background: rgb(246, 248, 244);
   color: #7f9075;
 }
 
-
-.tag-filter.is-active:hover {
-  background: #f3f1eb;
+.tag-filter.is-active span,
+.tag-pill.is-active span {
+  color: #7f9075;
 }
 
+.tag-filter.is-active:hover,
+.tag-pill.is-active:hover {
+  background: #f3f1eb;
+}
 
 /* =========================
    Article card tags
