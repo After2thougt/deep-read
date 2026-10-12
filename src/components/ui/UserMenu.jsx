@@ -54,8 +54,8 @@ export default function UserMenu({ username, onLogout }) {
 
       <ConfirmModal
         open={showLogoutConfirm}
-        title="Confirm Logout"
-        message="STAYYY!!"
+        title="Log out?"
+        message="You’ll need to sign in again to keep using Deep Read."
         icon={<LogOut size={22} strokeWidth={2} />}
         onCancel={() => setShowLogoutConfirm(false)}
         onConfirm={() => {

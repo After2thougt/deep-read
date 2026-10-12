@@ -53,11 +53,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-[data-theme="dark"] .article-overview-card {
-  background: var(--bg-surface);
-  border-color: var(--border-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
+
 
 .article-overview-card:hover {
   background: rgb(252, 251, 248);
@@ -365,11 +361,7 @@
   border-color: var(--border-color);
 }
 
-[data-theme="dark"] .highlight-card:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-color);
-  box-shadow: none;
-}
+
 
 /* Note - inline with highlight, subtle */
 .highlight-note {

@@ -29,7 +29,6 @@ export default function ProfilePage({ username, onLogout }) {
         </div>
           <h2 className="profile-username">{username}</h2>
           
-          <p className="profile-description">You really want to study now?</p>
         </div>
 
         <div className="profile-section">
@@ -71,7 +70,7 @@ export default function ProfilePage({ username, onLogout }) {
       <ConfirmModal
         open={showLogoutConfirm}
         title="Confirm Logout"
-        message="STAYYY!!"
+        message="You’ll need to sign in again to keep using Deep Read."
         icon={<LogOut size={22} strokeWidth={2} />}
         onCancel={() => setShowLogoutConfirm(false)}
         onConfirm={handleLogout}

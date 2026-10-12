@@ -399,7 +399,7 @@
 
 .article-delete-button:hover {
   color: #64748b;
-  background: #f8fafc;
+  background: rgb(252, 251, 248);
 }
 
 .icon-button.article-delete-button {
@@ -785,8 +785,9 @@
 }
 
 
-.tag-tool-button:hover {
-  background: #f3f1eb;
+.tag-tool-button:hover,
+.article-edit-button:hover {
+ 
   border-color: #eae8e2;
   color: #95a38b;
 }
@@ -794,6 +795,46 @@
 
 .tag-tool-button:active {
   transform: scale(.95);
+}
+
+.tag-tool-button {
+  position: relative;
+}
+
+/* Tooltip */
+.tag-tool-button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: max-content;
+  max-width: 180px;
+  padding: 7px 10px;
+  border-radius: 6px;
+
+  background: #334155;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: center;
+  white-space: normal;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 9999;
+
+  transition:
+    opacity 0.15s ease,
+    visibility 0.15s ease;
+}
+
+.tag-tool-button:hover::after {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* =========================

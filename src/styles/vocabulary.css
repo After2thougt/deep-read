@@ -397,7 +397,7 @@
 }
 
 .vocabulary-page-button:hover:not(:disabled) {
-  background: #f3f1eb;
+  color: #95a38b;
   border-color: #cbd5e1;
 }
 

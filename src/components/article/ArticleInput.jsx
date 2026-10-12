@@ -1031,7 +1031,7 @@ const startNewArticle = () => {
           onClick={() => setIsCollapsed(false)}
           type="button"
           aria-label="Edit article"
-          title="Edit article"
+          data-tooltip="Edit article"
         >
           <Pencil size={17} />
         </button>

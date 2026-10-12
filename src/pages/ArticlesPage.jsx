@@ -282,7 +282,13 @@ export default function ArticlesPage({
       <button type="button" className={`tag-filter ${selectedTag === "all" ? "is-active" : ""}`} onMouseEnter={() => prefetchTag("all")} onFocus={() => prefetchTag("all")} onClick={() => selectTag("all")}>All <span>{allTotal}</span></button>
       <button type="button" className={`tag-filter ${selectedTag === "untagged" ? "is-active" : ""}`} onMouseEnter={() => prefetchTag("untagged")} onFocus={() => prefetchTag("untagged")} onClick={() => selectTag("untagged")}>unlabel <span>{untaggedTotal}</span></button>
       {tags.map((tag) => <TagPill key={tag.id} tag={tag} active={selectedTag === String(tag.id)} managing={managing} onClick={() => selectTag(String(tag.id))} onPrefetch={() => prefetchTag(String(tag.id))} onRename={rename} onDelete={remove} />)}
-    </div><button className="tag-tool-button" type="button" onClick={() => setManaging((current) => !current)}><Pencil size={15} /></button></div>
+    </div><button className="tag-tool-button" 
+                  type="button" 
+                  aria-label="Edit tags"
+                  data-tooltip="Edit tags" 
+                  onClick={() => setManaging((current) => !current)}>
+                    <Pencil size={15} />
+                    </button></div>
     {error && <p className="error-message">{error}</p>}
     {loading && !articles.length && <p className="side-message">Loading articles...</p>}
     {!loading && !articles.length && <p className="empty-vocabulary">{total ? "No articles match this tag." : "No saved articles yet."}</p>}

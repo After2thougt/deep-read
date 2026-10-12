@@ -63,8 +63,7 @@
 
 
 .profile-username {
-  margin: 0;
-
+  margin: 10px;
   font-size: 24px;
   font-weight: 700;
 
@@ -165,9 +164,6 @@
 
 
 /* Logout */
-.profile-action-button--danger {
-  color: #dc2626;
-}
 
 
 .profile-action-button--danger:hover {

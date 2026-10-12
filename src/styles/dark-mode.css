@@ -56,7 +56,7 @@
   color: var(--text-primary);
 }
 
-[data-theme="dark"] .tag-filter.is-active {
+[data-theme="dark"] .tag-filter.is-active,.tag-pill.is-active {
   background: var(--bg-accent);
   border-color: #546075;
   color: var(--text-accent);
@@ -812,7 +812,7 @@
 }
 
 [data-theme="dark"] .vocabulary-item {
-  background: var(--bg-page);
+  background: rgb(30, 41, 59);
   border-color: var(--border-color);
 }
 
@@ -936,7 +936,7 @@
 }
 
 [data-theme="dark"] .article-list-item {
-  background: var(--bg-page);
+  background: rgb(30, 41, 59);
   border-color: var(--border-color);
 }
 
@@ -1115,8 +1115,8 @@
 }
 
 [data-theme="dark"] .delete-confirm-button:hover {
-  border-color: var(--text-danger);
-  background: var(--text-danger-hover);
+  border-color: rgb(181, 1, 1);
+  background: rgb(181, 1, 1);
 }
 
 /* Underline Editor */
@@ -1405,6 +1405,20 @@
   background: var(--bg-danger-hover);
 }
 
+[data-theme="dark"] .icon-button.article-delete-button:hover {
+  background: rgb(51, 65, 85);
+  color: #d42626;
+}
+
+[data-theme="dark"] .icon-button.vocabulary-delete-button:hover {
+  background: rgb(30, 41, 59);
+  color: #d42626;
+}
+
+[data-theme="dark"] .icon-button.vocabulary-delete-button {
+  color: #f87171;
+}
+
 /* Font control (Aa button + theme toggle) */
 [data-theme="dark"] .font-toggle-button,
 [data-theme="dark"] .theme-toggle-button {
@@ -1436,8 +1450,6 @@
 [data-theme="dark"] .font-popover input[type="range"] {
   accent-color: var(--accent-color);
 }
-
-
 
 
 [data-theme="dark"] .word {
@@ -1714,7 +1726,7 @@
 }
 
 [data-theme="dark"] .user-dropdown button:hover {
-  background: #ffffff24;
+  color: rgb(15, 23, 42);
 }
 
 /* Vocabulary Highlight */
@@ -1723,3 +1735,32 @@
   color: var(--text-primary);
 }
 
+/* Note Page - article-overview-card */
+[data-theme="dark"] .article-overview-card {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .article-overview-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+}
+
+/* notes pages - article-notes-page */
+[data-theme="dark"] .article-notes-page{
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .highlight-card {
+  background: rgb(15, 23, 42);
+  border-color: var(--border-color);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .highlight-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+  box-shadow: none;
+}

@@ -54,9 +54,7 @@ export default function ConfirmModal({
           <X size={20} />
         </button>
 
-        <div className="delete-modal-icon">
-          {icon ? icon : <Trash2 size={22} strokeWidth={2} />}
-        </div>
+       
 
         <h3 id="confirm-modal-title">{title}</h3>
 
