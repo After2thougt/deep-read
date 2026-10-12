@@ -67,14 +67,14 @@
   border: 1px solid #bfdbfe;
   border-radius: 50%;
 
-  color: #2563eb;
+  color: #8c9b84;
   background: #eff6ff;
 }
 
 .pronunciation-button:hover,
 .pronunciation-button:focus-visible {
   outline: none;
-  color: #1d4ed8;
+  color: #488a42;
   background: #dbeafe;
 }
 
@@ -90,10 +90,10 @@
 
   border-radius: 4px;
 
-  color: #1d4ed8;
+  color: #8c9b84;
   background: #eff6ff;
 
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 700;
 
   text-transform: capitalize;
@@ -112,7 +112,7 @@
   margin: 12px 0;
   padding: 10px;
 
-  border-left: 2px solid #93c5fd;
+  border-left: 2px solid #8c9b84;
 
   background: #f8fafc;
 
@@ -137,9 +137,66 @@
   color: #2563eb;
 }
 
-.dictionary-save {
+
+/* Dictionary save button */
+.dictionary-save{
   width: 100%;
 }
+
+.primary-button.dictionary-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-height: 42px;
+  padding: 10px 16px;
+
+  border: 1px solid #52684c;
+  border-radius: 8px;
+
+  background-color: #52684c;
+  color: #ffffff;
+
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+/* Hover */
+.primary-button.dictionary-save:hover:not(:disabled) {
+  background-color: #40543b;
+  border-color: #40543b;
+  box-shadow: 0 2px 6px rgb(37 43 36 / 12%);
+}
+
+/* Pressed */
+.primary-button.dictionary-save:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* Keyboard focus */
+.primary-button.dictionary-save:focus-visible {
+  outline: 2px solid #8da184;
+  outline-offset: 3px;
+}
+
+/* Disabled / Saving / Saved */
+.primary-button.dictionary-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 
 .side-message {
   margin: 0;
