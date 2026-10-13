@@ -528,6 +528,8 @@
   color: var(--profile-green);
   font-size: 0.77rem;
   text-decoration: none;
+
+  padding-left: 840px;
 }
 
 .profile-footer__support:hover {

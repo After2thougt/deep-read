@@ -34,6 +34,9 @@ export default function ProfilePage() {
             A little curiosity goes a long way. Turn the articles
             you love into opportunities to build vocabulary,
             understand language, and grow your reading skills.
+            DeepRead is a personal English reading and learning platform designed to help you get more out of every article.
+            Read authentic English content, explore unfamiliar vocabulary, and understand what you read with the help of AI-powered tools. 
+            Save useful words, highlight important passages, and review what you've learned along the way.
           </p>
 
           <a className="profile-hero__link" href="#our-approach">
@@ -216,14 +219,9 @@ export default function ProfilePage() {
 
       {/* Footer */}
       <footer className="profile-footer">
-        <span className="profile-footer__copyright">
-          DEEP READ
-        </span>
+       
 
-        <span className="profile-footer__motto">
-          A little progress, every day.
-        </span>
-
+      
         <a
           className="profile-footer__support"
           href="mailto:support@deepread.com"
