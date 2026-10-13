@@ -169,43 +169,36 @@ function AppRoutes({onLogout, username, role, authenticated}) {
    * =====================================================
    */
 
-  useEffect(() => {
+    useEffect(() => {
     if (!authenticated) {
+      setHomeArticles([]);
       return;
     }
+
+    let cancelled = false;
 
     fetchArticles({
       page: 1,
       limit: 100,
       tag: "all",
+      force: true,
     })
       .then((result) => {
-        setHomeArticles(result.items || []);
+        if (!cancelled) {
+          setHomeArticles(result.items || []);
+        }
       })
       .catch((error) => {
-        console.error("Failed to load home articles:", error);
-        setHomeArticles([]);
+        if (!cancelled) {
+          console.error("Failed to load home articles:", error);
+          setHomeArticles([]);
+        }
       });
-  }, [authenticated]);
 
-  useEffect(() => {
-    if (!authenticated) {
-      return;
-    }
-
-    fetchVocabulary({
-      page: 1,
-      limit: 5,
-      sort: "recent",
-    })
-      .then((result) => {
-        setHomeWords(result.items || []);
-      })
-      .catch((error) => {
-        console.error("Failed to load home vocabulary:", error);
-        setHomeWords([]);
-      });
-  }, [authenticated]);
+    return () => {
+      cancelled = true;
+    };
+  }, [authenticated, articleListVersion]);
 
   /*
    * =====================================================
