@@ -224,7 +224,7 @@ export default function ProfilePage() {
       
         <a
           className="profile-footer__support"
-          href="mailto:support@deepread.com"
+          href="mailto:512412772@qq.com"
         >
           Get in touch
           <ArrowUpRight size={14} />

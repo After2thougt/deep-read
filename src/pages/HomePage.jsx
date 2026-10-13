@@ -233,13 +233,13 @@ export default function HomePage({
 
         <div className="home-hero__visual">
           <img
-            src="/home-visual.png"
+            src="/home-visual.webp"
             className="home-hero__image light-image"
             alt="DeepRead"
           />
 
           <img
-            src="/home-visual-dark.png"
+            src="/home-visual-dark.webp"
             className="home-hero__image dark-image"
             alt=""
           />
