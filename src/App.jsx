@@ -200,6 +200,44 @@ function AppRoutes({onLogout, username, role, authenticated}) {
     };
   }, [authenticated, articleListVersion]);
 
+
+/*
+ * =====================================================
+ * LOAD HOME VOCABULARY
+ * =====================================================
+ */
+
+useEffect(() => {
+  if (!authenticated) {
+    setHomeWords([]);
+    return;
+  }
+
+  let cancelled = false;
+
+  fetchVocabulary({
+    page: 1,
+    limit: 4,
+    sort: "recent",
+    search: "",
+  })
+    .then((result) => {
+      if (!cancelled) {
+        setHomeWords(result.items || []);
+      }
+    })
+    .catch((error) => {
+      if (!cancelled) {
+        console.error("Failed to load home vocabulary:", error);
+        setHomeWords([]);
+      }
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, [authenticated]);
+
   /*
    * =====================================================
    * NAVIGATION HELPERS
