@@ -341,7 +341,6 @@ function Paragraph({
       textDecorationLine: "underline",
       textDecorationStyle: "wavy",
       textDecorationThickness: "1px",
-      textUnderlineOffset: "4px",
       textDecorationColor: "#eab308",
     } : undefined;
 
