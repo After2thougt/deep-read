@@ -233,3 +233,6 @@
   color: #77756f;
 }
 
+.user-dropdown button.active:hover {
+  color: inherit;
+}

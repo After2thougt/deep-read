@@ -10,6 +10,7 @@ export default function UserMenu({ username, role, onLogout }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const ref = useRef(null);
+ 
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -42,7 +43,7 @@ export default function UserMenu({ username, role, onLogout }) {
 
           <button onClick={() => navigate("/about")}>
             <Info size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
-            About Website
+            About DeepRead
           </button>
 
           {role !== "guest" && (
