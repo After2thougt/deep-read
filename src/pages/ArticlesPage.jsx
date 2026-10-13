@@ -330,7 +330,7 @@ export default function ArticlesPage({
           {tag.name}
         </span>
       ))
-    : <span className="untagged-label">暂无标签</span>
+    : <span className="untagged-label">unlabel</span>
   }
 
   <div

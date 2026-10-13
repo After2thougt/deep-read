@@ -57,7 +57,7 @@ function LoginScreen({ onLogin }) {
         return;
       }
 
-      onLogin(body.username);
+      onLogin(body.username, body.role);
     } catch {
       setError("Unable to connect to the server.");
     } finally {
@@ -118,7 +118,7 @@ function LoginScreen({ onLogin }) {
 }
 
 
-function AppRoutes({onLogout, username, authenticated}) {
+function AppRoutes({onLogout, username, role, authenticated}) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -283,7 +283,7 @@ function AppRoutes({onLogout, username, authenticated}) {
           </NavLink>
 
           <NavLink
-            to="/notes"
+            to="/highlight"
             className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
           >
             Highlight
@@ -293,6 +293,7 @@ function AppRoutes({onLogout, username, authenticated}) {
         <div className="app-header-actions">
           <UserMenu
             username={username}
+            role={role}
             onLogout={onLogout}
           />
         </div>
@@ -327,6 +328,7 @@ function AppRoutes({onLogout, username, authenticated}) {
           element={
             <ReaderPage
               key="new-article"
+              role={role}
               article={article}
               articleId={null}
               articleTitle={articleTitle}
@@ -350,6 +352,7 @@ function AppRoutes({onLogout, username, authenticated}) {
           element={
             <ReaderPage
               key={location.pathname}
+              role={role}
               article={article}
               articleId={null} // Will be fetched from URL in ReaderPage
               articleTitle={articleTitle}
@@ -372,11 +375,11 @@ function AppRoutes({onLogout, username, authenticated}) {
           element={<VocabularyPage />}
         />
         <Route
-          path="/notes"
+          path="/highlight"
           element={<NotesPage />}
         />
         <Route
-          path="/notes/:articleId"
+          path="/highlight/:articleId"
           element={<ArticleNotesPage />}
         />
         <Route
@@ -416,6 +419,7 @@ export default function App() {
     loading: true,
     authenticated: false,
     username: "",
+    role: "",
   });
 
   async function logout() {
@@ -432,6 +436,7 @@ export default function App() {
       loading: false,
       authenticated: false,
       username: "",
+      role: "",
     });
     window.location.replace("/");
   }
@@ -446,6 +451,7 @@ export default function App() {
           loading: false,
           authenticated: response.ok,
           username: body.username || "",
+          role: body.role || "",
         });
       })
       .catch(() => {
@@ -453,6 +459,7 @@ export default function App() {
           loading: false,
           authenticated: false,
           username: "",
+          role: "",
         });
       });
   }, []);
@@ -468,11 +475,12 @@ export default function App() {
   if (!auth.authenticated) {
     return (
       <LoginScreen
-        onLogin={(username) => {
+        onLogin={(username, role) => {
           setAuth({
             loading: false,
             authenticated: true,
             username,
+            role: role || "",
           });
 
           window.location.replace("/");
@@ -487,6 +495,7 @@ export default function App() {
         <AppRoutes 
           onLogout={logout}
           username={auth.username}
+          role={auth.role}
           authenticated={auth.authenticated}
         />
       </div>

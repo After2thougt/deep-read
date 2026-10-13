@@ -229,7 +229,8 @@ textarea:focus {
   color: #64748b;
 }
 
-.empty-vocabulary {
+.empty-vocabulary,
+.notes-empty {
   display: flex;
   align-items: center;
   justify-content: center;

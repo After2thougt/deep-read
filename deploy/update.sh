@@ -16,6 +16,7 @@ fi
 # CONFIGURATION
 # ============================================================
 APP_DIR="/opt/deepread/app"
+DATA_DIR="/data/deepread"
 PM2_NAME="deepread"
 BRANCH="${1:-main}"
 HEALTH_ENDPOINT="http://127.0.0.1:3000/api/health"
@@ -42,6 +43,10 @@ echo "  DeepRead Update: $BRANCH"
 echo "============================================================"
 
 cd "$APP_DIR"
+
+if [ ! -d "$DATA_DIR" ] || [ ! -w "$DATA_DIR" ]; then
+  error "Database directory is missing or not writable: $DATA_DIR"
+fi
 
 # ============================================================
 # STEP 1: GIT PULL (verify clean working tree)

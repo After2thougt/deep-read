@@ -106,65 +106,54 @@ export default function HomePage({
 
 
   /*
-   * 今天
+   * today
    */
   const today = getDateOnly(new Date());
 
 
+  
   /*
-   * 只从历史文章中选择推荐文章。
-   *
-   * 使用 updatedAt：
-   *
-   * 今天更新过的文章
-   * → 不推荐
-   *
-   * 之前更新的文章
-   * → 可以推荐
+   * select articles that were created or updated before today.
    */
-  const previousArticles = articles.filter(
-    (article) => {
-      if (!article) {
-        return false;
-      }
-
-      const value =
-        article.updatedAt ||
-        article.createdAt;
-
-      const articleDate =
-        getDateOnly(value);
-
-      if (!articleDate) {
-        return false;
-      }
-
-      return articleDate < today;
+  const previousArticles = articles.filter((article) => {
+    if (!article) {
+      return false;
     }
-  );
 
+    const value = article.updatedAt || article.createdAt;
+    const articleDate = getDateOnly(value);
+
+    return articleDate && articleDate < today;
+  });
 
   /*
-   * 今天固定推荐一篇。
+   * if there are no previous articles, use all existing articles.
+   * that way, if there is only one article created today, it can still be displayed.
+   */
+  const recommendationPool =
+    previousArticles.length > 0
+      ? previousArticles
+      : articles.filter((article) => article?.id);
+
+  /*
+   * recmmond a article every day
    */
   const featuredArticle =
-    previousArticles.length > 0
-      ? previousArticles[
-          getDailyRandomIndex(
-            previousArticles.length
-          )
+    recommendationPool.length > 0
+      ? recommendationPool[
+          getDailyRandomIndex(recommendationPool.length)
         ]
       : null;
 
 
   /*
-   * 获取推荐文章的完整正文。
+   * fetch recommended article content.
    *
-   * /api/articles 列表接口
-   * 只返回文章列表数据。
+   * /api/articles List interface 
+   * only returns article list data.
    *
    * /api/articles/:id
-   * 才获取完整 content。
+   * get the whole content。
    */
   useEffect(() => {
     if (!featuredArticle?.id) {
@@ -291,7 +280,7 @@ export default function HomePage({
             }
           >
 
-            {/* 日期 */}
+            {/* DATE */}
 
             <div className="home-featured-article__date">
               {formatArticleDate(
@@ -300,7 +289,7 @@ export default function HomePage({
             </div>
 
 
-            {/* 标题 */}
+            {/* TITLE */}
 
             <h3>
               {featuredArticle.title ||
@@ -308,7 +297,7 @@ export default function HomePage({
             </h3>
 
 
-            {/* 摘要 */}
+            {/* PREVIEW */}
 
             <p className="home-featured-article__preview">
 
@@ -366,8 +355,8 @@ export default function HomePage({
       </section>
 
       {/* =================================================
-    VOCABULARY
-    ================================================= */}
+                            VOCABULARY
+          ================================================= */}
 
 <section className="home-vocabulary">
 

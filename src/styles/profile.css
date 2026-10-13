@@ -99,7 +99,6 @@
   color: var(--profile-ink);
   font-size: clamp(2.4rem, 3.5vw, 3.3rem);
   font-weight: 600;
-  letter-spacing: -0.085em;
   line-height: 0.99;
 }
 
@@ -108,7 +107,7 @@
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 400;
   font-style: italic;
-  letter-spacing: -0.075em;
+  letter-spacing: 0em;
 }
 
 .profile-hero__description {
@@ -454,7 +453,7 @@
   gap: 22px;
 
   padding: 30px 32px;
-  background: #eaece3;
+  background:var(--bg-secondary, #f8fafc);
 }
 
 .profile-closing__mark {

@@ -18,8 +18,19 @@ fi
 APP_DIR="/opt/deepread/app"
 DATA_DIR="/data/deepread"
 DB_PATH="${DATA_DIR}/app.db"
+GUEST_DB_PATH="${DATA_DIR}/guest.db"
 PM2_NAME="deepread"
 HEALTH_ENDPOINT="http://127.0.0.1:3000/api/health"
+
+if [ -f "$APP_DIR/.env" ]; then
+  CONFIGURED_GUEST_DB=$(sed -n 's/^GUEST_DATABASE_PATH=//p' "$APP_DIR/.env" | tail -n 1)
+  if [ -n "$CONFIGURED_GUEST_DB" ]; then
+    case "$CONFIGURED_GUEST_DB" in
+      /*) GUEST_DB_PATH="$CONFIGURED_GUEST_DB" ;;
+      *) GUEST_DB_PATH="$APP_DIR/$CONFIGURED_GUEST_DB" ;;
+    esac
+  fi
+fi
 
 # ============================================================
 # COLORS & LOGGING
@@ -138,10 +149,14 @@ echo "--- Database ---"
 check "Database file exists" "[ -f $DB_PATH ]"
 check "Database readable (integrity_check)" "sqlite3 $DB_PATH 'PRAGMA integrity_check;' | grep -q ok"
 check "Database writable" "[ -w $DB_PATH ]"
+check "Guest database file exists" "[ -f $GUEST_DB_PATH ]"
+check "Guest database readable (integrity_check)" "sqlite3 $GUEST_DB_PATH 'PRAGMA integrity_check;' | grep -q ok"
+check "Guest database writable" "[ -w $GUEST_DB_PATH ]"
 
 # Check critical tables
 for table in articles article_blocks vocabulary; do
   check_warn "Table exists: $table" "sqlite3 $DB_PATH '.tables' | grep -qw $table"
+  check_warn "Guest table exists: $table" "sqlite3 $GUEST_DB_PATH '.tables' | grep -qw $table"
 done
 
 # Check migrations table

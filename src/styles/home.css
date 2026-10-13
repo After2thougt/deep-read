@@ -321,10 +321,11 @@
   text-align: center;
 
   color: #999;
+  background:var(--bg-secondary, #f8fafc);
 }
 
 .home-empty svg {
-  margin-bottom: 16px;
+  margin-bottom: 1px;
 }
 
 .home-empty h3 {
@@ -352,16 +353,16 @@
   border-radius: 9px;
 
   background: white;
-  color: #333;
+  color: #97a58f;
 
   font-size: 13px;
-  font-weight: 600;
 
   cursor: pointer;
 }
 
 .home-empty-button:hover {
-  border-color: #aaa;
+  border-color: #d6ddcf;
+  background: #f6f8f4;
 }
 
 
@@ -634,7 +635,6 @@
   background: transparent;
 
   font-size: 13px;
-  font-weight: 600;
 
   color: #666;
   cursor: pointer;

@@ -1,7 +1,7 @@
 /* =========================================================
    Notes Page - Two-Level Design
-   Level 1: /notes - Article Notes Overview (Article Cards)
-   Level 2: /notes/:articleId - Article Notes Detail (Highlight Cards)
+   Level 1: /highlight - Article Notes Overview (Article Cards)
+   Level 2: /highlight/:articleId - Article Notes Detail (Highlight Cards)
 ========================================================= */
 
 .notes-page {
@@ -166,9 +166,6 @@
 
 /* Common styles shared by both levels */
 
-.notes-header {
-  margin-bottom: 8px;
-}
 
 .notes-header h1 {
   margin: 0 0 4px;
@@ -204,24 +201,12 @@
 }
 
 .notes-empty {
-  text-align: center;
-  padding: 80px 20px;
-  color: var(--text-muted);
+  margin-top: -10px;
 }
 
 .notes-empty p {
   margin: 0 0 8px;
-  font-size: 1.1rem;
-}
-
-.notes-empty-hint {
-  font-size: 0.9rem !important;
-  color: var(--text-muted) !important;
-}
-
-/* Article Section (used in level 1 only for legacy) */
-.article-section {
-  /* container for article header + card + gap */
+  font-size: 0.9rem;
 }
 
 /* Article Header - OUTSIDE the card */

@@ -314,15 +314,24 @@ else
   sed -i 's/^HOST=.*/HOST=127.0.0.1/' "$ENV_FILE"
   sed -i 's/^PORT=.*/PORT=3000/' "$ENV_FILE"
   sed -i 's|^DATABASE_PATH=.*|DATABASE_PATH=/data/deepread/app.db|' "$ENV_FILE"
+  sed -i 's|^GUEST_DATABASE_PATH=.*|GUEST_DATABASE_PATH=/data/deepread/guest.db|' "$ENV_FILE"
 
   warn "============================================================"
   warn "  REQUIRED: Edit $ENV_FILE and set:"
   warn "    OPENAI_API_KEY=your_key"
   warn "    AUTH_USERNAME=your_username"
   warn "    AUTH_PASSWORD=your_password"
+  warn "    GUEST_USERNAME=your_guest_username"
+  warn "    GUEST_PASSWORD=your_guest_password"
   warn "    AUTH_SESSION_SECRET=$(openssl rand -hex 32 2>/dev/null || echo 'generate_with_openssl_rand_-hex_32')"
   warn "============================================================"
   read -rp "Press Enter after editing .env (or Ctrl+C to abort)..."
+fi
+
+if ! grep -q '^GUEST_DATABASE_PATH=' "$ENV_FILE"; then
+  printf '\nGUEST_DATABASE_PATH=/data/deepread/guest.db\n' >> "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  info "Added GUEST_DATABASE_PATH=/data/deepread/guest.db"
 fi
 
 # Verify critical vars

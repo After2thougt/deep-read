@@ -149,6 +149,7 @@ ssh -T git@github.com
 
 /data/deepread/                   # Persistent data (survives deployments)
 ├── app.db                        # SQLite main database
+├── guest.db                      # SQLite guest database
 ├── app.db-wal                    # WAL journal
 ├── app.db-shm                    # Shared memory
 ├── uploads/                      # User uploads
@@ -178,6 +179,7 @@ deploy/migrations/                # Database migration scripts
 | `/opt/deepread/app` | ubuntu:ubuntu | 755 | Application code |
 | `/data/deepread` | ubuntu:ubuntu | 755 | Data root |
 | `/data/deepread/app.db` | ubuntu:ubuntu | 644 | Database file |
+| `/data/deepread/guest.db` | ubuntu:ubuntu | 644 | Guest database file |
 | `/data/deepread/backups` | ubuntu:ubuntu | 755 | Backup directory |
 | `/data/deepread/uploads` | ubuntu:ubuntu | 755 | Uploads directory |
 | `/data/deepread/logs` | ubuntu:ubuntu | 755 | Logs directory |
@@ -231,6 +233,7 @@ NODE_ENV=production
 HOST=127.0.0.1
 PORT=3000
 DATABASE_PATH=/data/deepread/app.db
+GUEST_DATABASE_PATH=/data/deepread/guest.db
 
 # MUST SET THESE
 OPENAI_API_KEY=sk-xxx…xxxx
@@ -286,6 +289,7 @@ pm2 list
 | `HOST` | Yes | Backend bind address | `127.0.0.1` |
 | `PORT` | Yes | Backend port | `3000` |
 | `DATABASE_PATH` | Yes | SQLite path | `/data/deepread/app.db` |
+| `GUEST_DATABASE_PATH` | No | Guest SQLite path | `/data/deepread/guest.db` |
 | `OPENAI_API_KEY` | Yes | OpenAI API Key | `sk-xxx` |
 | `AUTH_USERNAME` | Yes | Admin username | `admin` |
 | `AUTH_PASSWORD` | Yes | Admin password | `StrongP@ssw0rd` |
@@ -595,10 +599,10 @@ bash deploy/check.sh
 | **App Health** | `/api/health` responds | Returns `{"status":"ok"}` |
 | | Frontend served | Returns HTML with `<!doctype html>` |
 | | Frontend JS assets reachable | Asset files HTTP 200 |
-| **Database** | File exists | `/data/deepread/app.db` exists |
+| **Database** | File exists | `/data/deepread/app.db` and `/data/deepread/guest.db` exist |
 | | Integrity check | `PRAGMA integrity_check = ok` |
 | | Writable by ubuntu | ubuntu can write |
-| | Critical tables exist | articles, article_blocks, vocabulary |
+| | Critical tables exist | articles, article_blocks, vocabulary in both databases |
 | | migrations table exists | Migration tracking table |
 | **Frontend Build** | dist/index.html exists | File present |
 | | Assets non-empty | dist/assets/ has files |

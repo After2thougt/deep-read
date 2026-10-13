@@ -118,7 +118,7 @@ function removeArticleImages(articleId) {
 
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 dotenv.config({ path: path.resolve(__dirname, ".env") });
-const { db, serializeArticle, serializeVocabulary } = require("./db");
+const { db, adminDb, guestDb, runWithDatabase, serializeArticle, serializeVocabulary } = require("./db");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -185,7 +185,7 @@ function setSessionCookie(res, token) {
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${encodeURIComponent(token)}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}; Path=/; HttpOnly; SameSite=Lax${secure}`);
 }
 
-function currentUser(req) {
+function currentSession(req) {
   const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
   const [tokenId, signature] = String(token || '').split('.');
   const expectedSignature = tokenId && crypto.createHmac('sha256', sessionSecret).update(tokenId).digest('hex');
@@ -197,23 +197,34 @@ function currentUser(req) {
     if (token) sessions.delete(token);
     return null;
   }
-  return session.username;
+  return session;
+}
+
+function currentUser(req) {
+  return currentSession(req)?.username || null;
 }
 
 function requireAuth(req, res, next) {
-  if (currentUser(req)) return next();
+  const session = currentSession(req);
+  if (session) return runWithDatabase(session.database, next);
   return res.status(401).json({ error: 'Authentication required.' });
 }
 
-function ensureAdminUser() {
-  const username = String(process.env.AUTH_USERNAME || '').trim();
-  const password = String(process.env.AUTH_PASSWORD || '');
+function ensureUser(connection, username, password) {
   if (!username || !password) return;
-  const existing = db.prepare('SELECT id FROM auth_users WHERE username = ?').get(username);
+  const existing = connection.prepare('SELECT id FROM auth_users WHERE username = ?').get(username);
   if (!existing) {
     const now = new Date().toISOString();
-    db.prepare('INSERT INTO auth_users (username,password_hash,created_at,updated_at) VALUES (?,?,?,?)').run(username, hashPassword(password), now, now);
+    connection.prepare('INSERT INTO auth_users (username,password_hash,created_at,updated_at) VALUES (?,?,?,?)').run(username, hashPassword(password), now, now);
   }
+}
+
+function ensureAdminUser() {
+  ensureUser(adminDb, String(process.env.AUTH_USERNAME || '').trim(), String(process.env.AUTH_PASSWORD || ''));
+}
+
+function ensureGuestUser() {
+  ensureUser(guestDb, String(process.env.GUEST_USERNAME || '').trim(), String(process.env.GUEST_PASSWORD || ''));
 }
 
 function loginRateLimited(ip) {
@@ -230,13 +241,20 @@ function recordLoginFailure(ip) {
 }
 
 ensureAdminUser();
+ensureGuestUser();
 
 app.post('/api/auth/login', (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   if (loginRateLimited(ip)) return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
   const username = String(req.body?.username || '').trim();
   const password = String(req.body?.password || '');
-  const user = db.prepare('SELECT username,password_hash FROM auth_users WHERE username = ?').get(username);
+  const adminUser = adminDb.prepare('SELECT username,password_hash FROM auth_users WHERE username = ?').get(username);
+  const guestUsername = String(process.env.GUEST_USERNAME || '').trim();
+  const guestUser = guestUsername && username.toLowerCase() === guestUsername.toLowerCase()
+    ? guestDb.prepare('SELECT username,password_hash FROM auth_users WHERE username = ?').get(username)
+    : null;
+  const user = adminUser || guestUser;
+  const database = guestUser && !adminUser ? guestDb : adminDb;
   if (!user || !verifyPassword(password, user.password_hash)) {
     recordLoginFailure(ip);
     return res.status(401).json({ error: 'Invalid username or password.' });
@@ -244,9 +262,9 @@ app.post('/api/auth/login', (req, res) => {
   loginAttempts.delete(ip);
   const tokenId = crypto.randomBytes(32).toString('hex');
   const token = `${tokenId}.${crypto.createHmac('sha256', sessionSecret).update(tokenId).digest('hex')}`;
-  sessions.set(token, { username: user.username, expiresAt: Date.now() + SESSION_TTL_MS });
+  sessions.set(token, { username: user.username, database, role: database === guestDb ? 'guest' : 'admin', expiresAt: Date.now() + SESSION_TTL_MS });
   setSessionCookie(res, token);
-  return res.json({ username: user.username });
+  return res.json({ username: user.username, role: database === guestDb ? 'guest' : 'admin' });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -259,7 +277,8 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 app.post('/api/auth/change-password', requireAuth, (req, res) => {
-  const username = currentUser(req);
+  const session = currentSession(req);
+  const username = session.username;
   const { currentPassword, newPassword } = req.body || {};
 
   if (!currentPassword || !newPassword) {
@@ -289,23 +308,25 @@ app.post('/api/auth/change-password', requireAuth, (req, res) => {
   // Create new session for the user
   const tokenId = crypto.randomBytes(32).toString('hex');
   const token = `${tokenId}.${crypto.createHmac('sha256', sessionSecret).update(tokenId).digest('hex')}`;
-  sessions.set(token, { username, expiresAt: Date.now() + SESSION_TTL_MS });
+  sessions.set(token, { username, database: session.database, role: session.role, expiresAt: Date.now() + SESSION_TTL_MS });
   setSessionCookie(res, token);
 
   return res.json({ success: true, message: 'Password changed successfully.' });
 });
 
 app.get("/api/auth/me", (req, res) => {
-  const username = currentUser(req);
-  if (!username) {
+  const session = currentSession(req);
+  if (!session) {
     return res.status(401).json({});
   }
-  res.json({ username });
+  res.json({ username: session.username, role: session.role });
 });
 
 app.use('/api', (req, res, next) => {
-  if (req.path.startsWith('/auth/') || req.path === '/health') return next();
-  return requireAuth(req, res, next);
+  if (req.path === '/auth/login' || req.path === '/auth/logout' || req.path === '/auth/me' || req.path === '/health') return next();
+  const session = currentSession(req);
+  if (!session) return res.status(401).json({ error: 'Authentication required.' });
+  return runWithDatabase(session.database, next);
 });
 
 function parseMcpResponse(data) {
@@ -1251,23 +1272,48 @@ app.get("/api/dictionary/:word", async (req, res) => {
 });
 
 app.post("/api/eudic/vocabulary", async (req, res) => {
+  // Only authenticated administrators may sync words to Eudic.
+  const session = currentSession(req);
+
+  if (!session) {
+    return res.status(401).json({
+      error: "Authentication required.",
+    });
+  }
+
+  if (session.role !== "admin") {
+    return res.status(403).json({
+      error: "Only administrators can sync vocabulary to Eudic.",
+    });
+  }
+
   const { word, contextLine } = req.body || {};
 
   if (typeof word !== "string" || !/^[a-z]+(?:'[a-z]+)?$/i.test(word)) {
-    return res.status(400).json({ error: "Please provide a single English word." });
+    return res.status(400).json({
+      error: "Please provide a single English word.",
+    });
   }
 
   try {
     const result = await callEudicTool("add_word", {
       word: word.toLowerCase(),
       star: 1,
-      context_line: typeof contextLine === "string" ? contextLine.slice(0, 1000) : null,
+      context_line:
+        typeof contextLine === "string"
+          ? contextLine.slice(0, 1000)
+          : null,
     });
+
     return res.status(201).json({ ok: true, result });
   } catch (error) {
     const status = error.response?.status;
+
     return res.status(status === 401 ? 401 : 502).json({
-      error: status === 401 ? "Eudic authorization failed. Check EUDIC_TOKEN." : "Could not sync this word to Eudic.",
+      error:
+        status === 401
+          ? "Eudic authorization failed. Check EUDIC_TOKEN."
+          : "Could not sync this word to Eudic.",
     });
   }
 });

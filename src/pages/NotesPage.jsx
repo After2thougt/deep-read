@@ -54,7 +54,7 @@ export default function NotesPage() {
   }
 
   function handleArticleClick(articleId) {
-    navigate(`/notes/${articleId}`);
+    navigate(`/highlight/${articleId}`);
   }
 
   function formatDate(dateString) {
@@ -102,8 +102,8 @@ export default function NotesPage() {
           
         </header>
         <div className="notes-empty">
-          <p>No highlights yet</p>
-          <p className="notes-empty-hint">Highlight something while reading, and it will appear here.</p>
+          <p>No highlights yet. Highlight something while reading, and it will appear here.</p>
+          
         </div>
       </section>
     );

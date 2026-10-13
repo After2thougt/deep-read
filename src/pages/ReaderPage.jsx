@@ -869,6 +869,7 @@ function StudyResults({
 
 
 export default function ReaderPage({
+  role,
   article,
   articleTitle,
   highlights,
@@ -1741,48 +1742,56 @@ function resetFont() {
 }, []);
 
 
-  async function saveSelectedWord() {
-    setSaving(true);
-    setSyncMessage("");
+  
+async function saveSelectedWord() {
+  setSaving(true);
+  setSyncMessage("");
+
+  try {
+    await saveVocabulary({
+      ...selectedWord,
+      articleId: articleId || null,
+    });
+
+    // Immediately update savedWords for instant highlight update
+    setSavedWords((prev) => {
+      const word = selectedWord.word.toLowerCase();
+
+      if (!prev.includes(word)) {
+        return [...prev, word];
+      }
+
+      return prev;
+    });
+
+    setSaved(true);
+
+    // Only admin accounts sync to Eudic
+    if (role !== "admin") {
+      setSynced(false);
+      setSyncMessage("Saved to Vocabulary.");
+      return;
+    }
 
     try {
-      await saveVocabulary({
-        ...selectedWord,
-        articleId:
-          articleId || null,
-      });
+      await syncVocabularyToEudic(
+        selectedWord.word,
+        articleContent
+      );
 
-      // Immediately update savedWords for instant highlight update
-      setSavedWords(prev => {
-        const word = selectedWord.word.toLowerCase();
-        if (!prev.includes(word)) {
-          return [...prev, word];
-        }
-        return prev;
-      });
-
-      setSaved(true);
-
-      try {
-        await syncVocabularyToEudic(
-          selectedWord.word,
-          articleContent
-        );
-
-        setSynced(true);
-
-        setSyncMessage(
-          "Saved to Vocabulary and synced to Eudic."
-        );
-      } catch {
-        setSyncMessage(
-          "Saved to Vocabulary. Eudic sync was unavailable."
-        );
-      }
-    } finally {
-      setSaving(false);
+      setSynced(true);
+      setSyncMessage("Saved to Vocabulary and synced to Eudic.");
+    } catch {
+      setSynced(false);
+      setSyncMessage(
+        "Saved to Vocabulary. Eudic sync was unavailable."
+      );
     }
+  } finally {
+    setSaving(false);
   }
+}
+
 
 
   return (
