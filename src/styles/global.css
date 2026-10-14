@@ -100,7 +100,15 @@ h1 {
   font-weight: 500;
   white-space: nowrap;
   gap: 7px;
+
+  line-height: 1;
 }
+
+.nav-button svg {
+  display: block;
+  flex-shrink: 0;
+}
+
 
 .nav-button,
 .nav-button:hover,

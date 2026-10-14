@@ -15,8 +15,9 @@ import UserMenu from "./components/ui/UserMenu";
 import {
   House,
   Newspaper,
-  BookOpen,
+  LibraryBig,
   Highlighter,
+  BookOpen,
 } from "lucide-react";
 
 import {
@@ -315,7 +316,7 @@ useEffect(() => {
     onMouseEnter={prefetchArticles}
     onFocus={prefetchArticles}
   >
-    <Newspaper size={17} strokeWidth={1.8} />
+    <LibraryBig size={17} strokeWidth={1.8} />
     <span>My Articles</span>
   </NavLink>
 
@@ -325,7 +326,7 @@ useEffect(() => {
       isActive ? "nav-button active" : "nav-button"
     }
   >
-    <BookOpen size={17} strokeWidth={1.8} />
+    <Newspaper size={17} strokeWidth={1.8} />
     <span>Vocabulary</span>
   </NavLink>
 
