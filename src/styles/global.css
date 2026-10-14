@@ -99,6 +99,7 @@ h1 {
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
+  gap: 7px;
 }
 
 .nav-button,
@@ -122,7 +123,7 @@ h1 {
 
 .nav-button.active {
   color: #748568;
-  border-bottom-color: currentColor;
+  
 }
 
 .nav-button.active:hover {
@@ -249,68 +250,7 @@ textarea:focus {
   border-radius: 12px;
 }
 
-/* =========================================================
-   Home vocabulary Empty States
-========================================================= */
-.home-vocabulary-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
 
-  min-height: 180px;
-  padding: 28px 20px;
 
-  border: 1px dashed var(--border-color, #e2e8f0);
-  border-radius: 12px;
-  background: var(--bg-secondary, #f8fafc);
 
-  text-align: center;
-}
 
-.home-vocabulary-empty p {
-  max-width: 280px;
-  margin: 0;
-  color: var(--text-secondary, #94a3b8);
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-.home-vocabulary-empty button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-
-  padding: 9px 13px;
-  border: 1px solid #e2e8f0;
-  border-radius: 9px;
-  background: var(--bg-primary, #fff);
-  color: #7f9075;
-
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-
-  transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    transform 0.18s ease;
-}
-
-.home-vocabulary-empty button:hover {
-  border-color: #d6ddcf;
-  background: #f6f8f4;
-}
-
-.home-vocabulary-empty button:active {
-  transform: scale(0.97);
-}
-
-.home-vocabulary-empty button:focus-visible,
-.home-word-card:focus-visible {
-  outline: 2px solid #93c5fd;
-  outline-offset: 3px;
-}

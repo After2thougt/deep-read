@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen } from "lucide-react";
 import { BrowserRouter, Routes, Route, NavLink, useNavigate, useLocation } from "react-router-dom";
 
 import ReaderPage from "./pages/ReaderPage";
@@ -12,6 +11,13 @@ import ArticleNotesPage from "./pages/ArticleNotesPage";
 import MigrationBanner from "./components/reader/MigrationBanner";
 import { fetchVocabulary } from "./api/vocabulary";
 import UserMenu from "./components/ui/UserMenu";
+
+import {
+  House,
+  Newspaper,
+  BookOpen,
+  Highlighter,
+} from "lucide-react";
 
 import {
   fetchArticles,
@@ -288,38 +294,52 @@ useEffect(() => {
           <span className="app-brand-copy">Turn pages, Open minds.</span>
         </h1>
 
-        <nav className="app-nav" aria-label="Main navigation">
-          <NavLink
-            to="/"
-            className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
-            end
-          >
-            Home
-          </NavLink>
+        
+<nav className="app-nav" aria-label="Main navigation">
+  <NavLink
+    to="/"
+    className={({ isActive }) =>
+      isActive ? "nav-button active" : "nav-button"
+    }
+    end
+  >
+    <House size={17} strokeWidth={1.8} />
+    <span>Home</span>
+  </NavLink>
 
-          <NavLink
-            to="/articles"
-            className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
-            onMouseEnter={prefetchArticles}
-            onFocus={prefetchArticles}
-          >
-            My Articles
-          </NavLink>
+  <NavLink
+    to="/articles"
+    className={({ isActive }) =>
+      isActive ? "nav-button active" : "nav-button"
+    }
+    onMouseEnter={prefetchArticles}
+    onFocus={prefetchArticles}
+  >
+    <Newspaper size={17} strokeWidth={1.8} />
+    <span>My Articles</span>
+  </NavLink>
 
-          <NavLink
-            to="/vocabulary"
-            className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
-          >
-            Vocabulary
-          </NavLink>
+  <NavLink
+    to="/vocabulary"
+    className={({ isActive }) =>
+      isActive ? "nav-button active" : "nav-button"
+    }
+  >
+    <BookOpen size={17} strokeWidth={1.8} />
+    <span>Vocabulary</span>
+  </NavLink>
 
-          <NavLink
-            to="/highlight"
-            className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
-          >
-            Highlight
-          </NavLink>
-        </nav>
+  <NavLink
+    to="/highlight"
+    className={({ isActive }) =>
+      isActive ? "nav-button active" : "nav-button"
+    }
+  >
+    <Highlighter size={17} strokeWidth={1.8} />
+    <span>Highlight</span>
+  </NavLink>
+</nav>
+
 
         <div className="app-header-actions">
           <UserMenu
@@ -345,15 +365,25 @@ useEffect(() => {
             />
           }
         />
-        <Route
-          path="/articles"
-          element={
-            <ArticlesPage
-              onOpenArticle={openArticle}
-              refreshVersion={articleListVersion}
-            />
-          }
-        />
+       
+      <Route
+        path="/articles"
+        element={
+          <ArticlesPage
+            onOpenArticle={openArticle}
+            refreshVersion={articleListVersion}
+            onArticleDeleted={(deletedId) => {
+              setHomeArticles((current) =>
+                current.filter(
+                  (item) => String(item.id) !== String(deletedId)
+                )
+              );
+              setArticleListVersion((version) => version + 1);
+            }}
+          />
+        }
+      />
+
         <Route
           path="/articles/new"
           element={

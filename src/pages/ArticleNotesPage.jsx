@@ -165,7 +165,7 @@ function goToPage(page) {
   return (
     <section className="notes-page article-notes-page">
       <header className="notes-header">
-        <Link to="/notes" className="back-link" aria-label="Back to Highlights">
+        <Link to="/highlight" className="back-link" aria-label="Back to Highlights">
           <ArrowLeft size={15} />
           <span>Back to highlight</span>
         </Link>

@@ -121,6 +121,7 @@ function ArticleSidebar({ allTotal, total, tags, selectedTag, hasSearch, onSelec
 
 export default function ArticlesPage({
   onOpenArticle,
+  onArticleDeleted,
   refreshVersion = 0,
 }) {
   const [articles, setArticles] = useState([]);
@@ -229,14 +230,44 @@ export default function ArticlesPage({
     try { setError(""); onOpenArticle(await fetchArticle(article.id)); }
     catch (err) { setError(err.message || "Unable to open article."); }
   }
-  async function deleteArticle(article) {
-    try {
-      setError(""); await removeArticle(article.id); clearArticleListCache(); setArticleToDelete(null);
-      setTags((current) => current.map((tag) => ({ ...tag, article_count: (article.tags || []).some((item) => item.id === tag.id) ? Math.max(0, Number(tag.article_count || 0) - 1) : tag.article_count })));
-      loadRecentArticles();
-      if (articles.length === 1 && page > 1) setPage((value) => value - 1); else loadArticles();
-    } catch (err) { setError(err.message || "Unable to delete article."); }
+
+
+async function deleteArticle(article) {
+  if (!article) return;
+
+  try {
+    setError("");
+
+    await removeArticle(article.id);
+
+    clearArticleListCache();
+    setArticleToDelete(null);
+    onArticleDeleted?.(article.id);
+
+    setTags((current) =>
+      current.map((tag) => ({
+        ...tag,
+        article_count: (article.tags || []).some(
+          (item) => item.id === tag.id
+        )
+          ? Math.max(0, Number(tag.article_count || 0) - 1)
+          : tag.article_count,
+      }))
+    );
+
+    loadRecentArticles();
+
+    if (articles.length === 1 && page > 1) {
+      setPage((value) => value - 1);
+    } else {
+      loadArticles();
+    }
+  } catch (err) {
+    setError(err.message || "Unable to delete article.");
   }
+}
+
+
 
   useEffect(() => {
   if (!editingArticle) return;

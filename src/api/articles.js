@@ -31,6 +31,7 @@ export async function fetchArticles({ page = 1, limit = 10, tag = "all", force =
 
 export function clearArticleListCache() {
   articleListCache.clear();
+  pendingArticleLists.clear();
 }
 
 export function prefetchArticles() {

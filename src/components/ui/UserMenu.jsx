@@ -41,7 +41,12 @@ export default function UserMenu({ username, role, onLogout }) {
           <div className="user-name">{username || "Guest"}</div>
 
 
-          <button onClick={() => navigate("/about")}>
+          <button
+            onClick={() => {
+              setOpen(false);
+              navigate("/about");
+            }}
+          >
             <Info size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
             About DeepRead
           </button>
@@ -54,8 +59,13 @@ export default function UserMenu({ username, role, onLogout }) {
           )}
 
 
-          <button onClick={() => setShowLogoutConfirm(true)}>
-            <LogOut size={16} style={{marginRight: "6px", verticalAlign: "middle"}} />
+          <button
+            onClick={() => {
+              setOpen(false);
+              setShowLogoutConfirm(true);
+            }}
+          >
+            <LogOut size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
             Logout
           </button>
         </div>

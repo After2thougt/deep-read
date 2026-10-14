@@ -152,10 +152,10 @@
   min-height: 42px;
   padding: 10px 16px;
 
-  border: 1px solid #52684c;
+  border: 1px solid rgb(116, 133, 104);
   border-radius: 8px;
 
-  background-color: #52684c;
+  background-color: rgb(116, 133, 104);
   color: #ffffff;
 
   font: inherit;
@@ -173,8 +173,8 @@
 
 /* Hover */
 .primary-button.dictionary-save:hover:not(:disabled) {
-  background-color: #40543b;
-  border-color: #40543b;
+  background-color: rgb(82, 104, 76);
+  border-color: rgb(82, 104, 76);
   box-shadow: 0 2px 6px rgb(37 43 36 / 12%);
 }
 

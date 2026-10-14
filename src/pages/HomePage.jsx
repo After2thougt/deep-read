@@ -3,6 +3,9 @@ import {
   BookOpen,
   Plus,
   ArrowRight,
+  Type,
+  Feather,
+  Trophy,
 } from "lucide-react";
 
 import { fetchArticle } from "../api/articles";
@@ -219,14 +222,18 @@ export default function HomePage({
             that matter to you.
           </p>
 
+          
           <button
-            className="home-new-button"
+            className="home-new-button tag-tool-button"
             type="button"
             onClick={onNewArticle}
+            aria-label="New Article"
+            data-tooltip="New Article" 
           >
-            <Plus size={18} />
-            New Article
+
+            <Plus size={21} strokeWidth={1.8} />
           </button>
+
 
         </div>
 
@@ -328,7 +335,7 @@ export default function HomePage({
 
           <div className="home-empty">
 
-            <BookOpen size={32} />
+            <BookOpen size={34} strokeWidth={1.6} />
 
             <h3>
               No previous articles
@@ -340,12 +347,14 @@ export default function HomePage({
             </p>
 
             <button
-              className="home-empty-button"
+              className="home-empty-button tag-tool-button"
               type="button"
               onClick={onNewArticle}
+              aria-label="New Article"
+              data-tooltip="New Article"
+
             >
-              <Plus size={16} />
-              Create your first article
+              <Plus size={21} strokeWidth={1.8} />
             </button>
 
           </div>
@@ -354,14 +363,14 @@ export default function HomePage({
 
       </section>
 
-      {/* =================================================
-                            VOCABULARY
-          ================================================= */}
+{/* =================================================
+    VOCABULARY
+    ================================================= */}
 
 <section className="home-vocabulary">
 
-  <div className="home-section-header">
-    <div>
+  <div className="home-vocabulary__header">
+    <div className="home-vocabulary__heading">
       <p className="home-eyebrow">
         VOCABULARY
       </p>
@@ -369,29 +378,37 @@ export default function HomePage({
       <h2>
         Words to Remember
       </h2>
+
+ 
     </div>
 
-    <button
-      className="home-section-link"
-      type="button"
-      onClick={onOpenVocabulary}
-    >
-      View all
-      <ArrowRight size={16} />
-    </button>
+  
   </div>
 
   {words.length > 0 ? (
-
     <div className="home-vocabulary-grid">
 
       {words.slice(0, 4).map((word) => (
-
-        <article
+        <button
           className="home-word-card"
           key={word.id || word.word}
+          type="button"
           onClick={onOpenVocabulary}
         >
+          <div className="home-word-card__top">
+            <span className="home-word-card__icon" aria-hidden="true">
+            {[
+              <BookOpen size={20} strokeWidth={1.8} />,
+              <Type size={20} strokeWidth={1.8} />,
+              <Feather size={20} strokeWidth={1.8} />,
+              <Trophy  size={20} strokeWidth={1.8} />,
+            ][words.slice(0, 4).indexOf(word)]}
+          </span>
+
+            <span className="home-word-card__arrow" aria-hidden="true">
+              <ArrowRight size={18} />
+            </span>
+          </div>
 
           <div className="home-word-card__word">
             {word.word}
@@ -406,33 +423,37 @@ export default function HomePage({
           <p className="home-word-card__definition">
             {word.definition || "No definition yet."}
           </p>
-
-        </article>
-
+        </button>
       ))}
 
     </div>
-
   ) : (
-
     <div className="home-vocabulary-empty">
+      <div className="home-vocabulary-empty__icon">
+        <BookOpen size={34} strokeWidth={1.6} />
+      </div>
+
+      <h3>No vocabulary yet</h3>
+
       <p>
-        Save some words while reading and they will
-        appear here.
+        Save words while reading and they will appear here.
       </p>
 
       <button
+        className="home-vocabulary-empty__button tag-tool-button"
         type="button"
+        aria-label="go to vocabulary"
+        data-tooltip="go to vocabulary" 
         onClick={onOpenVocabulary}
       >
-        Go to Vocabulary
-        <ArrowRight size={16} />
+        
+        <ArrowRight size={17} />
       </button>
     </div>
-
   )}
 
 </section>
+
 
     </main>
   );

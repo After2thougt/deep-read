@@ -99,9 +99,7 @@ export default function PasswordModal({
         <div className="password-modal-header">
 
           <h3 id="password-modal-title" className="password-modal-title">{title}</h3>
-          <p className="password-modal-description">
-            Enter your current password and choose a new one. As you wish.
-          </p>
+         
         </div>
 
         {/* Form */}
@@ -129,7 +127,7 @@ export default function PasswordModal({
                 type={showCurrent ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
+                placeholder="current password"
                 autoComplete="current-password"
                 disabled={loading}
                 aria-describedby={error ? "password-error" : undefined}
@@ -154,7 +152,7 @@ export default function PasswordModal({
                 type={showNew ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password (min 8 chars)"
+                placeholder="new password (min 8 chars)"
                 autoComplete="new-password"
                 disabled={loading}
               />

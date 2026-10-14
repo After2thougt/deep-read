@@ -733,7 +733,6 @@ overflow-y:auto;
 }
 
 .password-modal h3 {
-  margin: 0 0 8px;
   color: var(--text-primary);
   font-size: 20px;
   font-weight: 650;

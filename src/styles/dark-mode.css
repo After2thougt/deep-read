@@ -131,13 +131,24 @@
 /* ArticleInput - new article button */
 [data-theme="dark"] .new-article-button,
 [data-theme="dark"] .article-input .primary-button {
-  background: var(--accent-color);
-  color: var(--text-inverse);
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: white;
 }
 
 [data-theme="dark"] .new-article-button:hover,
 [data-theme="dark"] .article-input .primary-button:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: rgb(21, 59, 165);
+  border-color: rgb(21, 59, 165);
+}
+
+/* ArticleInput - back to article button */
+
+/* Dictionary - save word button */
+[data-theme="dark"]  .primary-button.dictionary-save:hover:not(:disabled) {
+  background-color: rgb(51, 65, 85);
+  border-color: #334155;
+  box-shadow: 0 2px 6px rgb(37 43 36 / 12%);
 }
 
 /* Tag popover - tag option empty state */
@@ -232,16 +243,24 @@
 }
 
 [data-theme="dark"] .upload-button,
-[data-theme="dark"] .secondary-button {
+[data-theme="dark"] .secondary-button,
+[data-theme="dark"] .back-to-articles {
   background: var(--bg-card);
   border-color: var(--border-color);
   color: var(--text-primary);
 }
 
 [data-theme="dark"] .upload-button:hover,
-[data-theme="dark"] .secondary-button:hover {
+[data-theme="dark"] .secondary-button:hover,
+[data-theme="dark"] .back-to-articles:hover {
   background: var(--bg-hover);
   border-color: var(--border-hover);
+  color:white;
+}
+
+[data-theme="dark"] .article-summary .back-to-articles, 
+[data-theme="dark"] .article-notes-page .back-link {
+  background: #1e293b;
 }
 
 [data-theme="dark"] .save-message {
@@ -263,13 +282,8 @@
 
 /* article edit button */
 [data-theme="dark"] .article-edit-button {
-  background: #1e293b;
-  border-color: #787a7d;
-}
-
-[data-theme="dark"] .article-edit-button {
-  background: #1e293b;
-  border-color: #787a7d;
+  background: rgb(51, 65, 85);
+  border-color: rgb(51, 65, 85);
 }
 
 /* Dictionary Card */
@@ -612,6 +626,10 @@
   scrollbar-color: var(--border-hover) transparent;
 }
 
+[data-theme="dark"] .notes-empty {
+  background: #1e293b;
+}
+
 [data-theme="dark"] .highlights-list .section-heading h3 {
   color: var(--text-primary);
 }
@@ -683,7 +701,7 @@
 }
 
 [data-theme="dark"] .delete-underline {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 [data-theme="dark"] .delete-underline:hover {
@@ -1110,14 +1128,15 @@
 }
 
 [data-theme="dark"] .delete-confirm-button {
-  border-color: var(--text-danger);
-  background: var(--text-danger);
-  color: var(--text-inverse);
+  border-color: #bc4e4e;
+  background: #bc4e4e;
+  color: white;
 }
 
 [data-theme="dark"] .delete-confirm-button:hover {
   border-color: rgb(181, 1, 1);
   background: rgb(181, 1, 1);
+  color: white;
 }
 
 /* Underline Editor */
@@ -1395,8 +1414,9 @@
 
 /* Primary button */
 [data-theme="dark"] .primary-button {
-  background: var(--accent-color);
-  color: var(--text-inverse);
+  background: #1e293b;
+  color: white;
+  border-color: #334155;
 }
 
 [data-theme="dark"] .primary-button:disabled {
@@ -1682,9 +1702,7 @@
   color: var(--text-muted);
 }
 
-[data-theme="dark"] .home-vocabulary-grid {
-  /* inherits */
-}
+
 
 [data-theme="dark"] .home-word-card {
   border-color: var(--border-color);
@@ -1696,13 +1714,62 @@
   box-shadow: var(--shadow-md);
 }
 
+[data-theme="dark"] .home-vocabulary-empty button {
+  border-color: rgb(52, 69, 95);
+  background: rgb(52, 69, 95);
+  color:white;
+}
+
 [data-theme="dark"] .home-vocabulary-empty button:hover {
-  border-color: #546075;
-  background: var(--bg-secondary);
+  border-color:rgb(30, 41, 59);
+  background: rgb(30, 41, 59);
 }
 
 [data-theme="dark"] .home-word-card__word {
   color: var(--text-primary);
+}
+
+[data-theme="dark"] .home-vocabulary__subtitle {
+  color: #9ca3b4;
+}
+
+[data-theme="dark"] .home-vocabulary-empty h3 {
+  color: #77839a;
+}
+
+/* Icons */
+
+[data-theme="dark"] .home-word-card__icon {
+  background: #243448;
+  color: #8bb9f0;
+}
+
+[data-theme="dark"] .home-word-card:nth-child(4n + 2) .home-word-card__icon {
+  background: #302747;
+  color: #b8a2ff;
+}
+
+[data-theme="dark"] .home-word-card:nth-child(4n + 3) .home-word-card__icon {
+  background: #25382b;
+  color: #91c69a;
+}
+
+[data-theme="dark"] .home-word-card:nth-child(4n + 4) .home-word-card__icon {
+  background: #422c22;
+  color: #f0a477;
+}
+
+/* Arrow */
+
+[data-theme="dark"] .home-word-card__arrow {
+  background: rgb(52, 69, 95);
+  color: #b3bdcd;
+}
+
+[data-theme="dark"] .home-word-card:hover .home-word-card__arrow {
+  transform: translateX(2px);
+  background: #34455f;
+  color: #f3f4f6;
 }
 
 [data-theme="dark"] .home-word-card__pos {
@@ -1775,4 +1842,117 @@
   background: var(--bg-hover);
   border-color: var(--border-color);
   box-shadow: none;
+}
+
+
+/* =========================================================
+   Dark mode — Profile Page
+========================================================= */
+
+[data-theme="dark"] .profile-page {
+  --profile-paper: #20231f;
+  --profile-ink: #e5e7df;
+  --profile-green: #a4b795;
+  --profile-muted: #a0a397;
+  --profile-line: #3b4037;
+  --profile-orange: #d69a72;
+}
+
+/* Description text */
+
+[data-theme="dark"] .profile-hero__description {
+  color: #b0b3a9;
+}
+
+/* Reading illustration background */
+
+[data-theme="dark"] .profile-visual {
+  background: #292d27;
+}
+
+[data-theme="dark"] .profile-visual__orbit {
+  border-color: rgb(164 183 149 / 22%);
+}
+
+/* Paper sheets */
+
+[data-theme="dark"] .profile-visual__paper,
+[data-theme="dark"] .profile-visual__note {
+  background: #34382f;
+  color: #c0d0b3;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 18%);
+}
+
+[data-theme="dark"] .profile-visual__paper-line,
+[data-theme="dark"] .profile-visual__text-lines i {
+  background: #4a4e43;
+}
+
+/* Open book */
+
+[data-theme="dark"] .profile-visual__page {
+  background: #e5e0d3;
+}
+
+[data-theme="dark"] .profile-visual__page--left {
+  border-right-color: #c9c3b5;
+}
+
+[data-theme="dark"] .profile-visual__chapter {
+  color: #77796d;
+}
+
+[data-theme="dark"] .profile-visual__page-title {
+  color: #33392e;
+}
+
+[data-theme="dark"] .profile-visual__word {
+  color: #52684c;
+}
+
+[data-theme="dark"] .profile-visual__definition {
+  color: #737568;
+}
+
+[data-theme="dark"] .profile-visual__caption {
+  color: #b0b3a7;
+}
+
+/* Approach section */
+
+[data-theme="dark"] .profile-feature__icon {
+  color: #a4b795;
+}
+
+[data-theme="dark"] .profile-feature p {
+  color: #b0b3a9;
+}
+
+/* Closing statement */
+
+[data-theme="dark"] .profile-closing {
+  background: var(--bg-secondary, #252923);
+}
+
+[data-theme="dark"] .profile-closing__mark {
+  border-color: rgb(164 183 149 / 30%);
+}
+
+/* Footer and links */
+
+[data-theme="dark"] .profile-footer__copyright {
+  color: var(--profile-ink);
+}
+
+[data-theme="dark"] .profile-footer__motto {
+  color: var(--profile-muted);
+}
+
+/* Transitions */
+
+[data-theme="dark"] .profile-brand,
+[data-theme="dark"] .profile-hero__title,
+[data-theme="dark"] .profile-feature h2,
+[data-theme="dark"] .profile-closing__content p {
+  color: var(--profile-ink);
 }

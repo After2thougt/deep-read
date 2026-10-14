@@ -311,15 +311,15 @@
   margin-left: auto;
   padding: 0 14px;
 
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color:rgb(116, 133, 104);
+  background: rgb(116, 133, 104);
   color: #fff;
   font-weight: 600;
 }
 
 .article-actions .save-article-button:hover:not(:disabled) {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
+  border-color: rgb(82, 104, 76);
+  background: rgb(82, 104, 76);
 }
 
 .article-actions .save-article-button:disabled {
