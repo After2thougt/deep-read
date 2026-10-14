@@ -461,15 +461,14 @@ export default function App() {
       });
     } catch (error) {
       console.error("Logout failed:", error);
+    } finally {
+      setAuth({
+        loading: false,
+        authenticated: false,
+        username: "",
+        role: "",
+      });
     }
-
-    setAuth({
-      loading: false,
-      authenticated: false,
-      username: "",
-      role: "",
-    });
-    window.location.replace("/");
   }
 
   useEffect(() => {
@@ -495,41 +494,33 @@ export default function App() {
       });
   }, []);
 
-  if (auth.loading) {
-    return (
-      <main className="auth-screen">
-        <p>Loading...</p>
-      </main>
-    );
-  }
-
-  if (!auth.authenticated) {
-    return (
-      <LoginScreen
-        onLogin={(username, role) => {
-          setAuth({
-            loading: false,
-            authenticated: true,
-            username,
-            role: role || "",
-          });
-
-          window.location.replace("/");
-        }}
-      />
-    );
-  }
-
   return (
     <BrowserRouter>
-      <div className="app">
-        <AppRoutes 
-          onLogout={logout}
-          username={auth.username}
-          role={auth.role}
-          authenticated={auth.authenticated}
+      {auth.loading ? (
+        <main className="auth-screen">
+          <p>Loading...</p>
+        </main>
+      ) : auth.authenticated ? (
+        <div className="app">
+          <AppRoutes
+            onLogout={logout}
+            username={auth.username}
+            role={auth.role}
+            authenticated={auth.authenticated}
+          />
+        </div>
+      ) : (
+        <LoginScreen
+          onLogin={(username, role) => {
+            setAuth({
+              loading: false,
+              authenticated: true,
+              username,
+              role: role || "",
+            });
+          }}
         />
-      </div>
+      )}
     </BrowserRouter>
   );
 }
