@@ -4,6 +4,7 @@ import { normalizeArticle } from "./normalize";
 const pendingArticleLists = new Map();
 const articleListCache = new Map();
 let pendingTags = null;
+let articleListCacheGeneration = 0;
 
 export async function fetchArticles({ page = 1, limit = 10, tag = "all", force = false, title = "", tagSearch = "", sort = "" } = {}) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit), tag: String(tag) });
@@ -13,7 +14,8 @@ export async function fetchArticles({ page = 1, limit = 10, tag = "all", force =
   const url = `/api/articles?${params}`;
   if (!force && articleListCache.has(url)) return articleListCache.get(url);
   if (!pendingArticleLists.has(url)) {
-    pendingArticleLists.set(url, apiFetch(url).then((payload) => {
+    const cacheGeneration = articleListCacheGeneration;
+    const request = apiFetch(url).then((payload) => {
       // Allow a browser with the new frontend to continue showing data until its
       // paired backend process has been restarted with the paginated route.
       if (Array.isArray(payload)) {
@@ -22,14 +24,20 @@ export async function fetchArticles({ page = 1, limit = 10, tag = "all", force =
       }
       return { ...payload, items: (payload.items || []).map(normalizeArticle) };
     }).then((result) => {
-      articleListCache.set(url, result);
+      if (cacheGeneration === articleListCacheGeneration) {
+        articleListCache.set(url, result);
+      }
       return result;
-    }).finally(() => pendingArticleLists.delete(url)));
+    }).finally(() => {
+      if (pendingArticleLists.get(url) === request) pendingArticleLists.delete(url);
+    });
+    pendingArticleLists.set(url, request);
   }
   return pendingArticleLists.get(url);
 }
 
 export function clearArticleListCache() {
+  articleListCacheGeneration += 1;
   articleListCache.clear();
   pendingArticleLists.clear();
 }

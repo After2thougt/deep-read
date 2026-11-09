@@ -3,6 +3,7 @@ import { normalizeVocabulary } from "./normalize";
 
 const pendingVocabularyLists = new Map();
 const vocabularyListCache = new Map();
+let vocabularyListCacheGeneration = 0;
 
 export async function fetchVocabulary({ page = 1, limit = 10, sort = "recent", search = "", force = false } = {}) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit), sort });
@@ -10,7 +11,8 @@ export async function fetchVocabulary({ page = 1, limit = 10, sort = "recent", s
   const url = `/api/vocabulary?${params}`;
   if (!force && vocabularyListCache.has(url)) return vocabularyListCache.get(url);
   if (!pendingVocabularyLists.has(url)) {
-    pendingVocabularyLists.set(url, apiFetch(url).then((payload) => {
+    const cacheGeneration = vocabularyListCacheGeneration;
+    const request = apiFetch(url).then((payload) => {
       // Compatibility for an already-running pre-pagination backend during a
       // frontend hot reload. A normal restart uses the object response below.
       if (Array.isArray(payload)) {
@@ -19,15 +21,22 @@ export async function fetchVocabulary({ page = 1, limit = 10, sort = "recent", s
       }
       return { ...payload, items: (payload.items || []).map(normalizeVocabulary) };
     }).then((result) => {
-      vocabularyListCache.set(url, result);
+      if (cacheGeneration === vocabularyListCacheGeneration) {
+        vocabularyListCache.set(url, result);
+      }
       return result;
-    }).finally(() => pendingVocabularyLists.delete(url)));
+    }).finally(() => {
+      if (pendingVocabularyLists.get(url) === request) pendingVocabularyLists.delete(url);
+    });
+    pendingVocabularyLists.set(url, request);
   }
   return pendingVocabularyLists.get(url);
 }
 
 export function clearVocabularyCache() {
+  vocabularyListCacheGeneration += 1;
   vocabularyListCache.clear();
+  pendingVocabularyLists.clear();
 }
 
 export async function isVocabularySaved(word) {

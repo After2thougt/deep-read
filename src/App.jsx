@@ -9,7 +9,7 @@ import ProfilePage from "./pages/ProfilePage";
 import NotesPage from "./pages/NotesPage";
 import ArticleNotesPage from "./pages/ArticleNotesPage";
 import MigrationBanner from "./components/reader/MigrationBanner";
-import { fetchVocabulary } from "./api/vocabulary";
+import { clearVocabularyCache, fetchVocabulary } from "./api/vocabulary";
 import UserMenu from "./components/ui/UserMenu";
 
 import {
@@ -31,6 +31,10 @@ import { safeGetItem, safeSetItem, safeRemoveItem } from "./utils/storage";
 
 import "./index.css";
 
+function clearSessionCaches() {
+  clearArticleListCache();
+  clearVocabularyCache();
+}
 
 function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -485,6 +489,7 @@ export default function App() {
   });
 
   async function logout() {
+    clearSessionCaches();
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
@@ -543,6 +548,7 @@ export default function App() {
       ) : (
         <LoginScreen
           onLogin={(username, role) => {
+            clearSessionCaches();
             setAuth({
               loading: false,
               authenticated: true,
