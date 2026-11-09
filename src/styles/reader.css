@@ -251,7 +251,7 @@ Main Tool Buttons
   background: transparent;
   color: #475569;
 
-  font-family: Inter, Arial, sans-serif;
+  font-family: var(--font-reading);
   font-size: 12.5px;
   font-weight: 600;
 
@@ -1242,7 +1242,7 @@ Mobile
 
   color: #475569;
 
-  font-family: Inter, Arial, sans-serif;
+  font-family: var(--font-reading);
   font-size: 0.88rem;
   line-height: 1.7;
 }

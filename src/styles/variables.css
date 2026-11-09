@@ -1,5 +1,6 @@
 :root {
-  font-family: Inter, Arial, sans-serif;
+  --font-reading: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", SimSun, Georgia, serif;
+  font-family: var(--font-reading);
   color: #1e293b;
   background: #f5f6f8;
 

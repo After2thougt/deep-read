@@ -226,7 +226,7 @@ Dictionary Empty State
 ========================================================= */
 
 .word-panel .panel-heading h2 {
-  font-family: Inter, Arial, sans-serif;
+  font-family: var(--font-reading);
   font-size: 18px;
   font-weight: 650;
   line-height: 1.35;
@@ -240,7 +240,7 @@ Dictionary Empty State
 .word-panel .panel-empty {
   margin: 10px 0 0;
 
-  font-family: Inter, Arial, sans-serif;
+  font-family: var(--font-reading);
   font-size: 13px;
   font-weight: 400;
   line-height: 1.5;

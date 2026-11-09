@@ -45,7 +45,7 @@
   right: -25px;
   top: -65px;
 
-  font-family: Arial, sans-serif;
+  font-family: var(--font-reading);
   font-size: clamp(150px, 22vw, 270px);
   font-weight: 900;
   letter-spacing: -.1em;
@@ -568,6 +568,7 @@
   letter-spacing: -0.03em;
 
   color: #171717;
+  font-family: Iowan Old Style;
 }
 
 .home-featured-article__preview {
@@ -584,6 +585,7 @@
   line-height: 1.8;
 
   color: #707070;
+
 }
 
 .home-featured-article__footer {
@@ -919,7 +921,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 6px;
+
   color: #8994a6;
 }
 

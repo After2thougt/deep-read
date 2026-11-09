@@ -348,6 +348,7 @@
   align-items: flex-start;
   min-width: 0;
   gap: 10px;
+  font-family: Iowan Old Style;
 }
 
 .article-open-button {
