@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BrowserRouter, Routes, Route, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route, NavLink, useNavigate, useLocation } from "react-router-dom";
 
 import ReaderPage from "./pages/ReaderPage";
 import VocabularyPage from "./pages/VocabularyPage";
@@ -473,6 +473,29 @@ useEffect(() => {
   );
 }
 
+function AuthenticatedApp({ auth, onLogout }) {
+  const location = useLocation();
+  const redirectedToHome = useRef(false);
+
+  if (!redirectedToHome.current) {
+    redirectedToHome.current = true;
+    if (location.pathname !== "/") {
+      return <Navigate to="/" replace />;
+    }
+  }
+
+  return (
+    <div className="app">
+      <AppRoutes
+        onLogout={onLogout}
+        username={auth.username}
+        role={auth.role}
+        authenticated={auth.authenticated}
+      />
+    </div>
+  );
+}
+
 
 export default function App() {
   /*
@@ -537,14 +560,7 @@ export default function App() {
           <p>Loading...</p>
         </main>
       ) : auth.authenticated ? (
-        <div className="app">
-          <AppRoutes
-            onLogout={logout}
-            username={auth.username}
-            role={auth.role}
-            authenticated={auth.authenticated}
-          />
-        </div>
+        <AuthenticatedApp auth={auth} onLogout={logout} />
       ) : (
         <LoginScreen
           onLogin={(username, role) => {
