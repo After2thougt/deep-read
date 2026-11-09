@@ -933,15 +933,41 @@ async function insertBlocksAtCursor(blocksToInsert) {
   /* ---------- TXT upload ---------- */
 
   async function handleFileChange(event) {
-    const file = event.target.files?.[0];
-    if (!file || !file.name.toLowerCase().endsWith(".txt")) return;
+  const file = event.target.files?.[0];
+  if (!file || !file.name.toLowerCase().endsWith(".txt")) return;
 
+  try {
     const content = await file.text();
-    onArticleChange(content);
-    onTitleChange(file.name.replace(/\.txt$/i, ""));
-    setIsCollapsed(true);
+
+    const importedBlocks = [
+      {
+        type: "text",
+        content: content,
+      },
+    ];
+
+    // Update internal editor state
+    setBlocks(importedBlocks);
+
+    // Render imported content inside the actual editor
+    setIsCollapsed(false);
+
+    requestAnimationFrame(() => {
+      renderBlocksToDOM(importedBlocks);
+    });
+
+    // Update parent article state
+    onArticleChange?.(content);
+    onBlocksChange?.(importedBlocks);
+    onTitleChange?.(file.name.replace(/\.txt$/i, ""));
+
+  } catch (error) {
+    console.error("Failed to import TXT file:", error);
+    alert("Failed to import TXT file.");
+  } finally {
     event.target.value = "";
   }
+}
 
 const startNewArticle = () => {
   // 清空编辑器 DOM

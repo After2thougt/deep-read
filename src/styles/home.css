@@ -923,6 +923,8 @@
   justify-content: center;
 
   color: #8994a6;
+
+  margin-bottom: -1px;
 }
 
 .home-vocabulary-empty p,
