@@ -28,6 +28,8 @@
   border: 1px solid #e2e8f0;
   border-radius: 8px;
 
+  font-family: Inter;
+
   background: #fff;
 
   box-shadow: 0 3px 12px rgb(15 23 42 / 4%);
@@ -106,6 +108,7 @@
 
   font-size: 0.9rem;
   line-height: 1.6;
+ 
 }
 
 .dictionary .example {
@@ -226,7 +229,7 @@ Dictionary Empty State
 ========================================================= */
 
 .word-panel .panel-heading h2 {
-  font-family: var(--font-reading);
+  font-family: Georgia;
   font-size: 18px;
   font-weight: 650;
   line-height: 1.35;

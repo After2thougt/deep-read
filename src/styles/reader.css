@@ -66,6 +66,7 @@
   margin: 0 0 20px;
 
   counter-increment: article-paragraph;
+  font-family: Literata;
 }
 
 .article-paragraph::before {
@@ -886,6 +887,8 @@ Mobile
 
   margin-top: 12px;
 
+  font-family: Georgia;
+
   min-width: 0;
 }
 
@@ -1242,8 +1245,8 @@ Mobile
 
   color: #475569;
 
-  font-family: var(--font-reading);
-  font-size: 0.88rem;
+  font-family: 思源黑体;
+  font-size: 0.78rem;
   line-height: 1.7;
 }
 

@@ -48,6 +48,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: normal;
+  font-family: Georgia;
 }
 
 /* Sentence Structure */
@@ -356,7 +357,7 @@
   }
 
   .translation-block--target p {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     line-height: 1.65;
   }
 

@@ -122,6 +122,7 @@
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: Iowan Old Style;
 }
 
 .article-meta {
