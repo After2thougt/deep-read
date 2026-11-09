@@ -618,6 +618,8 @@ overflow-y:auto;
 
   font-size: 20px;
   font-weight: 650;
+
+  font-family: Iowan Old Style;
 }
 
 .delete-modal p {
@@ -627,11 +629,29 @@ overflow-y:auto;
 
   font-size: 14px;
   line-height: 1.6;
+
+  font-family: Georgia;
 }
 
 .delete-modal p strong {
   color: #1e293b;
   font-weight: 600;
+  font-family: Georgia;
+}
+
+.delete-modal-input {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  color: #1e293b;
+  background: #fff;
+}
+
+.delete-modal-input:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }
 
 .delete-modal-actions {

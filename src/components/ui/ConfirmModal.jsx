@@ -8,7 +8,10 @@ export default function ConfirmModal({
   onCancel,
   onConfirm,
   confirmText = "Delete",
+  confirmDisabled = false,
+  initialFocusRef,
   icon,
+  children,
 }) {
   const cancelButtonRef = useRef(null);
   const previousActiveElement = useRef(null);
@@ -17,7 +20,7 @@ export default function ConfirmModal({
     if (!open) return undefined;
 
     previousActiveElement.current = document.activeElement;
-    cancelButtonRef.current?.focus();
+    (initialFocusRef?.current || cancelButtonRef.current)?.focus();
 
     function handleKeyDown(event) {
       if (event.key === "Escape") onCancel();
@@ -28,7 +31,7 @@ export default function ConfirmModal({
       document.removeEventListener("keydown", handleKeyDown);
       previousActiveElement.current?.focus?.();
     };
-  }, [open, onCancel]);
+  }, [open, onCancel, initialFocusRef]);
 
   if (!open) {
     return null;
@@ -60,6 +63,8 @@ export default function ConfirmModal({
 
         <p>{message}</p>
 
+        {children}
+
         <div className="delete-modal-actions">
           <button
             className="delete-cancel-button"
@@ -72,6 +77,7 @@ export default function ConfirmModal({
           <button
             className="delete-confirm-button"
             onClick={onConfirm}
+            disabled={confirmDisabled}
           >
             {confirmText}
           </button>

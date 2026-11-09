@@ -222,13 +222,13 @@ export default function ProfilePage() {
        
 
       
-        <a
+        {/* <a
           className="profile-footer__support"
           href="mailto:512412772@qq.com"
         >
           Get in touch
           <ArrowUpRight size={14} />
-        </a>
+        </a> */}
       </footer>
     </main>
   );

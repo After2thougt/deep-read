@@ -377,7 +377,7 @@
 .article-open-button strong {
   overflow-wrap: anywhere;
   color: #1e293b;
-  font-size: 1rem;
+  font-size: 1.01rem;
   font-weight: 650;
   line-height: 1.35;
 }
@@ -428,10 +428,11 @@
   margin: 0;
   padding-left: 29px;
   color: #64748b;
-  font-size: .84rem;
+  font-size: .94rem;
   line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  font-family: inter;
 }
 
 .article-meta span {

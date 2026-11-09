@@ -136,8 +136,11 @@ export default function ArticlesPage({
   const [error, setError] = useState("");
   const [articleToDelete, setArticleToDelete] = useState(null);
   const [tagToDelete, setTagToDelete] = useState(null);
+  const [tagToRename, setTagToRename] = useState(null);
+  const [renamedTagName, setRenamedTagName] = useState("");
   const [editingArticle, setEditingArticle] = useState(null);
   const tagPopoverRef = useRef(null);
+  const renameInputRef = useRef(null);
   const [managing, setManaging] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -207,11 +210,19 @@ export default function ArticlesPage({
       if (editingArticle) await toggleArticleTag(editingArticle, tag);
     } catch (err) { setError(err.message || "Unable to create tag."); }
   }
-  async function rename(tag) {
-    const name = window.prompt("Rename tag", tag.name)?.trim(); if (!name || name === tag.name) return;
+  function rename(tag) {
+    setTagToRename(tag);
+    setRenamedTagName(tag.name);
+  }
+  async function renameSelectedTag() {
+    const tag = tagToRename;
+    const name = renamedTagName.trim();
+    if (!tag || !name || name === tag.name) return;
     try {
       const updated = await renameTag(tag.id, name); clearArticleListCache(); setTags((current) => current.map((item) => item.id === tag.id ? { ...item, ...updated } : item));
       setArticles((current) => current.map((article) => ({ ...article, tags: (article.tags || []).map((item) => item.id === tag.id ? { ...item, name } : item) })));
+      setTagToRename(null);
+      setRenamedTagName("");
     } catch (err) { setError(err.message || "Unable to rename tag."); }
   }
   function remove(tag) {
@@ -463,5 +474,29 @@ async function deleteArticle(article) {
       onCancel={() => setTagToDelete(null)}
       onConfirm={deleteSelectedTag}
     />
+    <ConfirmModal
+      open={tagToRename !== null}
+      title="Rename tag"
+      message={<>Choose a new name for <strong>"{tagToRename?.name}"</strong>.</>}
+      confirmText="Rename tag"
+      confirmDisabled={!renamedTagName.trim() || renamedTagName.trim() === tagToRename?.name}
+      initialFocusRef={renameInputRef}
+      onCancel={() => { setTagToRename(null); setRenamedTagName(""); }}
+      onConfirm={renameSelectedTag}
+    >
+      <input
+        className="delete-modal-input"
+        ref={renameInputRef}
+        value={renamedTagName}
+        onChange={(event) => setRenamedTagName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            renameSelectedTag();
+          }
+        }}
+        aria-label="Tag name"
+      />
+    </ConfirmModal>
   </section>;
 }

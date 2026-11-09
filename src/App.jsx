@@ -321,7 +321,7 @@ useEffect(() => {
     onFocus={prefetchArticles}
   >
     <LibraryBig size={17} strokeWidth={1.8} />
-    <span>My Articles</span>
+    <span>Articles</span>
   </NavLink>
 
   <NavLink

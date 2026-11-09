@@ -1117,6 +1117,12 @@
   color: var(--text-primary);
 }
 
+[data-theme="dark"] .delete-modal-input {
+  border-color: var(--border-color);
+  color: var(--text-primary);
+  background: var(--bg-input);
+}
+
 [data-theme="dark"] .delete-cancel-button {
   border-color: var(--border-color);
   background: var(--bg-card);
