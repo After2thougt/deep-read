@@ -238,19 +238,6 @@ export default function HomePage({
         </div>
 
 
-        <div className="home-hero__visual">
-          <img
-            src="/home-visual.webp"
-            className="home-hero__image light-image"
-            alt="DeepRead"
-          />
-
-          <img
-            src="/home-visual-dark.webp"
-            className="home-hero__image dark-image"
-            alt=""
-          />
-        </div>
 
       </section>
 

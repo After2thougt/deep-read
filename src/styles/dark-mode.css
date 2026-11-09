@@ -1201,9 +1201,7 @@
 }
 
 /* Home Page */
-[data-theme="dark"] .home-page {
-  /* inherits page background */
-}
+
 
 [data-theme="dark"] .home-hero {
   border-color: var(--border-color);

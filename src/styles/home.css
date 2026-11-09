@@ -2,15 +2,17 @@
    HOME
    ========================================================= */
 
-.home-page {
-  width: min(1180px, calc(100% - 48px));
-  margin: 0 auto;
-  padding: 48px 0 80px;
-}
 
-/* Hero */
+
+/* =========================================
+   HERO — Pastel Editorial
+   ========================================= */
 
 .home-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+
   min-height: 330px;
   display: grid;
   grid-template-columns: 1fr 280px;
@@ -19,61 +21,155 @@
   padding: 48px 56px;
   margin-bottom: 64px;
 
-  border: 1px solid var(--border-color, #e5e7eb);
+
+  border: 1px solid #e5e0d8;
   border-radius: 24px;
 
-  background:white;
+  background-color: #f5f1e9;
 
   cursor: default;
 
   transition:
-    transform 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
+    transform .25s ease,
+    border-color .25s ease,
+    box-shadow .25s ease;
 }
 
-.home-hero:hover {
-  transform: translateY(-4px);
+/* Background typography */
 
-  border-color: #cfcfcf;
+.home-hero::before {
+  content: "IDEAS";
+  position: absolute;
+  z-index: -1;
 
-  box-shadow:
-    0 16px 40px rgba(0, 0, 0, 0.08);
+  right: -25px;
+  top: -65px;
+
+  font-family: Arial, sans-serif;
+  font-size: clamp(150px, 22vw, 270px);
+  font-weight: 900;
+  letter-spacing: -.1em;
+  line-height: 1;
+
+  color: rgba(83, 91, 83, .055);
+
+  pointer-events: none;
 }
+
+/* Flat geometric poster composition */
+
+.home-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+
+  width: 330px;
+  height: 270px;
+
+  right: 38px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  background:
+
+    /* Coral circle */
+    radial-gradient(
+      circle,
+      #f0a39d 0 99%,
+      transparent 100%
+    ) 205px 12px / 88px 88px no-repeat,
+
+    /* Lavender circle */
+    radial-gradient(
+      circle,
+      #c9b9e8 0 99%,
+      transparent 100%
+    ) 115px 110px / 125px 125px no-repeat,
+
+    /* Mint rectangular block */
+    linear-gradient(
+      #b9d9cb,
+      #b9d9cb
+    ) 25px 35px / 145px 175px no-repeat,
+
+    /* Butter yellow accent */
+    radial-gradient(
+      circle,
+      #e9d67f 0 99%,
+      transparent 100%
+    ) 5px 15px / 38px 38px no-repeat,
+
+    /* Fine editorial lines */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 13px,
+      rgba(80, 80, 75, .16) 13px 14px
+    ) 250px 105px / 48px 90px no-repeat;
+
+  pointer-events: none;
+}
+
+/* Content */
 
 .home-hero__content {
+  position: relative;
+  z-index: 1;
   max-width: 680px;
 }
 
 .home-eyebrow {
   margin: 0 0 12px;
-
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: .16em;
   text-transform: uppercase;
-
-  color: #777;
+  color: #77736f;
 }
 
 .home-hero h1 {
   margin: 0;
-
   font-size: clamp(42px, 6vw, 72px);
-  line-height: 0.98;
-  letter-spacing: -0.05em;
-
-  color: #171717;
+  line-height: .98;
+  letter-spacing: -.05em;
+  color: #292b2b;
 }
 
 .home-hero__description {
   max-width: 520px;
   margin: 24px 0 30px;
-
   font-size: 17px;
   line-height: 1.7;
+  color: #77736f;
+}
 
-  color: #666;
+/* Hover */
+
+.home-hero:hover {
+  transform: translateY(-4px);
+  border-color: #d6d0c5;
+
+  box-shadow:
+    0 16px 40px rgba(60, 55, 45, .07);
+}
+
+/* Mobile */
+
+@media (max-width: 700px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+    min-height: 330px;
+    padding: 36px 28px;
+  }
+
+  .home-hero::after {
+    right: -120px;
+    opacity: .35;
+  }
+
+  .home-hero::before {
+    font-size: 150px;
+    right: -25px;
+  }
 }
 
 
