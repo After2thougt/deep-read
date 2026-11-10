@@ -429,8 +429,8 @@ export default function HomePage({
       <button
         className="home-vocabulary-empty__button tag-tool-button"
         type="button"
-        aria-label="go to vocabulary"
-        data-tooltip="go to vocabulary" 
+        aria-label="Learn Vocabulary"
+        data-tooltip="Learn Vocabulary" 
         onClick={onOpenVocabulary}
       >
         

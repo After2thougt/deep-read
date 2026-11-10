@@ -7,6 +7,7 @@
 /* =========================================
    HERO — Pastel Editorial
    ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap');
 
 .home-hero {
   position: relative;
@@ -128,15 +129,17 @@
 
 .home-hero h1 {
   margin: 0;
-  font-size: clamp(42px, 6vw, 72px);
-  line-height: .98;
-  letter-spacing: -.05em;
+  font-family: "Newsreader", Georgia, serif;
+  font-size: clamp(52px, 7vw, 88px);
+  font-weight: 400;
+  margin-top: 30px;
+  letter-spacing: -0.035em;
   color: #292b2b;
 }
 
 .home-hero__description {
   max-width: 520px;
-  margin: 24px 0 30px;
+  margin: 4px 0 30px;
   font-size: 17px;
   line-height: 1.7;
   color: #77736f;

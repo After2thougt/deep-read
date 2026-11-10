@@ -216,6 +216,7 @@
   background: #fff;
   color: #475569;
   font-size: 12px;
+  font: inherit;
 }
 
 .article-vocabulary-group {

@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&display=swap');
+
+
 /* =========================================================
    Reader
 ========================================================= */
@@ -49,35 +52,38 @@
   margin-top: 28px;
   counter-reset: article-paragraph;
 
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.13rem;
-  line-height: 1.85;
+  font-family: "Libre Baskerville", Georgia, serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.9;
 
+  font-kerning: normal;
   white-space: normal;
 }
 
 .article-paragraph {
   position: relative;
-
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   gap: 14px;
 
-  margin: 0 0 20px;
-
+  margin: 0 0 24px;
   counter-increment: article-paragraph;
-  font-family: Literata;
+
+  font-family: inherit;
+  font-weight: 400;
 }
 
 .article-paragraph::before {
   content: counter(article-paragraph, decimal-leading-zero);
 
-  padding-top: 6px;
+  padding-top: 7px;
 
   color: #94a3b8;
 
-  font-family: ui-monospace, monospace;
-  font-size: 0.72rem;
+  font-family: Inter, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 400;
 }
 
 .paragraph-body {

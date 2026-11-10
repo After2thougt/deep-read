@@ -384,13 +384,13 @@ async function deleteArticle(article) {
       className="add-tag-button"
       onClick={() => setEditingArticle(article)}
     >
-      + Add tag
+      + Add Tag
     </button>
 
     {editingArticle?.id === article.id && (
       <div className="tag-popover">
         <div className="tag-manager-header">
-          <h3>Add tag</h3>
+          <h3>Add Tag</h3>
 
           <button
             className="icon-button"
@@ -468,17 +468,17 @@ async function deleteArticle(article) {
     <ConfirmModal open={articleToDelete !== null} title="Delete article?" message={<>This will delete <strong>"{articleToDelete?.title}"</strong>.</>} onCancel={() => setArticleToDelete(null)} onConfirm={() => deleteArticle(articleToDelete)} />
     <ConfirmModal
       open={tagToDelete !== null}
-      title="Delete tag?"
+      title="Delete Tag?"
       message={<>Delete <strong>"{tagToDelete?.name}"</strong>? Articles will be kept.</>}
-      confirmText="Delete tag"
+      confirmText="Delete"
       onCancel={() => setTagToDelete(null)}
       onConfirm={deleteSelectedTag}
     />
     <ConfirmModal
       open={tagToRename !== null}
-      title="Rename tag"
+      title="Rename Tag"
       message={<>Choose a new name for <strong>"{tagToRename?.name}"</strong>.</>}
-      confirmText="Rename tag"
+      confirmText="Confirm"
       confirmDisabled={!renamedTagName.trim() || renamedTagName.trim() === tagToRename?.name}
       initialFocusRef={renameInputRef}
       onCancel={() => { setTagToRename(null); setRenamedTagName(""); }}
