@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
+  ArrowLeft,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +21,7 @@ import {
 } from "../api/vocabulary";
 
 import { saveArticle, fetchArticle } from "../api/articles";
+import { normalizeSourceMetadata } from "../api/normalize";
 import { translateArticle } from "../api/translation";
 import {
   analyzeArticle,
@@ -325,7 +327,6 @@ return (
 }
 
 const PAGE_MAX_CHARACTERS = 1800;
-
 
 function splitPageText(text) {
   const paragraphs = String(text || "")
@@ -936,6 +937,7 @@ export default function ReaderPage({
   const [isEditing, setIsEditing] = useState(false);
   const [articleContent, setArticleContent] = useState(article || "");
   const [articleTitleState, setArticleTitleState] = useState(articleTitle || "");
+  const [sourceMetadataState, setSourceMetadataState] = useState(() => normalizeSourceMetadata());
   const [highlightsState, setHighlightsState] = useState(highlights || []);
   const [blocksState, setBlocksState] = useState(blocks || []);
 
@@ -997,27 +999,54 @@ useEffect(() => {
 }, []);
 
 // Article loading state
-const [articleLoading, setArticleLoading] = useState(Boolean(articleId));
+const [articleLoadState, setArticleLoadState] = useState({
+  articleId: null,
+  status: "idle",
+  error: "",
+});
+const currentArticleLoadState =
+  articleLoadState.articleId === articleId ? articleLoadState : null;
+const articleLoading = Boolean(
+  articleId &&
+  (!currentArticleLoadState ||
+    currentArticleLoadState.status === "idle" ||
+    currentArticleLoadState.status === "loading")
+);
+const articleLoaded =
+  Boolean(articleId && currentArticleLoadState?.status === "loaded");
 
 // Load article when articleId changes (from URL)
 useEffect(() => {
   if (!articleId) return; // new article, don't load
 
+  let active = true;
+  setArticleLoadState({ articleId, status: "loading", error: "" });
+
   async function loadArticle() {
-    setArticleLoading(true);
     try {
       const fullArticle = await fetchArticle(articleId);
+      if (!active) return;
       setArticleContent(fullArticle.content || "");
       setArticleTitleState(fullArticle.title || "");
+      setSourceMetadataState(normalizeSourceMetadata(fullArticle.sourceMetadata));
       setHighlightsState(fullArticle.highlights || []);
       setBlocksState(fullArticle.blocks || []);
+      setArticleLoadState({ articleId, status: "loaded", error: "" });
     } catch (error) {
+      if (!active) return;
       console.error("Failed to load article:", error);
-    } finally {
-      setArticleLoading(false);
+      setArticleLoadState({
+        articleId,
+        status: "error",
+        error: "Unable to load this article. Please try again.",
+      });
     }
   }
   loadArticle();
+
+  return () => {
+    active = false;
+  };
 }, [articleId]);
 
 // Scroll to top when article content first loads
@@ -1037,6 +1066,7 @@ useEffect(() => {
   if (isNewArticle) {
     setArticleContent("");
     setArticleTitleState("");
+    setSourceMetadataState(normalizeSourceMetadata());
     setHighlightsState([]);
     setBlocksState([]);
     setAnalysis(null);
@@ -1428,6 +1458,8 @@ function resetFont() {
 
         highlights: highlightsState,
 
+        sourceMetadata: sourceMetadataState,
+
         blocks: Array.isArray(draft.blocks)
           ? draft.blocks
           : blocksState.length
@@ -1472,6 +1504,7 @@ function resetFont() {
           title: articleTitleState,
           content: articleContent,
           highlights: newHighlights,
+          sourceMetadata: sourceMetadataState,
         });
 
 
@@ -1484,7 +1517,7 @@ function resetFont() {
         err
       );
     }
-  }, [articleId, articleTitleState, articleContent, highlightsState, onArticleSaved]);
+  }, [articleId, articleTitleState, articleContent, highlightsState, sourceMetadataState, onArticleSaved]);
 
   const removeUnderline = useCallback(async (underlineId) => {
     try {
@@ -1497,6 +1530,7 @@ function resetFont() {
           title: articleTitleState,
           content: articleContent,
           highlights: newHighlights,
+          sourceMetadata: sourceMetadataState,
         });
 
       setHighlightsState(newHighlights);
@@ -1507,7 +1541,7 @@ function resetFont() {
         err
       );
     }
-  }, [articleId, articleTitleState, articleContent, highlightsState, onArticleSaved]);
+  }, [articleId, articleTitleState, articleContent, highlightsState, sourceMetadataState, onArticleSaved]);
 
 
   const updateUnderline = useCallback(async (underlineId, changes) => {
@@ -1524,6 +1558,7 @@ function resetFont() {
           title: articleTitleState,
           content: articleContent,
           highlights: newHighlights,
+          sourceMetadata: sourceMetadataState,
         });
 
       setHighlightsState(newHighlights);
@@ -1534,7 +1569,7 @@ function resetFont() {
           "Unable to update underline."
       );
     }
-  }, [articleId, articleTitleState, articleContent, highlightsState, onArticleSaved]);
+  }, [articleId, articleTitleState, articleContent, highlightsState, sourceMetadataState, onArticleSaved]);
 
   const handleTranslate = useCallback(async () => {
     if (translations) {
@@ -1792,8 +1827,6 @@ async function saveSelectedWord() {
   }
 }
 
-
-
   return (
     <div
       className={`reader-page ${isNewArticle ? "reader-page--editing" : "reader-page--reading"}`}
@@ -1802,11 +1835,14 @@ async function saveSelectedWord() {
       {/* =========================================
           Article Input (edit mode for new articles, collapsed summary for existing)
           ========================================= */}
-      {(isNewArticle || articleId) && (
+      {(isNewArticle || articleLoaded) ? (
         <ArticleInput
           article={articleContent}
           title={articleTitleState}
+          sourceMetadata={sourceMetadataState}
+          onSourceMetadataChange={setSourceMetadataState}
           articleId={articleId}
+          articleLoading={articleLoading}
           fontSize={fontSize}
           setFontSize={setFontSize}
           blocks={blocksState}
@@ -1823,8 +1859,34 @@ async function saveSelectedWord() {
           setTheme={setTheme}
           forceExpanded={isEditing && !isNewArticle}
         />
-      )}
-
+      ) : articleId ? (
+        <section className="article-input article-summary">
+          <div className="article-summary-header">
+            {onBackToArticles && (
+              <button
+                className="back-to-articles"
+                onClick={onBackToArticles}
+                type="button"
+              >
+                <ArrowLeft size={15} />
+                <span>Back to articles</span>
+              </button>
+            )}
+          </div>
+          <div className="article-summary-content">
+            <div className="article-summary-info">
+              <p className="eyebrow">
+                {articleLoading ? "Loading article" : "Unable to load article"}
+              </p>
+              <strong role={articleLoading ? "status" : "alert"}>
+                {articleLoading
+                  ? "Please wait..."
+                  : currentArticleLoadState?.error || "Unable to load this article."}
+              </strong>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Save message */}
       {clearConfirmOpen && (

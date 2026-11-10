@@ -1661,6 +1661,24 @@ app.get('/api/articles/:id', (req, res) => {
 
 app.post('/api/articles', async (req, res) => {
   const { id, title, content, highlights = [], blocks } = req.body || {};
+  const rawSourceMetadata = req.body?.sourceMetadata;
+  const sourceMetadata = rawSourceMetadata && typeof rawSourceMetadata === 'object' && !Array.isArray(rawSourceMetadata)
+    ? rawSourceMetadata
+    : req.body || {};
+  if (rawSourceMetadata != null && (typeof rawSourceMetadata !== 'object' || Array.isArray(rawSourceMetadata))) {
+    return res.status(400).json({ error: 'Article source metadata must be an object.' });
+  }
+  const sourceFields = [
+    ['sourceName', 'source_name'],
+    ['sourceUrl', 'source_url'],
+    ['sourceAuthor', 'source_author'],
+    ['sourcePublishedAt', 'source_published_at'],
+  ];
+  for (const [key] of sourceFields) {
+    if (Object.prototype.hasOwnProperty.call(sourceMetadata, key) && typeof sourceMetadata[key] !== 'string') {
+      return res.status(400).json({ error: `Article ${key} must be a string.` });
+    }
+  }
   if (typeof title !== 'string' || !title.trim() || typeof content !== 'string') {
     return res.status(400).json({ error: 'Article title and content are required.' });
   }
@@ -1671,16 +1689,40 @@ app.post('/api/articles', async (req, res) => {
   try {
     const now = new Date().toISOString();
     const articleId = id || generateId('article');
-    const article = { id: articleId, title: title.trim(), content, highlights: JSON.stringify(highlights), created_at: now, updated_at: now };
+    const article = {
+      id: articleId,
+      title: title.trim(),
+      content,
+      highlights: JSON.stringify(highlights),
+      created_at: now,
+      updated_at: now,
+      ...Object.fromEntries(sourceFields.map(([key, column]) => [
+        column,
+        Object.prototype.hasOwnProperty.call(sourceMetadata, key) ? sourceMetadata[key] : '',
+      ])),
+      ...Object.fromEntries(sourceFields.map(([key, column]) => [
+        `${column}_provided`,
+        Object.prototype.hasOwnProperty.call(sourceMetadata, key) ? 1 : 0,
+      ])),
+    };
 
     // UPSERT article (create or update) to satisfy FK constraint
-    db.prepare(`INSERT INTO articles (id, title, content, highlights, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+    db.prepare(`INSERT INTO articles (
+      id, title, content, highlights, source_name, source_url, source_author,
+      source_published_at, created_at, updated_at
+    ) VALUES (
+      @id, @title, @content, @highlights, @source_name, @source_url, @source_author,
+      @source_published_at, @created_at, @updated_at
+    )
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
         content = excluded.content,
         highlights = excluded.highlights,
-        updated_at = excluded.updated_at`).run(article.id, article.title, article.content, article.highlights, article.created_at, article.updated_at);
+        source_name = CASE WHEN @source_name_provided THEN excluded.source_name ELSE articles.source_name END,
+        source_url = CASE WHEN @source_url_provided THEN excluded.source_url ELSE articles.source_url END,
+        source_author = CASE WHEN @source_author_provided THEN excluded.source_author ELSE articles.source_author END,
+        source_published_at = CASE WHEN @source_published_at_provided THEN excluded.source_published_at ELSE articles.source_published_at END,
+        updated_at = excluded.updated_at`).run(article);
     const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
 
 
@@ -1735,7 +1777,23 @@ app.post('/api/articles', async (req, res) => {
         }
       }
 
-    return res.json({ id: articleId, title: title.trim(), content, highlights, blocks: normalizedBlocks, created_at: now, updated_at: now });
+    const savedArticle = db.prepare(`SELECT source_name, source_url, source_author, source_published_at
+      FROM articles WHERE id = ?`).get(articleId);
+    return res.json({
+      id: articleId,
+      title: title.trim(),
+      content,
+      highlights,
+      sourceMetadata: {
+        sourceName: savedArticle.source_name,
+        sourceUrl: savedArticle.source_url,
+        sourceAuthor: savedArticle.source_author,
+        sourcePublishedAt: savedArticle.source_published_at,
+      },
+      blocks: normalizedBlocks,
+      created_at: now,
+      updated_at: now,
+    });
   } catch (error) {
     console.error('POST /api/articles error:', error);
     // Cleanup processed images on error
@@ -1987,18 +2045,39 @@ app.post('/api/sync', async (req, res) => {
     const saveAll = db.transaction(() => {
     if (Array.isArray(articles)) {
       for (const a of articles) {
+        const sourceMetadata = a.sourceMetadata && typeof a.sourceMetadata === 'object'
+          ? a.sourceMetadata
+          : a;
         const article = {
           id: a.id || generateId('article'),
           title: (a.title || 'Untitled article').trim(),
           content: a.content || '',
           highlights: JSON.stringify(a.highlights || []),
+          source_name: typeof sourceMetadata.sourceName === 'string' ? sourceMetadata.sourceName : '',
+          source_url: typeof sourceMetadata.sourceUrl === 'string' ? sourceMetadata.sourceUrl : '',
+          source_author: typeof sourceMetadata.sourceAuthor === 'string' ? sourceMetadata.sourceAuthor : '',
+          source_published_at: typeof sourceMetadata.sourcePublishedAt === 'string' ? sourceMetadata.sourcePublishedAt : '',
+          source_name_provided: typeof sourceMetadata.sourceName === 'string' ? 1 : 0,
+          source_url_provided: typeof sourceMetadata.sourceUrl === 'string' ? 1 : 0,
+          source_author_provided: typeof sourceMetadata.sourceAuthor === 'string' ? 1 : 0,
+          source_published_at_provided: typeof sourceMetadata.sourcePublishedAt === 'string' ? 1 : 0,
           created_at: a.createdAt || new Date().toISOString(),
           updated_at: a.updatedAt || new Date().toISOString(),
         };
-        db.prepare(`INSERT INTO articles (id, title, content, highlights, created_at, updated_at)
-          VALUES (@id, @title, @content, @highlights, @created_at, @updated_at)
+        db.prepare(`INSERT INTO articles (
+          id, title, content, highlights, source_name, source_url, source_author,
+          source_published_at, created_at, updated_at
+        ) VALUES (
+          @id, @title, @content, @highlights, @source_name, @source_url, @source_author,
+          @source_published_at, @created_at, @updated_at
+        )
           ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,
-          highlights = excluded.highlights, updated_at = excluded.updated_at`).run(article);
+          highlights = excluded.highlights,
+          source_name = CASE WHEN @source_name_provided THEN excluded.source_name ELSE articles.source_name END,
+          source_url = CASE WHEN @source_url_provided THEN excluded.source_url ELSE articles.source_url END,
+          source_author = CASE WHEN @source_author_provided THEN excluded.source_author ELSE articles.source_author END,
+          source_published_at = CASE WHEN @source_published_at_provided THEN excluded.source_published_at ELSE articles.source_published_at END,
+          updated_at = excluded.updated_at`).run(article);
         articlesSaved += 1;
       }
     }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { uploadArticleImage, uploadArticleImageFromUrl } from "../../api/articles";
+import { normalizeSourceMetadata } from "../../api/normalize";
 import { initialEditorBlocks, editorSourceSignature } from "./article-editor-draft";
 import useDraft from "../../hooks/useDraft";
 import "./article-editor.css";
@@ -15,10 +16,15 @@ import {
   Upload,
 } from "lucide-react";
 
+const EMPTY_SOURCE_METADATA = normalizeSourceMetadata();
+
 export default function ArticleInput({
   title,
   article,
+  sourceMetadata = EMPTY_SOURCE_METADATA,
+  onSourceMetadataChange,
   articleId,
+  articleLoading = false,
   blocks: propsBlocks,
   onTitleChange,
   onArticleChange,
@@ -464,6 +470,7 @@ async function insertBlocksAtCursor(blocksToInsert) {
     setBlocks(draft.blocks);
     renderBlocksToDOM(draft.blocks);
     if (draft.title && onTitleChange) onTitleChange(draft.title);
+    onSourceMetadataChange?.(normalizeSourceMetadata(draft.sourceMetadata));
     if (onBlocksChange) onBlocksChange(draft.blocks);
     if (onArticleChange) onArticleChange(blocksToText(draft.blocks));
     setShowRestorePrompt(false);
@@ -490,6 +497,7 @@ async function insertBlocksAtCursor(blocksToInsert) {
   // After first mount: check if a newer draft exists for this article
   useEffect(() => {
     if (!initializedRef.current) return;
+    if (articleLoading) return;
     const idKey = articleId || "__new__";
     if (checkedIdsRef.current.has(idKey)) return;
     checkedIdsRef.current.add(idKey);
@@ -498,13 +506,18 @@ async function insertBlocksAtCursor(blocksToInsert) {
     if (!draft?.blocks?.length) return;
 
     const current = initialEditorBlocks(article, propsBlocks);
-    if (
+    const hasBlockChanges =
       editorSourceSignature(null, draft.blocks) !==
-      editorSourceSignature(null, current)
-    ) {
+      editorSourceSignature(null, current);
+    const draftSourceMetadata = normalizeSourceMetadata(draft.sourceMetadata);
+    const currentSourceMetadata = normalizeSourceMetadata(sourceMetadata);
+    const hasSourceMetadataChanges = Object.keys(draftSourceMetadata).some(
+      (key) => draftSourceMetadata[key] !== currentSourceMetadata[key]
+    );
+    if (hasBlockChanges || hasSourceMetadataChanges) {
       setShowRestorePrompt(true);
     }
-  }, [articleId, readDraft, article, propsBlocks]);
+  }, [articleId, articleLoading, readDraft, article, propsBlocks, sourceMetadata]);
 
   // When article identity changes (new article opened), re-initialise DOM.
   // Uses articleId (identity) not article (content) so typing never triggers this.
@@ -550,13 +563,13 @@ async function insertBlocksAtCursor(blocksToInsert) {
     } catch {}
   }, [isCollapsed, articleId]);
 
-  // Auto-save blocks + title to localStorage on every change
+  // Auto-save blocks, title, and source metadata to localStorage on every change
   useEffect(() => {
     if (blocks.some((b) => b.content?.trim())) {
-      saveDraft(blocks, title);
+      saveDraft(blocks, title, normalizeSourceMetadata(sourceMetadata));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blocks, title]);
+  }, [blocks, title, sourceMetadata]);
 
   /* ---------- DOM events ---------- */
 
@@ -991,6 +1004,8 @@ const startNewArticle = () => {
     onTitleChange("");
   }
 
+  onSourceMetadataChange?.(normalizeSourceMetadata());
+
   // 清空文章内容
   if (onArticleChange) {
     onArticleChange("");
@@ -1020,6 +1035,15 @@ const startNewArticle = () => {
 
   if (isCollapsed) {
   const charCount = (article || "").length.toLocaleString();
+  const normalizedSource = normalizeSourceMetadata(sourceMetadata);
+  const hasSourceMetadata = Object.values(normalizedSource).some(
+    (value) => String(value || "").trim()
+  );
+  let sourceUrl = "";
+  try {
+    const url = new URL(normalizedSource.sourceUrl);
+    if (["http:", "https:"].includes(url.protocol)) sourceUrl = url.href;
+  } catch {}
 
   return (
     <section className="article-input article-summary">
@@ -1047,6 +1071,45 @@ const startNewArticle = () => {
           <p className="article-meta">
             {charCount} characters
           </p>
+          {hasSourceMetadata && (
+            <div className="article-source-display">
+              {/* {normalizedSource.sourceName && (
+                <span className="article-source-display__name">
+                  {normalizedSource.sourceName}
+                </span>
+              )} */}
+              {normalizedSource.sourceAuthor && (
+                <span className="article-source-display__author">
+                  by {normalizedSource.sourceAuthor}
+                </span>
+              )}
+             {/* {normalizedSource.sourcePublishedAt && (
+                <time
+                  className="article-source-display__date"
+                  dateTime={normalizedSource.sourcePublishedAt}
+                >
+                  {new Date(`${normalizedSource.sourcePublishedAt}T00:00:00`).toLocaleDateString(
+                    "en-GB",
+                    {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    }
+                  )}
+                </time>
+              )} */}
+              {sourceUrl && (
+                <a
+                  className="article-source-display__link"
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View original
+                </a>
+                )}
+            </div>
+          )}
           {saveMessage && (
             <p className="save-message">{saveMessage}</p>
           )}
@@ -1125,7 +1188,10 @@ const startNewArticle = () => {
         {article && (
           <button
             className="secondary-button collapse-button"
-            onClick={() => setIsCollapsed(true)}
+            onClick={() => {
+              syncNow();
+              setIsCollapsed(true);
+            }}
             type="button"
             aria-label="Collapse article editor"
             title="Collapse"
@@ -1153,6 +1219,56 @@ const startNewArticle = () => {
         placeholder="Untitled article"
         onChange={(event) => { const value = event.target.value; ; ; ; onTitleChange?.(value); }}
       />
+
+      <section className="article-source-fields" aria-labelledby="article-source-heading">
+        <h3 id="article-source-heading">Article Source</h3>
+        <div className="article-source-fields__grid">
+          {/* <label className="article-source-field">
+            <span>Source name</span>
+            <input
+              type="text"
+              value={sourceMetadata.sourceName || ""}
+              onChange={(event) => onSourceMetadataChange?.({
+                ...normalizeSourceMetadata(sourceMetadata),
+                sourceName: event.target.value,
+              })}
+            />
+          </label> */}
+          <label className="article-source-field">
+            <span>Original URL</span>
+            <input
+              type="url"
+              value={sourceMetadata.sourceUrl || ""}
+              onChange={(event) => onSourceMetadataChange?.({
+                ...normalizeSourceMetadata(sourceMetadata),
+                sourceUrl: event.target.value,
+              })}
+            />
+          </label>
+          <label className="article-source-field">
+            <span>Author</span>
+            <input
+              type="text"
+              value={sourceMetadata.sourceAuthor || ""}
+              onChange={(event) => onSourceMetadataChange?.({
+                ...normalizeSourceMetadata(sourceMetadata),
+                sourceAuthor: event.target.value,
+              })}
+            />
+          </label>
+          {/* <label className="article-source-field">
+            <span>Published date</span>
+            <input
+              type="date"
+              value={(sourceMetadata.sourcePublishedAt || "").slice(0, 10)}
+              onChange={(event) => onSourceMetadataChange?.({
+                ...normalizeSourceMetadata(sourceMetadata),
+                sourcePublishedAt: event.target.value,
+              })}
+            />
+          </label> */}
+        </div>
+      </section>
 
       <label className="input-label" htmlFor="article-input">
         Your article

@@ -10,7 +10,9 @@ const guestDatabasePath = path.resolve(process.env.GUEST_DATABASE_PATH || path.j
 const schemaSql = `
   CREATE TABLE IF NOT EXISTS articles (
     id TEXT PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT '',
-    highlights TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    highlights TEXT NOT NULL DEFAULT '[]', source_name TEXT NOT NULL DEFAULT '',
+    source_url TEXT NOT NULL DEFAULT '', source_author TEXT NOT NULL DEFAULT '',
+    source_published_at TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS auth_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -65,6 +67,10 @@ function migrate(db) {
     'ALTER TABLE vocabulary ADD COLUMN start_offset INTEGER',
     'ALTER TABLE vocabulary ADD COLUMN end_offset INTEGER',
     'ALTER TABLE article_blocks ADD COLUMN thumbnail TEXT',
+    "ALTER TABLE articles ADD COLUMN source_name TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE articles ADD COLUMN source_url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE articles ADD COLUMN source_author TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE articles ADD COLUMN source_published_at TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE article_translation_cache ADD COLUMN source TEXT NOT NULL DEFAULT 'auto'",
     "ALTER TABLE article_translation_cache ADD COLUMN provider TEXT NOT NULL DEFAULT 'deeplx'",
   ]) {
@@ -119,7 +125,18 @@ function parseJson(value, fallback) {
   try { return value ? JSON.parse(value) : fallback; } catch { return fallback; }
 }
 
-function serializeArticle(row) { return { ...row, highlights: parseJson(row.highlights, []) }; }
+function serializeArticle(row) {
+  return {
+    ...row,
+    highlights: parseJson(row.highlights, []),
+    sourceMetadata: {
+      sourceName: row.source_name || '',
+      sourceUrl: row.source_url || '',
+      sourceAuthor: row.source_author || '',
+      sourcePublishedAt: row.source_published_at || '',
+    },
+  };
+}
 function serializeVocabulary(row) { return row ? { ...row, raw: parseJson(row.raw, null) } : row; }
 
 console.log(`[DB] admin=${databasePath}`);

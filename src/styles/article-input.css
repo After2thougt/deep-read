@@ -23,6 +23,57 @@
   border-radius: 10px;
 }
 
+.article-source-fields {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #e8eaf0;
+  border-radius: 10px;
+  background: #fafbfc;
+}
+
+.article-source-fields h3 {
+  margin: 0 0 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.article-source-fields__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.article-source-field {
+  display: grid;
+  gap: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.article-source-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+}
+
+.article-source-field input:focus {
+  border-color: #2563eb;
+  outline: 2px solid rgb(37 99 235 / 12%);
+}
+
+@media (max-width: 560px) {
+  .article-source-fields__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* =========================================================
    Article Summary
 ========================================================= */
@@ -125,6 +176,38 @@
   font-family: Iowan Old Style;
 }
 
+.article-source-display {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+  vertical-align: middle;
+  color: var(--text-secondary, #64748b);
+  font-size: 12px;
+}
+
+.article-source-display__name,
+.article-source-display__author {
+  color: var(--text-primary, #1e293b);
+  font-weight: 600;
+}
+
+.article-source-display__link {
+  color: #565555;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.2s ease;
+  text-decoration-color: currentColor;
+}
+
+.article-source-display__link:hover {
+  text-decoration-color: currentColor;
+}
+
 .article-meta {
   margin: 5px 0 0;
   color: #64748b;
@@ -132,8 +215,12 @@
 }
 
 .article-summary-info .article-meta {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin: 6px 12px 0 0;
   color: #94a3b8;
-  font-size: 12px;
+  font-size: 13px;
   padding-left: inherit;
 }
 

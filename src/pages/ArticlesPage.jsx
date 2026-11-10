@@ -1,4 +1,4 @@
-import { ArrowUpDown, BarChart3, BookOpen, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Hash, ListFilter, Pencil, Plus, RotateCcw, Search, Trash2, X as XIcon } from "lucide-react";
+import { ArrowUpDown, BarChart3, BookOpen,CalendarClock ,FileText , CalendarPlus, Check, ChevronLeft, ChevronRight, Clock3, Hash, ListFilter, Pencil, Plus, RotateCcw, Search, Trash2, X as XIcon } from "lucide-react";
 import { addArticleTag, clearArticleListCache, createTag, deleteTag, fetchArticle, fetchArticles, removeArticleTag, removeArticle, renameTag } from "../api/articles";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -360,9 +360,24 @@ async function deleteArticle(article) {
         <ArticlePreview value={article.contentPreview} />
 
         <div className="article-meta" aria-label="Article details">
-          <span><Hash size={13} />{Number(article.contentLength || 0).toLocaleString()} characters</span>
-          <span><CalendarDays size={13} />Created {new Date(article.createdAt).toLocaleDateString()}</span>
-          <span><Clock3 size={13} />Updated {new Date(article.updatedAt).toLocaleDateString()}</span>
+          <span><FileText  size={13} />{Number(article.contentLength || 0).toLocaleString()} characters</span>
+         <span>
+          <CalendarPlus size={13} />
+           {new Date(article.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </span>
+
+        <span>
+          <CalendarClock size={13} />
+           {new Date(article.updatedAt).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </span>
         </div>
 
         <div className="article-tags">

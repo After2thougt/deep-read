@@ -24,7 +24,7 @@ export default function useDraft(articleId) {
 
   /* ---------- public API ---------- */
 
-  /** Read draft from localStorage. Returns { blocks, title, savedAt } or null. */
+  /** Read draft from localStorage. Returns { blocks, title, sourceMetadata, savedAt } or null. */
   const readDraft = useCallback(() => {
     try {
       const raw = safeGetItem(getKey());
@@ -37,13 +37,13 @@ export default function useDraft(articleId) {
     }
   }, [articleId]);
 
-  /** Debounced save of blocks + title to localStorage. */
+  /** Debounced save of blocks, title, and optional source metadata to localStorage. */
   const saveDraft = useCallback(
-    (blocks, title) => {
+    (blocks, title, sourceMetadata) => {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         const key = getKey();
-        safeSetItem(key, JSON.stringify({ blocks, title, savedAt: Date.now() }));
+        safeSetItem(key, JSON.stringify({ blocks, title, sourceMetadata, savedAt: Date.now() }));
       }, SAVE_DEBOUNCE);
     },
     [articleId]

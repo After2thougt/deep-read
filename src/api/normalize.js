@@ -1,6 +1,15 @@
+export function normalizeSourceMetadata(value) {
+  return {
+    sourceName: typeof value?.sourceName === "string" ? value.sourceName : "",
+    sourceUrl: typeof value?.sourceUrl === "string" ? value.sourceUrl : "",
+    sourceAuthor: typeof value?.sourceAuthor === "string" ? value.sourceAuthor : "",
+    sourcePublishedAt: typeof value?.sourcePublishedAt === "string" ? value.sourcePublishedAt : "",
+  };
+}
+
 export function normalizeArticle(row) {
-  
   if (!row) return row;
+  const sourceMetadata = row.sourceMetadata || {};
 
   return {
     id: row.id,
@@ -9,6 +18,12 @@ export function normalizeArticle(row) {
     contentPreview: row.content_preview ?? row.contentPreview,
     blocks: Array.isArray(row.blocks) ? row.blocks : [],
     highlights: row.highlights ?? [],
+    sourceMetadata: normalizeSourceMetadata({
+      sourceName: sourceMetadata.sourceName ?? row.source_name ?? "",
+      sourceUrl: sourceMetadata.sourceUrl ?? row.source_url ?? "",
+      sourceAuthor: sourceMetadata.sourceAuthor ?? row.source_author ?? "",
+      sourcePublishedAt: sourceMetadata.sourcePublishedAt ?? row.source_published_at ?? "",
+    }),
     tags: Array.isArray(row.tags) ? row.tags : [],
     updatedAt: row.updated_at ?? row.updatedAt,
     createdAt: row.created_at ?? row.createdAt,

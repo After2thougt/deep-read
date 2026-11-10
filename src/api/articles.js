@@ -51,11 +51,18 @@ export async function fetchArticle(id) {
   return normalizeArticle(article);
 }
 
-export async function saveArticle({ id, title, content, highlights = [], blocks }) {
+export async function saveArticle({ id, title, content, highlights = [], blocks, sourceMetadata }) {
   const row = await apiFetch("/api/articles", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, title, content, highlights, ...(Array.isArray(blocks) ? { blocks } : {}) }),
+    body: JSON.stringify({
+      id,
+      title,
+      content,
+      highlights,
+      ...(Array.isArray(blocks) ? { blocks } : {}),
+      ...(sourceMetadata ? { sourceMetadata } : {}),
+    }),
   });
   return normalizeArticle(row);
 }
