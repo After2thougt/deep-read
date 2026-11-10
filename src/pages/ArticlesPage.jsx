@@ -297,7 +297,7 @@ async function deleteArticle(article) {
 }, [editingArticle]);
 
   return <section className="articles-page">
-    <div><p className="eyebrow">Your reading library</p><h2>Saved Articles</h2></div>
+    <div><p className="eyebrow">Your reading library</p><h2>Articles</h2></div>
 
     <div className="articles-page-layout">
     <main className="articles-main">
@@ -326,8 +326,8 @@ async function deleteArticle(article) {
       {tags.map((tag) => <TagPill key={tag.id} tag={tag} active={selectedTag === String(tag.id)} managing={managing} onClick={() => selectTag(String(tag.id))} onPrefetch={() => prefetchTag(String(tag.id))} onRename={rename} onDelete={remove} />)}
     </div><button className="tag-tool-button" 
                   type="button" 
-                  aria-label="Edit tags"
-                  data-tooltip="Edit tags" 
+                  aria-label="Edit Tag"
+                  data-tooltip="Edit Tag" 
                   onClick={() => setManaging((current) => !current)}>
                     <Pencil size={15} />
                     </button></div>
@@ -449,13 +449,12 @@ async function deleteArticle(article) {
             placeholder="New tag"
           />
 
-          <button
-            className="secondary-button"
+          <button 
+            className="secondary-button" 
             type="button"
             onClick={addTag}
           >
-            <Plus size={15} />
-            New tag
+            <Plus size={19} style={{ paddingTop: 'inherit' }} />
           </button>
         </div>
       </div>

@@ -650,7 +650,7 @@ overflow-y:auto;
 }
 
 .delete-modal-input:focus {
-  outline: 2px solid #93c5fd;
+  outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
 
@@ -833,26 +833,6 @@ overflow-y:auto;
   align-items: center;
 }
 
-.password-input-wrapper input {
-  flex: 1;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  background: var(--bg-input);
-  color: var(--text-primary);
-}
-
-.password-input-wrapper input:focus {
-  outline: 2px solid var(--border-focus);
-  border-color: var(--border-focus);
-}
-
-.password-input-wrapper input:disabled {
-  background: var(--bg-surface);
-  opacity: 0.7;
-  cursor: not-allowed;
-}
 
 .password-toggle {
   position: absolute;
@@ -952,16 +932,6 @@ overflow-y:auto;
 [data-theme="dark"] .password-confirm-button:hover {
   border-color: var(--accent-hover);
   background: var(--accent-hover);
-}
-
-[data-theme="dark"] .password-input-wrapper input {
-  background: var(--bg-input);
-  color: var(--text-primary);
-}
-
-[data-theme="dark"] .password-input-wrapper input:focus {
-  outline: 2px solid var(--border-focus);
-  border-color: var(--border-focus);
 }
 
 [data-theme="dark"] .password-toggle {

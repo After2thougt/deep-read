@@ -13,8 +13,8 @@
 }
 
 .article-rich-editor:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgb(37 99 235 / 12%);
+  border-color: #cbd5e1;
+  box-shadow: 0 0 0 3px white;
 }
 
 .article-rich-editor:empty::before {

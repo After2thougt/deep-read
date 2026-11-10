@@ -1221,7 +1221,7 @@ const startNewArticle = () => {
       />
 
       <section className="article-source-fields" aria-labelledby="article-source-heading">
-        <h3 id="article-source-heading">Article Source</h3>
+        <h3 id="article-source-heading">Article Source (optional)</h3>
         <div className="article-source-fields__grid">
           {/* <label className="article-source-field">
             <span>Source name</span>
@@ -1271,7 +1271,7 @@ const startNewArticle = () => {
       </section>
 
       <label className="input-label" htmlFor="article-input">
-        Your article
+        Article Content
       </label>
       <div
         id="article-input"

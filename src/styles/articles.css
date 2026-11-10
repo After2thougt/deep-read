@@ -216,7 +216,7 @@
   padding: 7px 2px;
 
   border: 0;
-  border-bottom: 1px solid #d7e0eb;
+  border-bottom: 1px solid #9facbf;
 
   color: #1e293b;
   background: transparent;
@@ -229,7 +229,7 @@
 }
 
 .article-search-input:focus {
-  border-bottom-color: #93c5fd;
+  border-bottom-color: #b0bba9;
 }
 
 .article-search-input::placeholder {
@@ -620,24 +620,24 @@
 
   border-radius: 999px;
 
-  background: #f1f5f9;
+  background: #f6f8f4;
 
   color: #475569;
 
-  font-size: .72rem;
+  font-size: .70rem;
   overflow-wrap: anywhere;
 }
 
 
 .article-tag:hover {
-  background: #e2e8f0;
+  background: #edf6e3;
 }
 
 
 .untagged-label {
   color: #64748b;
 
-  background: #f8fafc;
+  background: #f6f8f4;
 }
 
 
@@ -647,34 +647,20 @@
 
 .add-tag-button {
   display: inline-flex;
-
   align-items: center;
-
-  padding: 3px 5px;
-
-  border: 0;
-
-  border-radius: 6px;
-
+  gap: 4px;
+  padding: 0;
+  border: none;
   background: transparent;
-
-  color: #64748b;
-
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
   cursor: pointer;
-
-  font-size: .75rem;
-  white-space: nowrap;
-
-  transition:
-    background .15s ease,
-    color .15s ease;
+  transition: color 0.2s ease;
 }
 
-
 .add-tag-button:hover {
-  background: #eff6ff;
-
- 
+  color: #1d232c;
 }
 
 
@@ -867,13 +853,13 @@
 
 
 .tag-option:hover {
-  background: #f8fafc;
+  background: #f6f8f4;
 }
 
 
 .tag-option.is-selected {
 
-  background: #eff6ff;
+  background: #f6f8f4;
 
  
 }
@@ -881,7 +867,7 @@
 
 .tag-option.is-selected:hover {
 
-  background: #dbeafe;
+  background: #f0f5ee;
 }
 
 
@@ -927,8 +913,8 @@
 }
 
 .tag-create-row input:focus {
-  border-color: #93c5fd;
-  box-shadow: 0 0 0 3px rgba(147, 197, 253, .25);
+  border-color: #cbd5e1;
+
 }
 
 .tag-create-row button {
@@ -945,7 +931,7 @@
 
 .tag-create-row button:hover:not(:disabled) {
   background: #1d4ed8;
-  border-color: #1d4ed8;
+  border-color: #eae8e2;
 }
 
 .tag-create-row button:disabled {
@@ -961,7 +947,7 @@
 }
 
 .tag-create-row .secondary-button:hover:not(:disabled) {
-  background: #f1f5f9;
+  background: #f6f8f4;
   color: #334155;
 }
 

@@ -72,7 +72,7 @@ export default function NotesPage() {
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
           <p className="notes-subtitle">Your Reading highlights</p>
-          <h1>Highlights</h1>
+          <h2>Highlights</h2>
           
         </header>
         <p className="notes-loading">Loading highlights...</p>
@@ -85,7 +85,7 @@ export default function NotesPage() {
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
           <p className="notes-subtitle">Your Reading highlights</p>
-          <h1>Highlights</h1>
+          <h2>Highlights</h2>
           
         </header>
         <p className="notes-error">{error}</p>
@@ -98,7 +98,7 @@ export default function NotesPage() {
       <section className="notes-page notes-overview-page">
         <header className="notes-header">
           <p className="notes-subtitle">Your Reading highlights</p>
-          <h1>Highlights</h1>
+          <h2>Highlights</h2>
           
         </header>
         <div className="notes-empty">
@@ -113,7 +113,7 @@ export default function NotesPage() {
     <section className="notes-page notes-overview-page">
       <header className="notes-header">
         <p className="notes-subtitle">Your Reading highlights</p>
-        <h1>Highlights</h1>
+        <h2>Highlights</h2>
         
       </header>
 
