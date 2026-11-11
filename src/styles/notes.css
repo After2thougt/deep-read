@@ -453,6 +453,9 @@
   color: var(--text-primary);
   word-wrap: break-word;
   overflow-wrap: break-word;
+
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .highlight-copy-button {

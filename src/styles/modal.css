@@ -373,8 +373,10 @@ overflow-y:auto;
 }
 
 .highlight-text-wrapper .highlight-text {
-  
+  flex: 1;
   margin: 0;
+  text-align: justify;
+  text-justify: inter-word;
 }
 
 .copy-highlight-button {
