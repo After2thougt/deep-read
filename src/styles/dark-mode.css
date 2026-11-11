@@ -1838,7 +1838,7 @@
 }
 
 [data-theme="dark"] .article-overview-card:hover {
-  background: var(--bg-hover);
+
   border-color: var(--border-hover);
 }
 

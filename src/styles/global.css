@@ -195,7 +195,8 @@ h1 {
 }
 
 .input-label,
-.eyebrow {
+.eyebrow,
+.notes-overview-page .notes-subtitle {
   display: block;
   color: #64748b;
   font-size: 0.92rem;

@@ -127,7 +127,7 @@ export default function PasswordModal({
                 type={showCurrent ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="current password"
+                placeholder="Current password"
                 autoComplete="current-password"
                 disabled={loading}
                 aria-describedby={error ? "password-error" : undefined}
@@ -152,7 +152,7 @@ export default function PasswordModal({
                 type={showNew ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="new password (min 8 chars)"
+                placeholder="New password (min 8 chars)"
                 autoComplete="new-password"
                 disabled={loading}
               />

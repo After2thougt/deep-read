@@ -131,7 +131,7 @@
 
 .sidebar-tag:hover,
 .sidebar-tag.is-active {
-  border-color: #aab5a2;
+  border-color: £#eae8e2;
   color: #748568;
   background: #f6f8f4;
 }
@@ -432,7 +432,8 @@
   line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
-  font-family: inter;
+  font-family: Songti SC;
+  margin-top: -5px;
 }
 
 .article-meta span {
@@ -654,7 +655,7 @@
   background: transparent;
   color: var(--text-secondary);
   font: inherit;
-  font-size: 13px;
+  font-size: 11px;
   cursor: pointer;
   transition: color 0.2s ease;
 }
@@ -769,7 +770,7 @@
 .article-edit-button:hover {
  
   border-color: #eae8e2;
-  color: #95a38b;
+  color: #545454;
 }
 
 
