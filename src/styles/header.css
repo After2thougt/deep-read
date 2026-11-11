@@ -32,7 +32,7 @@
 
 .font-toggle-button:hover,
 .theme-toggle-button:hover {
-  background:#f3f1eb;
+  color:#64748b;
   border-color: var(--border-hover);
 }
 

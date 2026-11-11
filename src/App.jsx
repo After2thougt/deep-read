@@ -293,9 +293,7 @@ useEffect(() => {
     <>
       <header className="app-header">
         <h1 className="app-brand">
-          <span className="app-brand-mark" aria-hidden="true">
-            <BookOpen />
-          </span>
+          
           <span className="app-brand-copy">Turn pages, Open minds.</span>
         </h1>
 
