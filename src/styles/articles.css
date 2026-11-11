@@ -768,7 +768,6 @@
 
 .tag-tool-button:hover,
 .article-edit-button:hover {
- 
   border-color: #eae8e2;
   color: #545454;
 }
@@ -783,7 +782,9 @@
 }
 
 /* Tooltip */
-.tag-tool-button::after {
+.tag-tool-button::after,
+.save-note-button::after,
+.cancel-note-button::after {
   content: attr(data-tooltip);
   position: absolute;
   top: calc(100% + 8px);
@@ -813,7 +814,9 @@
     visibility 0.15s ease;
 }
 
-.tag-tool-button:hover::after {
+.tag-tool-button:hover::after,
+.save-note-button:hover::after,
+.cancel-note-button:hover::after {
   opacity: 1;
   visibility: visible;
 }

@@ -18,8 +18,8 @@ export default function NoteEditor({
         <button
           className="save-note-button"
           type="button"
-          title="Save note"
-          aria-label="Save note"
+          data-tooltip="Save"
+          aria-label="Save"
           onClick={() => onSave(draft.trim())}
         >
           <Save size={15} />
@@ -28,8 +28,8 @@ export default function NoteEditor({
           type="button"
           className="cancel-note-button"
           onClick={onCancel}
-          title="Cancel"
-          aria-label="Cancel"
+          data-tooltip="Discard"
+          aria-label="Discard"
         >
           <X size={15} />
         </button>

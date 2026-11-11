@@ -276,6 +276,7 @@ overflow-y:auto;
   display:flex;
   justify-content:flex-start;
   gap:16px;
+  padding-left: 640px;
 }
 
 .highlights-list .section-heading > div {
@@ -372,7 +373,7 @@ overflow-y:auto;
 }
 
 .highlight-text-wrapper .highlight-text {
-  flex: 1;
+  
   margin: 0;
 }
 

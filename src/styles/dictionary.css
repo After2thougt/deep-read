@@ -297,16 +297,17 @@ Dictionary Empty State
 /* Save */
 
 .save-note-button {
-  border: 1px solid #bfdbfe;
+  border: 1px solid #e2e8f0;
+  position: relative;
 
-  background: #eff6ff;
+  background: #fff;
 
   color: #9da6ba;
 }
 
 
 .save-note-button:hover {
-  background: #dbeafe;
+  color:#5e729b;
 }
 
 
@@ -314,6 +315,7 @@ Dictionary Empty State
 
 .cancel-note-button {
   border: 1px solid #e2e8f0;
+  position: relative;
 
   background: #fff;
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   MessageSquare,
   Pencil,
+  FilePlus,
   Trash2,
   Copy
 } from "lucide-react";
@@ -170,20 +171,21 @@ export default function HighlightsPanel({
                         type="button"
                         onClick={() => startNoteEdit(item)}
                       >
-                        <Pencil size={16} />
-                        {item.note ? "Edit Note" : "Add Note"}
+                       
+                        {item.note ? <Pencil size={16} /> : <FilePlus size={16} />}
+                        {item.note ? " " : " "}
                       </button>
 
                       <button
-                        className="text-button delete-underline"
+                        className="text-button delete-underline"  
                         type="button"
                         onClick={() =>
                           setDeleteTarget(item.id)
                         }
-                        title="Remove underline"
+                       
                       >
                         <Trash2 size={16} />
-                        Remove
+                         
                       </button>
                     </div>
                   </>
