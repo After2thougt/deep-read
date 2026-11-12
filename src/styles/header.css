@@ -140,7 +140,7 @@
   right: 0;
   z-index: 1000;
 
-  width: 190px;
+  width: 220px;
   padding: 6px;
 
   background: var(--surface, #fff);
@@ -231,6 +231,36 @@
 
 .user-dropdown button:hover {
   color: #77756f;
+}
+
+.user-dropdown button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.export-status {
+  margin: 4px 8px 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.export-status--success {
+  color: var(--text-secondary);
+}
+
+.export-status--error {
+  color: #b42318;
+}
+
+.export-spinner {
+  animation: export-spinner-rotate 1s linear infinite;
+}
+
+@keyframes export-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .user-dropdown button.active:hover {

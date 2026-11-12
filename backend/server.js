@@ -329,6 +329,72 @@ app.use('/api', (req, res, next) => {
   return runWithDatabase(session.database, next);
 });
 
+app.post('/api/export', (req, res) => {
+  try {
+    const exportData = db.transaction(() => {
+      const articles = db.prepare(`SELECT id, title, content, highlights, source_name, source_url,
+        source_author, source_published_at, created_at, updated_at
+        FROM articles ORDER BY created_at, id`).all();
+      const settings = {};
+      const browserSettings = req.body?.browserData?.settings;
+
+      if (browserSettings?.theme === 'light' || browserSettings?.theme === 'dark') {
+        settings.theme = browserSettings.theme;
+      }
+      if (Number.isInteger(browserSettings?.readerFontSize)
+        && browserSettings.readerFontSize >= 12
+        && browserSettings.readerFontSize <= 32) {
+        settings.readerFontSize = browserSettings.readerFontSize;
+      }
+
+      return {
+        exportVersion: 1,
+        app: 'DeepRead',
+        exportedAt: new Date().toISOString(),
+        exportScope: {
+          description: 'Data from the authenticated session database and selected device-wide browser preferences. This is not a complete cross-device backup.',
+          dataSources: ['authenticated session SQLite database', 'browser-local theme and reader font size (device-wide, not account-scoped)'],
+          exclusions: [
+            'Authentication accounts, password hashes, sessions, tokens, and credentials',
+            'Browser drafts, unmigrated legacy data, and browser keys with unverified ownership',
+            'Unscoped per-article reading progress and view-mode browser state',
+            'Uploaded image and thumbnail files; article block paths are preserved',
+          ],
+        },
+        data: {
+          articles,
+          articleBlocks: db.prepare(`SELECT id, article_id, type, content, thumbnail, sort_order, created_at
+            FROM article_blocks ORDER BY article_id, sort_order, id`).all(),
+          tags: db.prepare('SELECT id, name, created_at, updated_at FROM tags ORDER BY id').all(),
+          articleTags: db.prepare(`SELECT article_id, tag_id, created_at
+            FROM article_tags ORDER BY article_id, tag_id`).all(),
+          vocabulary: db.prepare(`SELECT id, word, definition, phonetic, part_of_speech, example, article_id,
+            saved_at, next_review, review_count, ease_factor, interval, context_line, raw, start_offset, end_offset
+            FROM vocabulary ORDER BY saved_at, id`).all(),
+          articleAnalyses: db.prepare(`SELECT id, article_id, page_number, content_hash, analysis, model,
+            prompt_version, created_at, updated_at FROM article_analyses ORDER BY id`).all(),
+          articleTranslations: db.prepare(`SELECT id, article_id, page_number, content_hash, target, source,
+            provider, translation, created_at, updated_at FROM article_translation_cache ORDER BY id`).all(),
+          readingRecords: [],
+          settings,
+        },
+      };
+    })();
+
+    const date = new Date().toISOString().slice(0, 10);
+    res.set({
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="deepread-backup-${date}.json"`,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return res.status(200).send(JSON.stringify(exportData, null, 2));
+  } catch (error) {
+    console.error('Failed to export user data:', error);
+    return res.status(500).json({ error: 'Unable to generate your data export. Please try again.' });
+  }
+});
+
 function parseMcpResponse(data) {
   const line = String(data)
     .split("\n")
