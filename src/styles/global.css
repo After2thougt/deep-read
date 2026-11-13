@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
    App
 ========================================================= */
 
@@ -117,13 +117,13 @@ h1 {
   text-decoration: none;
 }
 
-/* 鼠标移入效果 */
+/* 榧犳爣绉诲叆鏁堟灉 */
 .nav-button:hover,
 .icon-button:hover {
   color: #748568;
 }
 
-/* 点击时轻微缩小 */
+/* 鐐瑰嚮鏃惰交寰缉灏?*/
 .nav-button:active,
 .icon-button:active {
   transform: scale(0.96);
@@ -258,6 +258,7 @@ textarea:focus {
   border: 1px dashed var(--border-color, #e2e8f0);
   border-radius: 12px;
 }
+
 
 
 
