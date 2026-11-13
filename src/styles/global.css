@@ -112,18 +112,17 @@ h1 {
 
 .nav-button,
 .nav-button:hover,
-.nav-button:focus-visible,
-.nav-button.active {
+.nav-button:focus-visible {
   text-decoration: none;
 }
 
-/* 榧犳爣绉诲叆鏁堟灉 */
+/* 鼠标移入效果 */
 .nav-button:hover,
 .icon-button:hover {
-  color: #748568;
+  color: #555b50;
 }
 
-/* 鐐瑰嚮鏃惰交寰缉灏?*/
+/* 点击时轻微缩小 */
 .nav-button:active,
 .icon-button:active {
   transform: scale(0.96);
@@ -131,11 +130,12 @@ h1 {
 
 .nav-button.active {
   color: #3D3D3A;
-  
+  text-decoration: underline;
+  text-underline-offset: 5px;
 }
 
 .nav-button.active:hover {
-  color: #748568;
+  color: #6c6c6c;
 }
 
 .nav-button:focus-visible,
