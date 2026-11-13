@@ -3,6 +3,22 @@
  * Handles Safari Private Mode and other environments where localStorage throws
  */
 
+let storageAccountId = null;
+let storageDatabase = "unavailable";
+
+export function setStorageAccount(accountId, role) {
+  storageAccountId = Number.isSafeInteger(Number(accountId)) && Number(accountId) > 0
+    ? String(Number(accountId))
+    : null;
+  storageDatabase = storageAccountId
+    ? role === "guest" ? "guest" : "admin"
+    : "unavailable";
+}
+
+export function accountStorageKey(key) {
+  return `deepread:account:${storageDatabase}:${storageAccountId || "unavailable"}:${key}`;
+}
+
 export function safeGetItem(key, fallback = null) {
   try {
     const value = localStorage.getItem(key);

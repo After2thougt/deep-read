@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Routes, Route, NavLink, useNavigate, useLocation } from "react-router-dom";
 
 import ReaderPage from "./pages/ReaderPage";
@@ -8,9 +8,10 @@ import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
 import NotesPage from "./pages/NotesPage";
 import ArticleNotesPage from "./pages/ArticleNotesPage";
-import MigrationBanner from "./components/reader/MigrationBanner";
+import UserManagementPage from "./pages/UserManagementPage";
 import { clearVocabularyCache, fetchVocabulary } from "./api/vocabulary";
 import UserMenu from "./components/ui/UserMenu";
+import { DEFAULT_LOGIN_PATH, getNavigationItems, getRoleRedirect } from "./routing/access";
 
 import {
   House,
@@ -18,6 +19,7 @@ import {
   LibraryBig,
   Highlighter,
   BookOpen,
+  Users,
 } from "lucide-react";
 
 import {
@@ -27,9 +29,17 @@ import {
   clearArticleListCache,
 } from "./api/articles";
 
-import { safeGetItem, safeSetItem, safeRemoveItem } from "./utils/storage";
+import { safeGetItem, safeSetItem, safeRemoveItem, setStorageAccount } from "./utils/storage";
 
 import "./index.css";
+
+const NAVIGATION_ICONS = {
+  home: House,
+  articles: LibraryBig,
+  vocabulary: Newspaper,
+  highlight: Highlighter,
+  users: Users,
+};
 
 function clearSessionCaches() {
   clearArticleListCache();
@@ -37,6 +47,7 @@ function clearSessionCaches() {
 }
 
 function LoginScreen({ onLogin }) {
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -68,7 +79,8 @@ function LoginScreen({ onLogin }) {
         return;
       }
 
-      onLogin(body.username, body.role);
+      onLogin(body.userId, body.username, body.role);
+      navigate(DEFAULT_LOGIN_PATH, { replace: true });
     } catch {
       setError("Unable to connect to the server.");
     } finally {
@@ -181,10 +193,10 @@ function AppRoutes({onLogout, username, role, authenticated}) {
    */
 
     useEffect(() => {
-    if (!authenticated) {
-      setHomeArticles([]);
-      return;
-    }
+      if (!authenticated || (role === "administrator" && location.pathname !== "/")) {
+        setHomeArticles([]);
+        return;
+      }
 
     let cancelled = false;
 
@@ -209,7 +221,7 @@ function AppRoutes({onLogout, username, role, authenticated}) {
     return () => {
       cancelled = true;
     };
-  }, [authenticated, articleListVersion]);
+  }, [authenticated, role, location.pathname, articleListVersion]);
 
 
 /*
@@ -219,7 +231,7 @@ function AppRoutes({onLogout, username, role, authenticated}) {
  */
 
 useEffect(() => {
-  if (!authenticated) {
+  if (!authenticated || (role === "administrator" && location.pathname !== "/")) {
     setHomeWords([]);
     return;
   }
@@ -247,7 +259,7 @@ useEffect(() => {
   return () => {
     cancelled = true;
   };
-}, [authenticated]);
+}, [authenticated, role, location.pathname]);
 
   /*
    * =====================================================
@@ -283,6 +295,11 @@ useEffect(() => {
     navigate("/articles");
   }
 
+  const accessRedirect = getRoleRedirect(role, location.pathname);
+  if (accessRedirect) {
+    return <Navigate to={accessRedirect} replace />;
+  }
+
   /*
    * =====================================================
    * HEADER
@@ -298,50 +315,25 @@ useEffect(() => {
         </h1>
 
         
-<nav className="app-nav" aria-label="Main navigation">
-  <NavLink
-    to="/"
-    className={({ isActive }) =>
-      isActive ? "nav-button active" : "nav-button"
-    }
-    end
-  >
-    <House size={17} strokeWidth={1.8} />
-    <span>Home</span>
-  </NavLink>
-
-  <NavLink
-    to="/articles"
-    className={({ isActive }) =>
-      isActive ? "nav-button active" : "nav-button"
-    }
-    onMouseEnter={prefetchArticles}
-    onFocus={prefetchArticles}
-  >
-    <LibraryBig size={17} strokeWidth={1.8} />
-    <span>Articles</span>
-  </NavLink>
-
-  <NavLink
-    to="/vocabulary"
-    className={({ isActive }) =>
-      isActive ? "nav-button active" : "nav-button"
-    }
-  >
-    <Newspaper size={17} strokeWidth={1.8} />
-    <span>Vocabulary</span>
-  </NavLink>
-
-  <NavLink
-    to="/highlight"
-    className={({ isActive }) =>
-      isActive ? "nav-button active" : "nav-button"
-    }
-  >
-    <Highlighter size={17} strokeWidth={1.8} />
-    <span>Highlight</span>
-  </NavLink>
-</nav>
+        <nav className="app-nav" aria-label="Main navigation">
+          {getNavigationItems(role).map(({ path, label, icon }) => {
+            const Icon = NAVIGATION_ICONS[icon];
+            const isArticles = path === "/articles";
+            return (
+              <NavLink
+                key={path}
+                to={path}
+                className={({ isActive }) => isActive ? "nav-button active" : "nav-button"}
+                end={path === "/"}
+                onMouseEnter={isArticles ? prefetchArticles : undefined}
+                onFocus={isArticles ? prefetchArticles : undefined}
+              >
+                <Icon size={17} strokeWidth={1.8} />
+                <span>{label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
 
 
         <div className="app-header-actions">
@@ -353,9 +345,12 @@ useEffect(() => {
         </div>
       </header>
 
-      <MigrationBanner />
 
       <Routes>
+        <Route
+          path="/admin/users"
+          element={<UserManagementPage />}
+        />
         <Route
           path="/"
           element={
@@ -472,16 +467,6 @@ useEffect(() => {
 }
 
 function AuthenticatedApp({ auth, onLogout }) {
-  const location = useLocation();
-  const redirectedToHome = useRef(false);
-
-  if (!redirectedToHome.current) {
-    redirectedToHome.current = true;
-    if (location.pathname !== "/") {
-      return <Navigate to="/" replace />;
-    }
-  }
-
   return (
     <div className="app">
       <AppRoutes
@@ -505,6 +490,7 @@ export default function App() {
   const [auth, setAuth] = useState({
     loading: true,
     authenticated: false,
+    userId: null,
     username: "",
     role: "",
   });
@@ -519,9 +505,11 @@ export default function App() {
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
+      setStorageAccount(null);
       setAuth({
         loading: false,
         authenticated: false,
+        userId: null,
         username: "",
         role: "",
       });
@@ -534,17 +522,21 @@ export default function App() {
     })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}));
+        setStorageAccount(response.ok ? body.userId : null, body.role);
         setAuth({
           loading: false,
           authenticated: response.ok,
+          userId: response.ok ? body.userId : null,
           username: body.username || "",
           role: body.role || "",
         });
       })
       .catch(() => {
+        setStorageAccount(null);
         setAuth({
           loading: false,
           authenticated: false,
+          userId: null,
           username: "",
           role: "",
         });
@@ -561,11 +553,13 @@ export default function App() {
         <AuthenticatedApp auth={auth} onLogout={logout} />
       ) : (
         <LoginScreen
-          onLogin={(username, role) => {
+          onLogin={(userId, username, role) => {
             clearSessionCaches();
+            setStorageAccount(userId, role);
             setAuth({
               loading: false,
               authenticated: true,
+              userId,
               username,
               role: role || "",
             });

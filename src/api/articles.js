@@ -40,6 +40,7 @@ export function clearArticleListCache() {
   articleListCacheGeneration += 1;
   articleListCache.clear();
   pendingArticleLists.clear();
+  pendingTags = null;
 }
 
 export function prefetchArticles() {
@@ -94,7 +95,12 @@ export async function removeArticle(id) {
 }
 
 export async function fetchTags() {
-  if (!pendingTags) pendingTags = apiFetch("/api/tags").finally(() => { pendingTags = null; });
+  if (!pendingTags) {
+    const request = apiFetch("/api/tags").finally(() => {
+      if (pendingTags === request) pendingTags = null;
+    });
+    pendingTags = request;
+  }
   return pendingTags;
 }
 export async function createTag(name) { return apiFetch("/api/tags", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }); }

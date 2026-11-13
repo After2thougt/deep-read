@@ -23,6 +23,7 @@ BACKUP_DIR="${DATA_DIR}/backups"
 UPLOAD_DIR="${DATA_DIR}/uploads"
 LOG_DIR="${DATA_DIR}/logs"
 DB_PATH="${DATA_DIR}/app.db"
+GUEST_DB_PATH="${DATA_DIR}/guest.db"
 ENV_FILE="${APP_DIR}/.env"
 ECOSYSTEM_FILE="${APP_DIR}/deploy/ecosystem.config.cjs"
 NGINX_SRC="${APP_DIR}/deploy/nginx.conf"
@@ -323,7 +324,7 @@ else
   warn "    AUTH_PASSWORD=your_password"
   warn "    GUEST_USERNAME=your_guest_username"
   warn "    GUEST_PASSWORD=your_guest_password"
-  warn "    AUTH_SESSION_SECRET=$(openssl rand -hex 32 2>/dev/null || echo 'generate_with_openssl_rand_-hex_32')"
+  warn "    AUTH_SESSION_SECRET=generate a random secret with openssl rand -hex 32 and enter it directly in .env"
   warn "============================================================"
   read -rp "Press Enter after editing .env (or Ctrl+C to abort)..."
 fi
@@ -334,10 +335,25 @@ if ! grep -q '^GUEST_DATABASE_PATH=' "$ENV_FILE"; then
   info "Added GUEST_DATABASE_PATH=/data/deepread/guest.db"
 fi
 
-# Verify critical vars
+# Verify required configuration without printing secret values.
+env_value() {
+  sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1
+}
+
+env_key_count() {
+  grep -c "^$1=" "$ENV_FILE" || true
+}
+
+[ "$(env_key_count DATABASE_PATH)" = "1" ] || error "Set DATABASE_PATH exactly once in $ENV_FILE"
+[ "$(env_key_count GUEST_DATABASE_PATH)" = "1" ] || error "Set GUEST_DATABASE_PATH exactly once in $ENV_FILE"
+[ -n "$(env_value AUTH_USERNAME)" ] || error "AUTH_USERNAME must be configured in $ENV_FILE"
+[ -n "$(env_value AUTH_PASSWORD)" ] || error "AUTH_PASSWORD must be configured in $ENV_FILE"
+[ -n "$(env_value AUTH_SESSION_SECRET)" ] || error "AUTH_SESSION_SECRET must be configured in $ENV_FILE"
+[ "$(env_value DATABASE_PATH)" = "$DB_PATH" ] || error "DATABASE_PATH must be $DB_PATH"
+[ "$(env_value GUEST_DATABASE_PATH)" = "$GUEST_DB_PATH" ] || error "GUEST_DATABASE_PATH must be $GUEST_DB_PATH"
+[ "$DB_PATH" != "$GUEST_DB_PATH" ] || error "Admin and Guest databases must use different paths"
 grep -q '^OPENAI_API_KEY=your_key$' "$ENV_FILE" && warn "OPENAI_API_KEY still has placeholder value"
-grep -q '^AUTH_USERNAME=$' "$ENV_FILE" && warn "AUTH_USERNAME is empty"
-grep -q '^DATABASE_PATH=/data/deepread/app.db' "$ENV_FILE" && info "DATABASE_PATH correctly set to /data/deepread/app.db"
+info "Admin and Guest database paths are configured separately"
 
 # ============================================================
 # STEP 6: DEPENDENCIES
@@ -358,10 +374,50 @@ fi
 # STEP 7: DATABASE MIGRATIONS
 # ============================================================
 step "7/11 Running database migrations"
-if [ -f "${APP_DIR}/deploy/migrate.sh" ]; then
-  bash "${APP_DIR}/deploy/migrate.sh"
+[ -f "$DB_PATH" ] || error "Admin database not found: $DB_PATH. Restore/import the existing Admin database; install will not create or replace it."
+bash "${APP_DIR}/deploy/backup-db.sh" || error "Admin database backup failed; migrations were not run."
+if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+  info "Stopping existing application before schema migration"
+  pm2 stop "$PM2_NAME"
+fi
+bash "${APP_DIR}/deploy/migrate.sh" || error "Admin database migration failed; build and startup were stopped."
+
+# ============================================================
+# STEP 7b: ADMINISTRATOR INITIALIZATION
+# ============================================================
+step "7b/11 Verifying Administrator account"
+
+ADMINISTRATOR_COUNT=$(sqlite3 -batch -noheader "$DB_PATH" \
+  "SELECT COUNT(*) FROM auth_users WHERE role = 'administrator';") \
+  || error "Unable to inspect Administrator accounts in the Admin database"
+ACTIVE_ADMINISTRATOR_COUNT=$(sqlite3 -batch -noheader "$DB_PATH" \
+  "SELECT COUNT(*) FROM auth_users WHERE role = 'administrator' AND is_active = 1;") \
+  || error "Unable to inspect active Administrator accounts in the Admin database"
+[[ "$ADMINISTRATOR_COUNT" =~ ^[0-9]+$ ]] || error "Invalid Administrator count returned by SQLite"
+[[ "$ACTIVE_ADMINISTRATOR_COUNT" =~ ^[0-9]+$ ]] || error "Invalid active Administrator count returned by SQLite"
+
+if [ "$ADMINISTRATOR_COUNT" -eq 0 ]; then
+  warn "No Administrator account exists. Initial setup requires creating one now."
+  read -rp "Start the one-time interactive Administrator initialization? [y/N]: " INITIALIZE_ADMIN
+  case "$INITIALIZE_ADMIN" in
+    y|Y|yes|YES)
+      DATABASE_PATH="$DB_PATH" GUEST_DATABASE_PATH="$GUEST_DB_PATH" \
+        npm --prefix backend run db:bootstrap-administrator
+      ;;
+    *)
+      error "Administrator was not initialized. Run npm --prefix backend run db:bootstrap-administrator after migration, then rerun install."
+      ;;
+  esac
+  ACTIVE_ADMINISTRATOR_COUNT=$(sqlite3 -batch -noheader "$DB_PATH" \
+    "SELECT COUNT(*) FROM auth_users WHERE role = 'administrator' AND is_active = 1;") \
+    || error "Unable to verify the initialized Administrator account"
+  [[ "$ACTIVE_ADMINISTRATOR_COUNT" =~ ^[0-9]+$ ]] || error "Invalid active Administrator count returned by SQLite"
+  [ "$ACTIVE_ADMINISTRATOR_COUNT" -gt 0 ] || error "Administrator initialization did not produce an active account"
+  info "Active Administrator account verified"
+elif [ "$ACTIVE_ADMINISTRATOR_COUNT" -gt 0 ]; then
+  info "Existing active Administrator account verified; credentials were not changed"
 else
-  warn "No migrate.sh found, skipping migrations"
+  error "Administrator account exists but is inactive. Resolve this manually; install will not replace or reset it."
 fi
 
 # ============================================================
@@ -396,8 +452,8 @@ step "10/11 Starting application via PM2"
 [ -f "$ECOSYSTEM_FILE" ] || error "Ecosystem config not found: $ECOSYSTEM_FILE"
 
 if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
-  info "Reloading existing PM2 process: $PM2_NAME"
-  pm2 reload "$ECOSYSTEM_FILE" --update-env
+  info "Restarting existing PM2 process: $PM2_NAME"
+  pm2 restart "$ECOSYSTEM_FILE" --update-env
 else
   info "Starting PM2 process: $PM2_NAME"
   pm2 start "$ECOSYSTEM_FILE"

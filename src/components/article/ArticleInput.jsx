@@ -5,6 +5,7 @@ import { initialEditorBlocks, editorSourceSignature } from "./article-editor-dra
 import useDraft from "../../hooks/useDraft";
 import "./article-editor.css";
 import { useLocation } from "react-router-dom";
+import { accountStorageKey, safeGetItem, safeSetItem } from "../../utils/storage";
 import {
   ArrowLeft,
   ChevronDown,
@@ -41,7 +42,7 @@ export default function ArticleInput({
     if (forceExpanded) return false;
     if (!articleId) return false; // new article -> edit mode
     try {
-      const saved = localStorage.getItem(`deepread:reader-view-mode:${articleId}`);
+      const saved = safeGetItem(accountStorageKey(`reader-view-mode:${articleId}`));
       if (saved !== null) {
         return JSON.parse(saved);
       }
@@ -559,7 +560,7 @@ async function insertBlocksAtCursor(blocksToInsert) {
   useEffect(() => {
     if (!articleId) return;
     try {
-      localStorage.setItem(`deepread:reader-view-mode:${articleId}`, JSON.stringify(isCollapsed));
+      safeSetItem(accountStorageKey(`reader-view-mode:${articleId}`), JSON.stringify(isCollapsed));
     } catch {}
   }, [isCollapsed, articleId]);
 

@@ -33,6 +33,7 @@ import DictionaryCard from "../components/ui/DictionaryCard";
 import Reader from "../components/reader/Reader";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import { Trash2 } from "lucide-react";
+import { accountStorageKey } from "../utils/storage";
 
 
 function structureTokens(value) {
@@ -1303,7 +1304,7 @@ function resetFont() {
     }
 
     const savedPage = localStorage.getItem(
-      `vocabulary-trainer:article-page:${articleId}`
+      accountStorageKey(`vocabulary-trainer:article-page:${articleId}`)
     );
 
     let page = 1;
@@ -1385,7 +1386,7 @@ function resetFont() {
 
     if (articleId) {
       localStorage.setItem(
-        `vocabulary-trainer:article-page:${articleId}`,
+        accountStorageKey(`vocabulary-trainer:article-page:${articleId}`),
         String(target)
       );
     }

@@ -18,6 +18,7 @@ module.exports = {
         HOST: '127.0.0.1',
         PORT: 3000,
         DATABASE_PATH: '/data/deepread/app.db',
+        GUEST_DATABASE_PATH: '/data/deepread/guest.db',
         // Proxy configuration for outbound requests (e.g., downloading remote images)
         // Uppercase (standard for Node.js fetch, axios, etc.)
         HTTP_PROXY: 'http://127.0.0.1:7890',

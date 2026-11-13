@@ -17,6 +17,9 @@ fi
 # ============================================================
 APP_DIR="/opt/deepread/app"
 DATA_DIR="/data/deepread"
+ADMIN_DB_PATH="${DATA_DIR}/app.db"
+GUEST_DB_PATH="${DATA_DIR}/guest.db"
+ENV_FILE="${APP_DIR}/.env"
 PM2_NAME="deepread"
 BRANCH="${1:-main}"
 HEALTH_ENDPOINT="http://127.0.0.1:3000/api/health"
@@ -47,11 +50,27 @@ cd "$APP_DIR"
 if [ ! -d "$DATA_DIR" ] || [ ! -w "$DATA_DIR" ]; then
   error "Database directory is missing or not writable: $DATA_DIR"
 fi
+[ -f "$ENV_FILE" ] || error "Production environment file is missing: $ENV_FILE"
+[ -f "$ADMIN_DB_PATH" ] || error "Admin database not found: $ADMIN_DB_PATH"
+[ "$ADMIN_DB_PATH" != "$GUEST_DB_PATH" ] || error "Admin and Guest databases must use different paths"
+
+env_value() {
+  sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1
+}
+
+env_key_count() {
+  grep -c "^$1=" "$ENV_FILE" || true
+}
+
+[ "$(env_key_count DATABASE_PATH)" = "1" ] || error "Set DATABASE_PATH exactly once in $ENV_FILE"
+[ "$(env_key_count GUEST_DATABASE_PATH)" = "1" ] || error "Set GUEST_DATABASE_PATH exactly once in $ENV_FILE"
+[ "$(env_value DATABASE_PATH)" = "$ADMIN_DB_PATH" ] || error "DATABASE_PATH must be $ADMIN_DB_PATH"
+[ "$(env_value GUEST_DATABASE_PATH)" = "$GUEST_DB_PATH" ] || error "GUEST_DATABASE_PATH must be $GUEST_DB_PATH"
 
 # ============================================================
 # STEP 1: GIT PULL (verify clean working tree)
 # ============================================================
-step "1/6 Git pull"
+step "1/7 Git pull"
 
 info "Fetching origin..."
 git fetch origin
@@ -70,7 +89,7 @@ info "Updated to: $CURRENT_COMMIT"
 # ============================================================
 # STEP 2: DEPENDENCIES
 # ============================================================
-step "2/6 Installing dependencies"
+step "2/7 Installing dependencies"
 
 info "Root npm ci..."
 npm ci
@@ -81,19 +100,34 @@ if [ -f backend/package.json ]; then
 fi
 
 # ============================================================
-# STEP 3: DATABASE MIGRATIONS
+# STEP 3: DATABASE BACKUP AND MIGRATIONS
 # ============================================================
-step "3/6 Running database migrations"
-if [ -f "${APP_DIR}/deploy/migrate.sh" ]; then
-  bash "${APP_DIR}/deploy/migrate.sh"
+step "3/7 Backing up Admin database"
+bash "${APP_DIR}/deploy/backup-db.sh" || error "Admin database backup failed; migrations and restart were stopped."
+
+step "4/7 Running Admin database migrations"
+[ -f "${APP_DIR}/deploy/migrate.sh" ] || error "Required migration script is missing: ${APP_DIR}/deploy/migrate.sh"
+if pm2 describe "$PM2_NAME" >/dev/null 2>&1; then
+  info "Stopping application before schema migration"
+  pm2 stop "$PM2_NAME"
+fi
+bash "${APP_DIR}/deploy/migrate.sh" || error "Admin database migration failed; build and restart were stopped."
+
+ADMINISTRATOR_COUNT=$(sqlite3 -batch -noheader "$ADMIN_DB_PATH" \
+  "SELECT COUNT(*) FROM auth_users WHERE role = 'administrator' AND is_active = 1;") \
+  || error "Unable to inspect active Administrator accounts"
+[[ "$ADMINISTRATOR_COUNT" =~ ^[0-9]+$ ]] || error "Invalid active Administrator count returned by SQLite"
+if [ "$ADMINISTRATOR_COUNT" -eq 0 ]; then
+  warn "No active Administrator account exists. Update will not create one."
+  warn "After this update, initialize one explicitly with: DATABASE_PATH=$ADMIN_DB_PATH GUEST_DATABASE_PATH=$GUEST_DB_PATH npm --prefix backend run db:bootstrap-administrator"
 else
-  warn "No migrate.sh found, skipping migrations"
+  info "Active Administrator account verified; update will not change its credentials"
 fi
 
 # ============================================================
 # STEP 4: FRONTEND BUILD
 # ============================================================
-step "4/6 Building frontend"
+step "5/7 Building frontend"
 
 npm run build
 [ -f dist/index.html ] || error "Frontend build failed: dist/index.html missing"
@@ -103,7 +137,7 @@ info "Build complete: $ASSET_COUNT assets"
 # ============================================================
 # STEP 5: PM2 RESTART (with env update)
 # ============================================================
-step "5/6 Restarting PM2 with updated env"
+step "6/7 Restarting PM2 with updated env"
 
 pm2 restart "$PM2_NAME" --update-env
 sleep 3
@@ -111,7 +145,7 @@ sleep 3
 # ============================================================
 # STEP 6: HEALTH CHECKS
 # ============================================================
-step "6/6 Health checks"
+step "7/7 Health checks"
 
 # PM2 status
 if pm2 show "$PM2_NAME" 2>/dev/null | grep -q "online"; then

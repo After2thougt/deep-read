@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { safeGetItem, safeSetItem, safeRemoveItem } from "../utils/storage";
+import { accountStorageKey, safeGetItem, safeSetItem, safeRemoveItem } from "../utils/storage";
 import { generateId } from "../utils/id";
 
 const PREFIX = "deep-read-draft";
@@ -18,8 +18,8 @@ export default function useDraft(articleId) {
   }
 
   function getKey() {
-    if (articleId) return `${PREFIX}-${articleId}`;
-    return `${PREFIX}-temp-${getTempId()}`;
+    if (articleId) return accountStorageKey(`${PREFIX}-${articleId}`);
+    return accountStorageKey(`${PREFIX}-temp-${getTempId()}`);
   }
 
   /* ---------- public API ---------- */
@@ -53,10 +53,10 @@ export default function useDraft(articleId) {
   const clearDraft = useCallback(() => {
     safeRemoveItem(getKey());
     if (tempIdRef.current) {
-      safeRemoveItem(`${PREFIX}-temp-${tempIdRef.current}`);
+      safeRemoveItem(accountStorageKey(`${PREFIX}-temp-${tempIdRef.current}`));
     }
     // Clean up legacy broken key from old code
-    safeRemoveItem(`${PREFIX}-null`);
+    safeRemoveItem(accountStorageKey(`${PREFIX}-null`));
   }, [articleId]);
 
   /** Compare draft.savedAt vs serverUpdatedAt. Returns true if draft should be restored. */
@@ -79,8 +79,8 @@ export default function useDraft(articleId) {
     prevArticleIdRef.current = articleId;
 
     if (!prev && articleId && tempIdRef.current) {
-      const tempKey = `${PREFIX}-temp-${tempIdRef.current}`;
-      const realKey = `${PREFIX}-${articleId}`;
+      const tempKey = accountStorageKey(`${PREFIX}-temp-${tempIdRef.current}`);
+      const realKey = accountStorageKey(`${PREFIX}-${articleId}`);
       const data = safeGetItem(tempKey);
       if (data) {
         safeSetItem(realKey, data);

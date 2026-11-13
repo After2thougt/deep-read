@@ -24,10 +24,9 @@ function generateId(prefix = 'id') {
 const path = require("path");
 const fs = require("fs");
 
-const uploadsRoot = path.resolve(__dirname, "..", "uploads", "articles");
-const tempUploadsRoot = path.resolve(__dirname, "..", "uploads", "temp");
-fs.mkdirSync(uploadsRoot, { recursive: true });
-fs.mkdirSync(tempUploadsRoot, { recursive: true });
+const uploadsBase = path.resolve(process.env.UPLOADS_PATH || path.resolve(__dirname, "..", "uploads"));
+const legacyUploadsRoot = path.join(uploadsBase, "articles");
+fs.mkdirSync(uploadsBase, { recursive: true });
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -58,9 +57,17 @@ async function processImageBuffer(buffer, mimeType) {
 /**
  * Save processed image to temp uploads and return URL
  */
-function saveImageToTemp(buffer, fileName) {
-  fs.writeFileSync(path.join(tempUploadsRoot, fileName), buffer, { flag: 'wx' });
-  return `/uploads/temp/${fileName}`;
+function accountMediaRoot(auth) {
+  const namespace = auth.role === 'guest' ? 'guest' : 'users';
+  return path.join(uploadsBase, namespace, String(auth.userId));
+}
+
+function saveImageToTemp(buffer, fileName, auth) {
+  const tempDirectory = path.join(accountMediaRoot(auth), 'temp');
+  fs.mkdirSync(tempDirectory, { recursive: true });
+  fs.writeFileSync(path.join(tempDirectory, fileName), buffer, { flag: 'wx' });
+  const namespace = auth.role === 'guest' ? 'guest' : 'users';
+  return `/api/media/${namespace}/${auth.userId}/temp/${fileName}`;
 }
 
 function normalizeArticleBlocks(articleId, blocks) {
@@ -88,21 +95,27 @@ function getArticlePreview(content) {
 
 function removeArticleImageIfUnused(imagePath, excludedArticleId) {
   const normalizedPath = String(imagePath || '');
-  const relative = normalizedPath.startsWith('/uploads/articles/')
-    ? normalizedPath.slice('/uploads/articles/'.length)
-    : '';
-  if (!relative || !/^[A-Za-z0-9._-]+$/.test(relative)) return false;
+  const match = normalizedPath.match(/^\/api\/media\/(users|guest)\/(\d+)\/articles\/([A-Za-z0-9_-]+)\/([A-Za-z0-9._-]+)$/);
+  if (!match) return false;
+  const [, namespace, userId, articleId, fileName] = match;
+  if (articleId !== excludedArticleId) return false;
 
-  const referencedElsewhere = db.prepare(`SELECT 1 FROM article_blocks
-    WHERE type = 'image' AND content = ? AND article_id != ? LIMIT 1`)
-    .get(normalizedPath, excludedArticleId);
+  const referencedElsewhere = namespace === 'guest'
+    ? db.prepare(`SELECT 1 FROM article_blocks
+        WHERE type = 'image' AND (content = ? OR thumbnail = ?) LIMIT 1`).get(normalizedPath, normalizedPath)
+    : db.prepare(`SELECT 1 FROM article_blocks
+        JOIN articles ON articles.id = article_blocks.article_id
+        WHERE article_blocks.type = 'image' AND (article_blocks.content = ? OR article_blocks.thumbnail = ?)
+          AND articles.user_id = ? LIMIT 1`).get(normalizedPath, normalizedPath, Number(userId));
   if (referencedElsewhere) return false;
 
   try {
-    fs.unlinkSync(path.join(uploadsRoot, relative));
-    // Also delete corresponding thumbnail if exists
-    const thumbRelative = relative.replace('.webp', '_thumb.webp');
-    const thumbPath = path.join(uploadsRoot, thumbRelative);
+    const articleDirectory = path.join(accountMediaRoot({
+      role: namespace === 'guest' ? 'guest' : 'user',
+      userId: Number(userId),
+    }), 'articles', articleId);
+    fs.unlinkSync(path.join(articleDirectory, fileName));
+    const thumbPath = path.join(articleDirectory, fileName.replace('.webp', '_thumb.webp'));
     try { fs.unlinkSync(thumbPath); } catch {}
     return true;
   } catch (error) {
@@ -119,6 +132,8 @@ function removeArticleImages(articleId) {
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 const { db, adminDb, guestDb, runWithDatabase, serializeArticle, serializeVocabulary } = require("./db");
+const { hashPassword, verifyPassword } = require("./password");
+const { assertAdminDatabaseReady } = require("./database-readiness");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -140,7 +155,6 @@ if (process.env.NODE_ENV === 'production' && (!process.env.AUTH_USERNAME || !pro
 const sessionSecret = String(process.env.AUTH_SESSION_SECRET || 'development-session-secret');
 app.use(cors(allowedOrigin ? { origin: allowedOrigin, credentials: true } : (process.env.NODE_ENV === 'production' ? { origin: false } : undefined)));
 app.use(express.json({ limit: '12mb' }));
-app.use('/uploads', express.static(path.resolve(__dirname, '..', 'uploads')));
 
 const sessions = new Map();
 const loginAttempts = new Map();
@@ -148,7 +162,7 @@ const SESSION_COOKIE = 'deepread_session';
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 14;
 
 // Session cleanup: remove expired sessions every 10 minutes
-setInterval(() => {
+const sessionCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [token, session] of sessions.entries()) {
     if (session.expiresAt < now) {
@@ -156,20 +170,9 @@ setInterval(() => {
     }
   }
 }, 10 * 60 * 1000);
+sessionCleanupTimer.unref();
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 10;
-
-function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
-  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
-  return `scrypt$${salt}$${hash}`;
-}
-
-function verifyPassword(password, stored) {
-  const [, salt, expected] = String(stored || '').split('$');
-  if (!salt || !expected) return false;
-  const actual = crypto.scryptSync(String(password), salt, 64).toString('hex');
-  return actual.length === expected.length && crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected));
-}
 
 function parseCookies(header) {
   return String(header || '').split(';').reduce((cookies, item) => {
@@ -197,7 +200,21 @@ function currentSession(req) {
     if (token) sessions.delete(token);
     return null;
   }
-  return session;
+  const user = session.database.prepare('SELECT id, username FROM auth_users WHERE id = ?').get(session.userId);
+  if (!user || user.username !== session.username) {
+    sessions.delete(token);
+    return null;
+  }
+  if (session.database === guestDb) {
+    return { ...session, userId: user.id, role: 'guest' };
+  }
+
+  const account = session.database.prepare('SELECT role, is_active FROM auth_users WHERE id = ?').get(user.id);
+  if (!account || !account.is_active || account.role !== session.role) {
+    sessions.delete(token);
+    return null;
+  }
+  return { ...session, userId: user.id, role: account.role };
 }
 
 function currentUser(req) {
@@ -206,7 +223,15 @@ function currentUser(req) {
 
 function requireAuth(req, res, next) {
   const session = currentSession(req);
-  if (session) return runWithDatabase(session.database, next);
+  if (session) {
+    req.auth = {
+      userId: session.userId,
+      username: session.username,
+      role: session.role,
+      database: session.database,
+    };
+    return runWithDatabase(session.database, next);
+  }
   return res.status(401).json({ error: 'Authentication required.' });
 }
 
@@ -240,31 +265,49 @@ function recordLoginFailure(ip) {
   loginAttempts.set(ip, entry);
 }
 
-ensureAdminUser();
-ensureGuestUser();
+let startupReadinessError = null;
+if (require.main === module && adminDb.prepare('SELECT 1 FROM auth_users LIMIT 1').get()) {
+  try {
+    assertAdminDatabaseReady(adminDb);
+  } catch (error) {
+    console.error(`[startup] ${error.message}`);
+    startupReadinessError = error;
+  }
+}
+
+if (!startupReadinessError) {
+  ensureAdminUser();
+  ensureGuestUser();
+}
 
 app.post('/api/auth/login', (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   if (loginRateLimited(ip)) return res.status(429).json({ error: 'Too many login attempts. Try again later.' });
   const username = String(req.body?.username || '').trim();
   const password = String(req.body?.password || '');
-  const adminUser = adminDb.prepare('SELECT username,password_hash FROM auth_users WHERE username = ?').get(username);
+  const adminUser = adminDb.prepare('SELECT id, username, password_hash, role, is_active FROM auth_users WHERE username = ?')
+    .get(username);
   const guestUsername = String(process.env.GUEST_USERNAME || '').trim();
   const guestUser = guestUsername && username.toLowerCase() === guestUsername.toLowerCase()
     ? guestDb.prepare('SELECT username,password_hash FROM auth_users WHERE username = ?').get(username)
     : null;
   const user = adminUser || guestUser;
   const database = guestUser && !adminUser ? guestDb : adminDb;
-  if (!user || !verifyPassword(password, user.password_hash)) {
+  const role = database === guestDb ? 'guest' : adminUser?.role;
+  if (!user || (database === adminDb && (!adminUser.is_active || !['user', 'administrator'].includes(role)))
+    || !verifyPassword(password, user.password_hash)) {
     recordLoginFailure(ip);
     return res.status(401).json({ error: 'Invalid username or password.' });
   }
   loginAttempts.delete(ip);
   const tokenId = crypto.randomBytes(32).toString('hex');
   const token = `${tokenId}.${crypto.createHmac('sha256', sessionSecret).update(tokenId).digest('hex')}`;
-  sessions.set(token, { username: user.username, database, role: database === guestDb ? 'guest' : 'admin', expiresAt: Date.now() + SESSION_TTL_MS });
+  const userId = database === guestDb
+    ? guestDb.prepare('SELECT id FROM auth_users WHERE username = ?').get(user.username).id
+    : adminUser.id;
+  sessions.set(token, { userId, username: user.username, database, role, expiresAt: Date.now() + SESSION_TTL_MS });
   setSessionCookie(res, token);
-  return res.json({ username: user.username, role: database === guestDb ? 'guest' : 'admin' });
+  return res.json({ userId, username: user.username, role });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -288,19 +331,19 @@ app.post('/api/auth/change-password', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'New password must be at least 8 characters.' });
   }
 
-  const user = db.prepare('SELECT username, password_hash FROM auth_users WHERE username = ?').get(username);
+  const user = db.prepare('SELECT username, password_hash FROM auth_users WHERE id = ?').get(session.userId);
   if (!user || !verifyPassword(currentPassword, user.password_hash)) {
     return res.status(401).json({ error: 'Current password is incorrect.' });
   }
 
   // Update password hash
   const newHash = hashPassword(newPassword);
-  db.prepare('UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE username = ?')
-    .run(newHash, new Date().toISOString(), username);
+  db.prepare('UPDATE auth_users SET password_hash = ?, updated_at = ? WHERE id = ?')
+    .run(newHash, new Date().toISOString(), session.userId);
 
   // Delete ALL sessions for this user
-  for (const [token, session] of sessions.entries()) {
-    if (session.username === username) {
+  for (const [token, activeSession] of sessions.entries()) {
+    if (activeSession.database === session.database && activeSession.userId === session.userId) {
       sessions.delete(token);
     }
   }
@@ -308,7 +351,7 @@ app.post('/api/auth/change-password', requireAuth, (req, res) => {
   // Create new session for the user
   const tokenId = crypto.randomBytes(32).toString('hex');
   const token = `${tokenId}.${crypto.createHmac('sha256', sessionSecret).update(tokenId).digest('hex')}`;
-  sessions.set(token, { username, database: session.database, role: session.role, expiresAt: Date.now() + SESSION_TTL_MS });
+  sessions.set(token, { userId: session.userId, username, database: session.database, role: session.role, expiresAt: Date.now() + SESSION_TTL_MS });
   setSessionCookie(res, token);
 
   return res.json({ success: true, message: 'Password changed successfully.' });
@@ -319,67 +362,195 @@ app.get("/api/auth/me", (req, res) => {
   if (!session) {
     return res.status(401).json({});
   }
-  res.json({ username: session.username, role: session.role });
+  res.json({ userId: session.userId, username: session.username, role: session.role });
 });
 
 app.use('/api', (req, res, next) => {
   if (req.path === '/auth/login' || req.path === '/auth/logout' || req.path === '/auth/me' || req.path === '/health') return next();
   const session = currentSession(req);
   if (!session) return res.status(401).json({ error: 'Authentication required.' });
+  req.auth = {
+    userId: session.userId,
+    username: session.username,
+    role: session.role,
+    database: session.database,
+  };
   return runWithDatabase(session.database, next);
 });
 
-app.post('/api/export', (req, res) => {
-  try {
-    const exportData = db.transaction(() => {
-      const articles = db.prepare(`SELECT id, title, content, highlights, source_name, source_url,
+function isOwnedAccountRequest(req) {
+  return req.auth.role !== 'guest';
+}
+
+function ownerPredicate(req, alias) {
+  return isOwnedAccountRequest(req) ? `${alias}.user_id = ?` : '1 = 1';
+}
+
+function ownerParameters(req) {
+  return isOwnedAccountRequest(req) ? [req.auth.userId] : [];
+}
+
+function findOwnedArticle(req, articleId) {
+  const predicate = ownerPredicate(req, 'articles');
+  return db.prepare(`SELECT articles.id, ${isOwnedAccountRequest(req) ? 'articles.user_id' : 'NULL AS user_id'}
+    FROM articles WHERE articles.id = ? AND ${predicate}`).get(articleId, ...ownerParameters(req));
+}
+
+function findOwnedTag(req, tagId) {
+  const predicate = ownerPredicate(req, 'tags');
+  return db.prepare(`SELECT tags.id FROM tags WHERE tags.id = ? AND ${predicate}`)
+    .get(tagId, ...ownerParameters(req));
+}
+
+function buildAccountExport(userId, settings = {}) {
+  const scoped = userId !== null;
+  const ownerClause = scoped ? 'WHERE user_id = ?' : '';
+  const ownerParams = scoped ? [userId] : [];
+  const articleOwnerClause = scoped ? 'WHERE a.user_id = ?' : '';
+  return {
+    exportVersion: 1,
+    app: 'DeepRead',
+    exportedAt: new Date().toISOString(),
+    exportScope: {
+      description: 'Data from the selected account database and explicitly included device-wide browser preferences. This is not a complete cross-device backup.',
+      dataSources: ['authenticated session SQLite database', 'browser-local theme and reader font size (device-wide, not account-scoped)'],
+      exclusions: [
+        'Authentication accounts, password hashes, sessions, tokens, and credentials',
+        'Browser drafts, unmigrated legacy data, and browser keys with unverified ownership',
+        'Unscoped per-article reading progress and view-mode browser state',
+        'Uploaded image and thumbnail files; article block paths are preserved',
+      ],
+    },
+    data: {
+      articles: db.prepare(`SELECT id, title, content, highlights, source_name, source_url,
         source_author, source_published_at, created_at, updated_at
-        FROM articles ORDER BY created_at, id`).all();
-      const settings = {};
-      const browserSettings = req.body?.browserData?.settings;
+        FROM articles ${ownerClause} ORDER BY created_at, id`).all(...ownerParams),
+      articleBlocks: db.prepare(`SELECT b.id, b.article_id, b.type, b.content, b.thumbnail, b.sort_order, b.created_at
+        FROM article_blocks b JOIN articles a ON a.id = b.article_id ${articleOwnerClause}
+        ORDER BY b.article_id, b.sort_order, b.id`).all(...ownerParams),
+      tags: db.prepare(`SELECT id, name, created_at, updated_at FROM tags ${ownerClause} ORDER BY id`)
+        .all(...ownerParams),
+      articleTags: db.prepare(`SELECT at.article_id, at.tag_id, at.created_at
+        FROM article_tags at JOIN articles a ON a.id = at.article_id ${articleOwnerClause}
+        ORDER BY at.article_id, at.tag_id`).all(...ownerParams),
+      vocabulary: db.prepare(`SELECT id, word, definition, phonetic, part_of_speech, example, article_id,
+        saved_at, next_review, review_count, ease_factor, interval, context_line, raw, start_offset, end_offset
+        FROM vocabulary ${ownerClause} ORDER BY saved_at, id`).all(...ownerParams),
+      articleAnalyses: db.prepare(`SELECT aa.id, aa.article_id, aa.page_number, aa.content_hash, aa.analysis, aa.model,
+        aa.prompt_version, aa.created_at, aa.updated_at
+        FROM article_analyses aa JOIN articles a ON a.id = aa.article_id ${articleOwnerClause}
+        ORDER BY aa.id`).all(...ownerParams),
+      articleTranslations: db.prepare(`SELECT tc.id, tc.article_id, tc.page_number, tc.content_hash, tc.target, tc.source,
+        tc.provider, tc.translation, tc.created_at, tc.updated_at
+        FROM article_translation_cache tc JOIN articles a ON a.id = tc.article_id ${articleOwnerClause}
+        ORDER BY tc.id`).all(...ownerParams),
+      readingRecords: [],
+      settings,
+    },
+  };
+}
 
-      if (browserSettings?.theme === 'light' || browserSettings?.theme === 'dark') {
-        settings.theme = browserSettings.theme;
-      }
-      if (Number.isInteger(browserSettings?.readerFontSize)
-        && browserSettings.readerFontSize >= 12
-        && browserSettings.readerFontSize <= 32) {
-        settings.readerFontSize = browserSettings.readerFontSize;
-      }
+function isAdministrator(req) {
+  return req.auth.role === 'administrator';
+}
 
-      return {
-        exportVersion: 1,
-        app: 'DeepRead',
-        exportedAt: new Date().toISOString(),
-        exportScope: {
-          description: 'Data from the authenticated session database and selected device-wide browser preferences. This is not a complete cross-device backup.',
-          dataSources: ['authenticated session SQLite database', 'browser-local theme and reader font size (device-wide, not account-scoped)'],
-          exclusions: [
-            'Authentication accounts, password hashes, sessions, tokens, and credentials',
-            'Browser drafts, unmigrated legacy data, and browser keys with unverified ownership',
-            'Unscoped per-article reading progress and view-mode browser state',
-            'Uploaded image and thumbnail files; article block paths are preserved',
-          ],
-        },
-        data: {
-          articles,
-          articleBlocks: db.prepare(`SELECT id, article_id, type, content, thumbnail, sort_order, created_at
-            FROM article_blocks ORDER BY article_id, sort_order, id`).all(),
-          tags: db.prepare('SELECT id, name, created_at, updated_at FROM tags ORDER BY id').all(),
-          articleTags: db.prepare(`SELECT article_id, tag_id, created_at
-            FROM article_tags ORDER BY article_id, tag_id`).all(),
-          vocabulary: db.prepare(`SELECT id, word, definition, phonetic, part_of_speech, example, article_id,
-            saved_at, next_review, review_count, ease_factor, interval, context_line, raw, start_offset, end_offset
-            FROM vocabulary ORDER BY saved_at, id`).all(),
-          articleAnalyses: db.prepare(`SELECT id, article_id, page_number, content_hash, analysis, model,
-            prompt_version, created_at, updated_at FROM article_analyses ORDER BY id`).all(),
-          articleTranslations: db.prepare(`SELECT id, article_id, page_number, content_hash, target, source,
-            provider, translation, created_at, updated_at FROM article_translation_cache ORDER BY id`).all(),
-          readingRecords: [],
-          settings,
-        },
-      };
-    })();
+function requireAdministrator(req, res) {
+  if (isAdministrator(req)) return true;
+  res.status(403).json({ error: 'Administrator access required.' });
+  return false;
+}
+
+app.get('/api/admin/users', (req, res) => {
+  if (!requireAdministrator(req, res)) return;
+  try {
+    return res.json(db.prepare(`SELECT id, username, role, is_active, created_at, updated_at
+      FROM auth_users ORDER BY username COLLATE NOCASE`).all());
+  } catch (error) {
+    console.error('Unable to list accounts:', error);
+    return res.status(500).json({ error: 'Unable to load accounts.' });
+  }
+});
+
+app.post('/api/admin/users', (req, res) => {
+  if (!requireAdministrator(req, res)) return;
+  const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  if (Object.hasOwn(req.body || {}, 'role')) {
+    return res.status(400).json({ error: 'Account roles cannot be assigned through this endpoint.' });
+  }
+  if (!username || username.length > 64 || [...username].some((character) => character.charCodeAt(0) < 32)) {
+    return res.status(400).json({ error: 'Username must be between 1 and 64 valid characters.' });
+  }
+  if (password.length < 12) {
+    return res.status(400).json({ error: 'Password must be at least 12 characters.' });
+  }
+  try {
+    const now = new Date().toISOString();
+    const result = db.prepare(`INSERT INTO auth_users
+      (username, password_hash, role, is_active, created_at, updated_at)
+      VALUES (?, ?, 'user', 1, ?, ?)`)
+      .run(username, hashPassword(password), now, now);
+    return res.status(201).json(db.prepare(`SELECT id, username, role, is_active, created_at, updated_at
+      FROM auth_users WHERE id = ?`).get(result.lastInsertRowid));
+  } catch (error) {
+    if (String(error.message).includes('UNIQUE')) return res.status(409).json({ error: 'Username is already in use.' });
+    console.error('Unable to create account:', error);
+    return res.status(500).json({ error: 'Unable to create account.' });
+  }
+});
+
+app.patch('/api/admin/users/:id', (req, res) => {
+  if (!requireAdministrator(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0 || !req.body || typeof req.body.isActive !== 'boolean'
+    || Object.keys(req.body).some((key) => key !== 'isActive')) {
+    return res.status(400).json({ error: 'Only a valid isActive status may be changed.' });
+  }
+  try {
+    const account = db.prepare('SELECT id, role FROM auth_users WHERE id = ?').get(id);
+    if (!account || account.role !== 'user') return res.status(404).json({ error: 'Regular account not found.' });
+    db.prepare('UPDATE auth_users SET is_active = ?, updated_at = ? WHERE id = ?')
+      .run(req.body.isActive ? 1 : 0, new Date().toISOString(), id);
+    return res.json(db.prepare(`SELECT id, username, role, is_active, created_at, updated_at
+      FROM auth_users WHERE id = ?`).get(id));
+  } catch (error) {
+    console.error('Unable to update account status:', error);
+    return res.status(500).json({ error: 'Unable to update account status.' });
+  }
+});
+
+app.get('/api/admin/users/:id/export', (req, res) => {
+  if (!requireAdministrator(req, res)) return;
+  const userId = Number(req.params.id);
+  if (!Number.isSafeInteger(userId) || userId <= 0) return res.status(400).json({ error: 'Valid account id is required.' });
+  try {
+    const account = db.prepare("SELECT id FROM auth_users WHERE id = ? AND role = 'user'").get(userId);
+    if (!account) return res.status(404).json({ error: 'Regular account not found.' });
+    const data = db.transaction(() => buildAccountExport(userId))();
+    const date = new Date().toISOString().slice(0, 10);
+    res.set({
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="deepread-account-${userId}-${date}.json"`,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return res.status(200).send(JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Failed to export account data:', error);
+    return res.status(500).json({ error: 'Unable to generate account export.' });
+  }
+});
+
+function handleExportRequest(req, res) {
+  try {
+    const settings = {};
+    const browserSettings = req.body?.browserData?.settings;
+    if (browserSettings?.theme === 'light' || browserSettings?.theme === 'dark') settings.theme = browserSettings.theme;
+    if (Number.isInteger(browserSettings?.readerFontSize)
+      && browserSettings.readerFontSize >= 12
+      && browserSettings.readerFontSize <= 32) settings.readerFontSize = browserSettings.readerFontSize;
+    const userId = isOwnedAccountRequest(req) ? req.auth.userId : null;
+    const exportData = db.transaction(() => buildAccountExport(userId, settings))();
 
     const date = new Date().toISOString().slice(0, 10);
     res.set({
@@ -393,7 +564,10 @@ app.post('/api/export', (req, res) => {
     console.error('Failed to export user data:', error);
     return res.status(500).json({ error: 'Unable to generate your data export. Please try again.' });
   }
-});
+}
+
+app.get('/api/export', handleExportRequest);
+app.post('/api/export', handleExportRequest);
 
 function parseMcpResponse(data) {
   const line = String(data)
@@ -427,8 +601,12 @@ function hashSha256(message) {
 const analysisGenerations = new Map();
 const cancelledAnalysisRequests = new Set();
 
-function analysisCacheKey(articleId, pageNumber, contentHash, promptVersion) {
-  return `${articleId}:${pageNumber}:${contentHash}:${promptVersion}`;
+function analysisOwnerKey(req) {
+  return `${req.auth.role === 'guest' ? 'guest' : 'admin'}:${req.auth.userId}`;
+}
+
+function analysisCacheKey(req, articleId, pageNumber, contentHash, promptVersion) {
+  return `${analysisOwnerKey(req)}:${articleId}:${pageNumber}:${contentHash}:${promptVersion}`;
 }
 
 function hmacSha256(key, message) {
@@ -1347,7 +1525,7 @@ app.post("/api/eudic/vocabulary", async (req, res) => {
     });
   }
 
-  if (session.role !== "admin") {
+  if (session.role !== "administrator" && session.role !== "admin") {
     return res.status(403).json({
       error: "Only administrators can sync vocabulary to Eudic.",
     });
@@ -1406,29 +1584,34 @@ app.get('/api/articles', async (req, res) => {
   const tagSearch = (typeof req.query.tagSearch === 'string' && req.query.tagSearch.trim()) ? req.query.tagSearch.trim() : '';
   const sort = resolveSort(req.query.sort);
   const isSearching = title || tagSearch;
-  const params = [];
-  let where = '';
+  const params = ownerParameters(req);
+  const clauses = isOwnedAccountRequest(req) ? ['a.user_id = ?'] : [];
 
   if (isSearching) {
-    const clauses = [];
+    const searchClauses = [];
     if (title) {
-      clauses.push('a.title LIKE ?');
+      searchClauses.push('a.title LIKE ?');
       params.push(`%${title}%`);
     }
     if (tagSearch) {
-      clauses.push(`EXISTS (SELECT 1 FROM article_tags at JOIN tags t ON t.id = at.tag_id
-        WHERE at.article_id = a.id AND t.name LIKE ?)`);
+      searchClauses.push(`EXISTS (SELECT 1 FROM article_tags at JOIN tags t ON t.id = at.tag_id
+        WHERE at.article_id = a.id AND t.name LIKE ?${isOwnedAccountRequest(req) ? ' AND at.user_id = ? AND t.user_id = ?' : ''})`);
       params.push(`%${tagSearch}%`);
+      if (isOwnedAccountRequest(req)) params.push(req.auth.userId, req.auth.userId);
     }
-    where = `WHERE ${clauses.join(' OR ')}`;
+    clauses.push(`(${searchClauses.join(' OR ')})`);
   } else if (tag === 'untagged') {
-    where = 'WHERE NOT EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id)';
+    clauses.push(`NOT EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id
+      ${isOwnedAccountRequest(req) ? 'AND at.user_id = a.user_id' : ''})`);
   } else if (tag !== 'all') {
     const tagId = Number(tag);
     if (!Number.isInteger(tagId) || tagId <= 0) return res.status(400).json({ error: 'Invalid tag filter.' });
-    where = 'WHERE EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id AND at.tag_id = ?)';
+    clauses.push(`EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id AND at.tag_id = ?
+      ${isOwnedAccountRequest(req) ? 'AND at.user_id = a.user_id AND at.user_id = ?' : ''})`);
     params.push(tagId);
+    if (isOwnedAccountRequest(req)) params.push(req.auth.userId);
   }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
 
   try {
     const total = db.prepare(`SELECT COUNT(*) AS count FROM articles a ${where}`).get(...params).count;
@@ -1441,16 +1624,22 @@ app.get('/api/articles', async (req, res) => {
       const placeholders = ids.map(() => '?').join(',');
       const tagRows = db.prepare(`SELECT at.article_id, t.id, t.name
         FROM article_tags at JOIN tags t ON t.id = at.tag_id
-        WHERE at.article_id IN (${placeholders}) ORDER BY t.name COLLATE NOCASE`).all(...ids);
+        WHERE at.article_id IN (${placeholders})${isOwnedAccountRequest(req) ? ' AND at.user_id = ? AND t.user_id = ?' : ''}
+        ORDER BY t.name COLLATE NOCASE`).all(...ids, ...(isOwnedAccountRequest(req) ? [req.auth.userId, req.auth.userId] : []));
       for (const row of tagRows) tagsByArticle.get(row.article_id).push({ id: row.id, name: row.name });
     }
     const untaggedTotal = db.prepare(`SELECT COUNT(*) AS count FROM articles a
-      WHERE NOT EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id)`).get().count;
-    const allTotal = db.prepare('SELECT COUNT(*) AS count FROM articles').get().count;
+      WHERE ${isOwnedAccountRequest(req) ? 'a.user_id = ? AND ' : ''}
+      NOT EXISTS (SELECT 1 FROM article_tags at WHERE at.article_id = a.id
+        ${isOwnedAccountRequest(req) ? 'AND at.user_id = a.user_id' : ''})`)
+      .get(...ownerParameters(req)).count;
+    const allTotal = db.prepare(`SELECT COUNT(*) AS count FROM articles a
+      ${isOwnedAccountRequest(req) ? 'WHERE a.user_id = ?' : ''}`).get(...ownerParameters(req)).count;
     const tags = db.prepare(`SELECT t.id, t.name, t.created_at, t.updated_at,
       COUNT(at.article_id) AS article_count
       FROM tags t LEFT JOIN article_tags at ON at.tag_id = t.id
-      GROUP BY t.id ORDER BY t.name COLLATE NOCASE`).all();
+      ${isOwnedAccountRequest(req) ? 'WHERE t.user_id = ?' : ''}
+      GROUP BY t.id ORDER BY t.name COLLATE NOCASE`).all(...ownerParameters(req));
     return res.json({
       items: rows.map((row) => {
         let highlights = [];
@@ -1480,7 +1669,8 @@ app.get('/api/tags', (req, res) => {
     return res.json(db.prepare(`SELECT t.id, t.name, t.created_at, t.updated_at,
       COUNT(at.article_id) AS article_count
       FROM tags t LEFT JOIN article_tags at ON at.tag_id = t.id
-      GROUP BY t.id ORDER BY t.name COLLATE NOCASE`).all());
+      ${isOwnedAccountRequest(req) ? 'WHERE t.user_id = ?' : ''}
+      GROUP BY t.id ORDER BY t.name COLLATE NOCASE`).all(...ownerParameters(req)));
   } catch (error) {
     return res.status(500).json({ error: 'Unable to load tags.' });
   }
@@ -1488,11 +1678,13 @@ app.get('/api/tags', (req, res) => {
 
 app.get('/api/articles/:id/tags', (req, res) => {
   try {
-    const article = db.prepare('SELECT id FROM articles WHERE id = ?').get(req.params.id);
+    const article = findOwnedArticle(req, req.params.id);
     if (!article) return res.status(404).json({ error: 'Article not found.' });
     return res.json(db.prepare(`SELECT t.id, t.name, t.created_at, t.updated_at
       FROM article_tags at JOIN tags t ON t.id = at.tag_id
-      WHERE at.article_id = ? ORDER BY t.name COLLATE NOCASE`).all(req.params.id));
+      WHERE at.article_id = ?${isOwnedAccountRequest(req) ? ' AND at.user_id = ? AND t.user_id = ?' : ''}
+      ORDER BY t.name COLLATE NOCASE`).all(req.params.id,
+      ...(isOwnedAccountRequest(req) ? [req.auth.userId, req.auth.userId] : [])));
   } catch (error) {
     return res.status(500).json({ error: 'Unable to load article tags.' });
   }
@@ -1504,8 +1696,12 @@ app.post('/api/tags', (req, res) => {
   if (name.length > 80) return res.status(400).json({ error: 'Tag name is too long.' });
   try {
     const now = new Date().toISOString();
-    const result = db.prepare('INSERT INTO tags (name, created_at, updated_at) VALUES (?, ?, ?)').run(name, now, now);
-    return res.status(201).json(db.prepare('SELECT id, name, created_at, updated_at, 0 AS article_count FROM tags WHERE id = ?').get(result.lastInsertRowid));
+    const result = isOwnedAccountRequest(req)
+      ? db.prepare('INSERT INTO tags (name, created_at, updated_at, user_id) VALUES (?, ?, ?, ?)').run(name, now, now, req.auth.userId)
+      : db.prepare('INSERT INTO tags (name, created_at, updated_at) VALUES (?, ?, ?)').run(name, now, now);
+    return res.status(201).json(db.prepare(`SELECT id, name, created_at, updated_at, 0 AS article_count
+      FROM tags WHERE id = ?${isOwnedAccountRequest(req) ? ' AND user_id = ?' : ''}`)
+      .get(result.lastInsertRowid, ...(isOwnedAccountRequest(req) ? [req.auth.userId] : [])));
   } catch (error) {
     if (String(error.message).includes('UNIQUE')) return res.status(409).json({ error: 'That tag already exists.' });
     return res.status(500).json({ error: 'Unable to create tag.' });
@@ -1518,10 +1714,14 @@ app.patch('/api/tags/:id', (req, res) => {
   if (!Number.isInteger(id) || id <= 0 || !name) return res.status(400).json({ error: 'Valid tag id and name are required.' });
   if (name.length > 80) return res.status(400).json({ error: 'Tag name is too long.' });
   try {
-    const result = db.prepare('UPDATE tags SET name = ?, updated_at = ? WHERE id = ?').run(name, new Date().toISOString(), id);
+    const result = db.prepare(`UPDATE tags SET name = ?, updated_at = ? WHERE id = ?
+      ${isOwnedAccountRequest(req) ? 'AND user_id = ?' : ''}`)
+      .run(name, new Date().toISOString(), id, ...ownerParameters(req));
     if (!result.changes) return res.status(404).json({ error: 'Tag not found.' });
     return res.json(db.prepare(`SELECT t.id, t.name, t.created_at, t.updated_at, COUNT(at.article_id) AS article_count
-      FROM tags t LEFT JOIN article_tags at ON at.tag_id = t.id WHERE t.id = ? GROUP BY t.id`).get(id));
+      FROM tags t LEFT JOIN article_tags at ON at.tag_id = t.id
+      WHERE t.id = ?${isOwnedAccountRequest(req) ? ' AND t.user_id = ?' : ''} GROUP BY t.id`)
+      .get(id, ...ownerParameters(req)));
   } catch (error) {
     if (String(error.message).includes('UNIQUE')) return res.status(409).json({ error: 'That tag already exists.' });
     return res.status(500).json({ error: 'Unable to rename tag.' });
@@ -1532,7 +1732,8 @@ app.delete('/api/tags/:id', (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Valid tag id is required.' });
   try {
-    const result = db.prepare('DELETE FROM tags WHERE id = ?').run(id);
+    const result = db.prepare(`DELETE FROM tags WHERE id = ? ${isOwnedAccountRequest(req) ? 'AND user_id = ?' : ''}`)
+      .run(id, ...ownerParameters(req));
     return result.changes ? res.status(204).end() : res.status(404).json({ error: 'Tag not found.' });
   } catch (error) {
     return res.status(500).json({ error: 'Unable to delete tag.' });
@@ -1544,10 +1745,16 @@ app.post('/api/articles/:id/tags/:tagId', (req, res) => {
   const tagId = Number(req.params.tagId);
   if (!articleId || !Number.isInteger(tagId) || tagId <= 0) return res.status(400).json({ error: 'Valid article and tag are required.' });
   try {
-    const article = db.prepare('SELECT id FROM articles WHERE id = ?').get(articleId);
-    const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
+    const article = findOwnedArticle(req, articleId);
+    const tag = findOwnedTag(req, tagId);
     if (!article || !tag) return res.status(404).json({ error: 'Article or tag not found.' });
-    db.prepare('INSERT OR IGNORE INTO article_tags (article_id, tag_id, created_at) VALUES (?, ?, ?)').run(articleId, tagId, new Date().toISOString());
+    if (isOwnedAccountRequest(req)) {
+      db.prepare('INSERT OR IGNORE INTO article_tags (article_id, tag_id, user_id, created_at) VALUES (?, ?, ?, ?)')
+        .run(articleId, tagId, req.auth.userId, new Date().toISOString());
+    } else {
+      db.prepare('INSERT OR IGNORE INTO article_tags (article_id, tag_id, created_at) VALUES (?, ?, ?)')
+        .run(articleId, tagId, new Date().toISOString());
+    }
     return res.status(204).end();
   } catch (error) {
     return res.status(500).json({ error: 'Unable to add tag to article.' });
@@ -1559,11 +1766,107 @@ app.delete('/api/articles/:id/tags/:tagId', (req, res) => {
   const tagId = Number(req.params.tagId);
   if (!articleId || !Number.isInteger(tagId) || tagId <= 0) return res.status(400).json({ error: 'Valid article and tag are required.' });
   try {
-    db.prepare('DELETE FROM article_tags WHERE article_id = ? AND tag_id = ?').run(articleId, tagId);
+    if (isOwnedAccountRequest(req)) {
+      db.prepare('DELETE FROM article_tags WHERE article_id = ? AND tag_id = ? AND user_id = ?')
+        .run(articleId, tagId, req.auth.userId);
+    } else {
+      db.prepare('DELETE FROM article_tags WHERE article_id = ? AND tag_id = ?').run(articleId, tagId);
+    }
     return res.status(204).end();
   } catch (error) {
     return res.status(500).json({ error: 'Unable to remove tag from article.' });
   }
+});
+
+function mediaNamespace(req) {
+  return req.auth.role === 'guest' ? 'guest' : 'users';
+}
+
+function isOwnedMediaIdentity(req, namespace, userId) {
+  return namespace === mediaNamespace(req) && Number(userId) === req.auth.userId;
+}
+
+function sendPrivateMedia(res, filePath) {
+  res.set({
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  return res.sendFile(filePath, { dotfiles: 'deny' }, (error) => {
+    if (error && !res.headersSent) res.status(error.statusCode || 404).end();
+  });
+}
+
+app.get('/api/media/:namespace/:userId/temp/:fileName', (req, res) => {
+  const { namespace, userId, fileName } = req.params;
+  if (!isOwnedMediaIdentity(req, namespace, userId) || !/^[A-Za-z0-9_-]+\.webp$/.test(fileName)) {
+    return res.status(404).end();
+  }
+  const filePath = path.resolve(accountMediaRoot(req.auth), 'temp', fileName);
+  if (!filePath.startsWith(`${path.resolve(uploadsBase)}${path.sep}`) || !fs.existsSync(filePath)) {
+    return res.status(404).end();
+  }
+  return sendPrivateMedia(res, filePath);
+});
+
+app.get('/api/media/:namespace/:userId/articles/:fileName', (req, res) => {
+  const { namespace, userId, fileName } = req.params;
+  if (!isOwnedMediaIdentity(req, namespace, userId)
+    || !/^[A-Za-z0-9_-]+(?:_thumb)?\.webp$/.test(fileName)) {
+    return res.status(404).end();
+  }
+  const filePath = path.resolve(accountMediaRoot(req.auth), 'articles', fileName);
+  if (!filePath.startsWith(`${path.resolve(uploadsBase)}${path.sep}`) || !fs.existsSync(filePath)) {
+    return res.status(404).end();
+  }
+  return sendPrivateMedia(res, filePath);
+});
+
+app.get('/api/media/:namespace/:userId/articles/:articleId/:fileName', (req, res) => {
+  const { namespace, userId, articleId, fileName } = req.params;
+  if (!isOwnedMediaIdentity(req, namespace, userId)
+    || !/^[A-Za-z0-9_-]{1,160}$/.test(articleId)
+    || !/^[A-Za-z0-9_-]+(?:_thumb)?\.webp$/.test(fileName)
+    || !findOwnedArticle(req, articleId)) {
+    return res.status(404).end();
+  }
+  const expectedUrl = `/api/media/${namespace}/${userId}/articles/${articleId}/${fileName}`;
+  const referenced = db.prepare(`SELECT 1 FROM article_blocks
+    WHERE article_id = ? AND type = 'image' AND (content = ? OR thumbnail = ?) LIMIT 1`)
+    .get(articleId, expectedUrl, expectedUrl);
+  if (!referenced) return res.status(404).end();
+  const filePath = path.resolve(accountMediaRoot(req.auth), 'articles', articleId, fileName);
+  if (!filePath.startsWith(`${path.resolve(uploadsBase)}${path.sep}`) || !fs.existsSync(filePath)) {
+    return res.status(404).end();
+  }
+  return sendPrivateMedia(res, filePath);
+});
+
+app.get('/uploads/articles/:articleId/:fileName', (req, res) => {
+  const session = currentSession(req);
+  if (!session) return res.status(404).end();
+  const { articleId, fileName } = req.params;
+  const auth = {
+    userId: session.userId,
+    username: session.username,
+    role: session.role,
+    database: session.database,
+  };
+  if (auth.role === 'guest'
+    || !/^[A-Za-z0-9_-]{1,160}$/.test(articleId)
+    || !/^[A-Za-z0-9_-]+(?:_thumb)?\.webp$/.test(fileName)
+    || !findOwnedArticle({ auth }, articleId)) {
+    return res.status(404).end();
+  }
+  const legacyUrl = `/uploads/articles/${articleId}/${fileName}`;
+  const referenced = db.prepare(`SELECT 1 FROM article_blocks
+    WHERE article_id = ? AND type = 'image' AND (content = ? OR thumbnail = ?) LIMIT 1`)
+    .get(articleId, legacyUrl, legacyUrl);
+  if (!referenced) return res.status(404).end();
+  const filePath = path.resolve(legacyUploadsRoot, articleId, fileName);
+  if (!filePath.startsWith(`${path.resolve(legacyUploadsRoot)}${path.sep}`) || !fs.existsSync(filePath)) {
+    return res.status(404).end();
+  }
+  return sendPrivateMedia(res, filePath);
 });
 
 app.post('/api/articles/images', async (req, res) => {
@@ -1578,7 +1881,7 @@ app.post('/api/articles/images', async (req, res) => {
 
   try {
     const { buffer: processedBuffer, fileName } = await processImageBuffer(buffer, mimeType);
-    const tempUrl = saveImageToTemp(processedBuffer, fileName);
+    const tempUrl = saveImageToTemp(processedBuffer, fileName, req.auth);
     return res.status(201).json({ path: tempUrl, url: tempUrl });
   } catch (error) {
     if (error.message?.includes('exceeds') || error.message?.includes('allowed') || error.message?.includes('invalid')) {
@@ -1689,7 +1992,7 @@ app.post('/api/articles/images/from-url', async (req, res) => {
     const { buffer: processedBuffer, fileName } = await processImageBuffer(buffer, contentType);
     
     // Save to temp
-    const tempUrl = saveImageToTemp(processedBuffer, fileName);
+    const tempUrl = saveImageToTemp(processedBuffer, fileName, req.auth);
     
     return res.status(201).json({ path: tempUrl, url: tempUrl });
   } catch (error) {
@@ -1714,16 +2017,30 @@ app.post('/api/articles/images/from-url', async (req, res) => {
 
 app.get('/api/articles/:id', (req, res) => {
   try {
-    const article = db.prepare('SELECT * FROM articles WHERE id = ?').get(req.params.id);
+    const article = db.prepare(`SELECT * FROM articles WHERE id = ? ${isOwnedAccountRequest(req) ? 'AND user_id = ?' : ''}`)
+      .get(req.params.id, ...ownerParameters(req));
     if (!article) return res.status(404).json({ error: 'Article not found.' });
     const tags = db.prepare(`SELECT t.id, t.name FROM article_tags at
-      JOIN tags t ON t.id = at.tag_id WHERE at.article_id = ? ORDER BY t.name COLLATE NOCASE`).all(article.id);
+      JOIN tags t ON t.id = at.tag_id WHERE at.article_id = ?
+      ${isOwnedAccountRequest(req) ? 'AND at.user_id = ? AND t.user_id = ?' : ''}
+      ORDER BY t.name COLLATE NOCASE`).all(article.id,
+      ...(isOwnedAccountRequest(req) ? [req.auth.userId, req.auth.userId] : []));
         const serialized = serializeArticle(article);
     return res.json({ ...serialized, tags, blocks: getArticleBlocks(article.id) });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+function getOwnedTemporaryImagePath(req, imageUrl) {
+  const namespace = mediaNamespace(req);
+  const match = String(imageUrl || '').match(/^\/api\/media\/(users|guest)\/(\d+)\/temp\/([A-Za-z0-9_-]+\.webp)$/);
+  if (!match || match[1] !== namespace || Number(match[2]) !== req.auth.userId) return null;
+  const filePath = path.resolve(accountMediaRoot(req.auth), 'temp', match[3]);
+  return filePath.startsWith(`${path.resolve(uploadsBase)}${path.sep}`) && fs.existsSync(filePath)
+    ? { filePath, fileName: match[3] }
+    : null;
+}
 
 app.post('/api/articles', async (req, res) => {
   const { id, title, content, highlights = [], blocks } = req.body || {};
@@ -1755,8 +2072,49 @@ app.post('/api/articles', async (req, res) => {
   try {
     const now = new Date().toISOString();
     const articleId = id || generateId('article');
+    const existing = db.prepare(`SELECT id${isOwnedAccountRequest(req) ? ', user_id' : ''}
+      FROM articles WHERE id = ?`).get(articleId);
+    if (existing && isOwnedAccountRequest(req) && existing.user_id !== req.auth.userId) {
+      return res.status(404).json({ error: 'Article not found.' });
+    }
+    if (Array.isArray(blocks) && !/^[A-Za-z0-9_-]{1,160}$/.test(articleId)) {
+      return res.status(400).json({ error: 'Article id is invalid for image storage.' });
+    }
+    const normalizedBlocks = normalizeArticleBlocks(articleId, blocks);
+    for (const block of normalizedBlocks) {
+      if (!/^[A-Za-z0-9_-]{1,160}$/.test(block.id)) {
+        return res.status(400).json({ error: 'Article block id is invalid.' });
+      }
+      const existingBlock = db.prepare(`SELECT article_id${isOwnedAccountRequest(req) ? ', (SELECT user_id FROM articles WHERE id = article_id) AS user_id' : ''}
+        FROM article_blocks WHERE id = ?`).get(block.id);
+      if (existingBlock && (existingBlock.article_id !== articleId
+        || (isOwnedAccountRequest(req) && existingBlock.user_id !== req.auth.userId))) {
+        return res.status(404).json({ error: 'Article block not found.' });
+      }
+      if (block.type !== 'image') continue;
+      if (block.content.startsWith('/api/media/')) {
+        const tempImage = getOwnedTemporaryImagePath(req, block.content);
+        const articleImagePattern = new RegExp(
+          `^/api/media/${mediaNamespace(req)}/${req.auth.userId}/articles/${articleId}/[A-Za-z0-9_-]+(?:_thumb)?\\.webp$`,
+        );
+        if (!tempImage && (!articleImagePattern.test(block.content) || !fs.existsSync(path.resolve(
+          accountMediaRoot(req.auth), 'articles', articleId, path.basename(block.content),
+        )))) {
+          return res.status(400).json({ error: 'Image is not owned by this account or article.' });
+        }
+      } else {
+        const legacyImagePattern = new RegExp(
+          `^/uploads/articles/${articleId}/[A-Za-z0-9_-]+(?:_thumb)?\\.webp$`,
+        );
+        if (!legacyImagePattern.test(block.content)
+          || !fs.existsSync(path.resolve(legacyUploadsRoot, articleId, path.basename(block.content)))) {
+          return res.status(400).json({ error: 'Image is not owned by this article.' });
+        }
+      }
+    }
     const article = {
       id: articleId,
+      user_id: req.auth.userId,
       title: title.trim(),
       content,
       highlights: JSON.stringify(highlights),
@@ -1773,12 +2131,15 @@ app.post('/api/articles', async (req, res) => {
     };
 
     // UPSERT article (create or update) to satisfy FK constraint
+    const ownerColumns = isOwnedAccountRequest(req) ? ', user_id' : '';
+    const ownerValues = isOwnedAccountRequest(req) ? ', @user_id' : '';
+    const ownerUpdateGuard = isOwnedAccountRequest(req) ? 'WHERE articles.user_id = excluded.user_id' : '';
     db.prepare(`INSERT INTO articles (
       id, title, content, highlights, source_name, source_url, source_author,
-      source_published_at, created_at, updated_at
+      source_published_at, created_at, updated_at${ownerColumns}
     ) VALUES (
       @id, @title, @content, @highlights, @source_name, @source_url, @source_author,
-      @source_published_at, @created_at, @updated_at
+      @source_published_at, @created_at, @updated_at${ownerValues}
     )
       ON CONFLICT(id) DO UPDATE SET
         title = excluded.title,
@@ -1788,19 +2149,16 @@ app.post('/api/articles', async (req, res) => {
         source_url = CASE WHEN @source_url_provided THEN excluded.source_url ELSE articles.source_url END,
         source_author = CASE WHEN @source_author_provided THEN excluded.source_author ELSE articles.source_author END,
         source_published_at = CASE WHEN @source_published_at_provided THEN excluded.source_published_at ELSE articles.source_published_at END,
-        updated_at = excluded.updated_at`).run(article);
-    const normalizedBlocks = normalizeArticleBlocks(article.id, blocks);
-
-
+        updated_at = excluded.updated_at ${ownerUpdateGuard}`).run(article);
     // Process temp images BEFORE transaction (move + generate thumbnails)
     if (Array.isArray(blocks)) {
-      
-      const articleUploadsDir = path.join(uploadsRoot, article.id);
+      const articleUploadsDir = path.join(accountMediaRoot(req.auth), 'articles', article.id);
       fs.mkdirSync(articleUploadsDir, { recursive: true });
       for (const block of normalizedBlocks) {
-        if (block.type === 'image' && block.content.startsWith('/uploads/temp/')) {
-          const fileName = path.basename(block.content);
-          const srcPath = path.join(tempUploadsRoot, fileName);
+        const tempImage = block.type === 'image' ? getOwnedTemporaryImagePath(req, block.content) : null;
+        if (tempImage) {
+          const fileName = tempImage.fileName;
+          const srcPath = tempImage.filePath;
           const destPath = path.join(articleUploadsDir, fileName);
           const thumbFileName = fileName.replace('.webp', '_thumb.webp');
           const thumbPath = path.join(articleUploadsDir, thumbFileName);
@@ -1817,8 +2175,9 @@ app.post('/api/articles', async (req, res) => {
               .toFile(thumbPath);
             processedImages.push(thumbPath);
             
-            block.content = `/uploads/articles/${article.id}/${fileName}`;
-            block.thumbnail = `/uploads/articles/${article.id}/${thumbFileName}`;
+            const namespace = mediaNamespace(req);
+            block.content = `/api/media/${namespace}/${req.auth.userId}/articles/${article.id}/${fileName}`;
+            block.thumbnail = `/api/media/${namespace}/${req.auth.userId}/articles/${article.id}/${thumbFileName}`;
           } catch (err) {
             console.error('Failed to process image, aborting save:', err.message);
             // Cleanup on error
@@ -1843,8 +2202,9 @@ app.post('/api/articles', async (req, res) => {
         }
       }
 
-    const savedArticle = db.prepare(`SELECT source_name, source_url, source_author, source_published_at
-      FROM articles WHERE id = ?`).get(articleId);
+    const savedArticle = db.prepare(`SELECT source_name, source_url, source_author, source_published_at, created_at, updated_at
+      FROM articles WHERE id = ?${isOwnedAccountRequest(req) ? ' AND user_id = ?' : ''}`)
+      .get(articleId, ...ownerParameters(req));
     return res.json({
       id: articleId,
       title: title.trim(),
@@ -1857,8 +2217,8 @@ app.post('/api/articles', async (req, res) => {
         sourcePublishedAt: savedArticle.source_published_at,
       },
       blocks: normalizedBlocks,
-      created_at: now,
-      updated_at: now,
+      created_at: savedArticle.created_at,
+      updated_at: savedArticle.updated_at,
     });
   } catch (error) {
     console.error('POST /api/articles error:', error);
@@ -1877,8 +2237,10 @@ app.delete('/api/articles/:id', async (req, res) => {
   }
 
   try {
+    if (!findOwnedArticle(req, id)) return res.status(404).json({ error: 'Article not found.' });
     removeArticleImages(id);
-    db.prepare('DELETE FROM articles WHERE id = ?').run(id);
+    db.prepare(`DELETE FROM articles WHERE id = ? ${isOwnedAccountRequest(req) ? 'AND user_id = ?' : ''}`)
+      .run(id, ...ownerParameters(req));
     return res.status(204).end();
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
@@ -1896,15 +2258,16 @@ app.delete('/api/articles/:id/analysis', async (req, res) => {
   }
 
   try {
-    if (requestId) cancelledAnalysisRequests.add(requestId);
     // Only clear the cache for this saved article at its current content revision.
-    const article = db.prepare('SELECT id FROM articles WHERE id = ?').get(articleId);
+    const article = findOwnedArticle(req, articleId);
     if (!article) {
-      return res.json({ deleted: 0 });
+      return res.status(404).json({ error: 'Article not found.' });
     }
 
+    const requestKey = requestId ? `${analysisOwnerKey(req)}:${requestId}` : null;
+    if (requestKey) cancelledAnalysisRequests.add(requestKey);
     const contentHash = hashSha256(text);
-    const key = analysisCacheKey(article.id, pageNumber, contentHash, promptVersion);
+    const key = analysisCacheKey(req, article.id, pageNumber, contentHash, promptVersion);
     analysisGenerations.set(key, (analysisGenerations.get(key) || 0) + 1);
     const result = db.prepare(`DELETE FROM article_analyses
       WHERE article_id = ? AND page_number = ? AND content_hash = ? AND prompt_version = ?`)
@@ -1923,9 +2286,9 @@ app.get('/api/vocabulary/check/:word', async (req, res) => {
   }
 
   try {
-    const entry = db
-      .prepare('SELECT 1 FROM vocabulary WHERE word = ? LIMIT 1')
-      .get(word);
+    const entry = db.prepare(`SELECT 1 FROM vocabulary WHERE word = ?
+      ${isOwnedAccountRequest(req) ? 'AND user_id = ?' : ''} LIMIT 1`)
+      .get(word, ...ownerParameters(req));
 
     return res.json({ saved: Boolean(entry) });
   } catch (error) {
@@ -1955,8 +2318,8 @@ app.get('/api/vocabulary', async (req, res) => {
 
   const articleId = req.query.article_id;  // 放这里
 
-  const conditions = [];
-  const params = [];
+  const conditions = isOwnedAccountRequest(req) ? ['v.user_id = ?'] : [];
+  const params = ownerParameters(req);
 
   if (search) {
     conditions.push('LOWER(v.word) LIKE LOWER(?)');
@@ -1986,7 +2349,7 @@ app.get('/api/vocabulary', async (req, res) => {
     const rows = db.prepare(
       `SELECT v.*, a.title AS source_article_title
        FROM vocabulary v
-       LEFT JOIN articles a ON a.id = v.article_id
+       LEFT JOIN articles a ON a.id = v.article_id${isOwnedAccountRequest(req) ? ' AND a.user_id = v.user_id' : ''}
        ${where}
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`
@@ -2020,6 +2383,16 @@ app.post('/api/vocabulary', async (req, res) => {
   }
 
   try {
+    if (articleId && !findOwnedArticle(req, articleId)) {
+      return res.status(404).json({ error: 'Article not found.' });
+    }
+    if (id) {
+      const existingId = db.prepare(`SELECT id${isOwnedAccountRequest(req) ? ', user_id' : ''}
+        FROM vocabulary WHERE id = ?`).get(id);
+      if (existingId && isOwnedAccountRequest(req) && existingId.user_id !== req.auth.userId) {
+        return res.status(404).json({ error: 'Vocabulary entry not found.' });
+      }
+    }
     const entry = {
       id: id || generateId('vocab'),
       word: word.trim().toLowerCase(),
@@ -2027,7 +2400,7 @@ app.post('/api/vocabulary', async (req, res) => {
       phonetic: typeof phonetic === 'string' ? phonetic : null,
       part_of_speech: typeof partOfSpeech === 'string' ? partOfSpeech : null,
       example: typeof example === 'string' ? example : null,
-      article_id: typeof articleId === 'string' ? articleId : null,
+      article_id: typeof articleId === 'string' && articleId ? articleId : null,
       saved_at: savedAt || new Date().toISOString(),
       next_review: typeof nextReview === 'string' ? nextReview : null,
       review_count: Number.isInteger(reviewCount) ? reviewCount : 0,
@@ -2037,14 +2410,20 @@ app.post('/api/vocabulary', async (req, res) => {
       raw: raw ? JSON.stringify(raw) : null,
     };
 
-    db.prepare(`INSERT INTO vocabulary (id, word, definition, phonetic, part_of_speech, example, article_id, saved_at, next_review, review_count, ease_factor, interval, context_line, raw)
-      VALUES (@id, @word, @definition, @phonetic, @part_of_speech, @example, @article_id, @saved_at, @next_review, @review_count, @ease_factor, @interval, @context_line, @raw)
-      ON CONFLICT(word) DO UPDATE SET definition = excluded.definition, phonetic = excluded.phonetic,
+    const userColumn = isOwnedAccountRequest(req) ? ', user_id' : '';
+    const userValue = isOwnedAccountRequest(req) ? ', @user_id' : '';
+    const conflictKey = isOwnedAccountRequest(req) ? 'user_id, word' : 'word';
+    const ownerGuard = isOwnedAccountRequest(req) ? 'WHERE vocabulary.user_id = excluded.user_id' : '';
+    entry.user_id = req.auth.userId;
+    db.prepare(`INSERT INTO vocabulary (id, word, definition, phonetic, part_of_speech, example, article_id, saved_at, next_review, review_count, ease_factor, interval, context_line, raw${userColumn})
+      VALUES (@id, @word, @definition, @phonetic, @part_of_speech, @example, @article_id, @saved_at, @next_review, @review_count, @ease_factor, @interval, @context_line, @raw${userValue})
+      ON CONFLICT(${conflictKey}) DO UPDATE SET definition = excluded.definition, phonetic = excluded.phonetic,
       part_of_speech = excluded.part_of_speech, example = excluded.example,
       saved_at = excluded.saved_at, next_review = excluded.next_review, review_count = excluded.review_count,
       ease_factor = excluded.ease_factor, interval = excluded.interval, context_line = excluded.context_line,
-      raw = excluded.raw, article_id = COALESCE(vocabulary.article_id, excluded.article_id)`).run(entry);
-    return res.status(201).json(serializeVocabulary(db.prepare('SELECT * FROM vocabulary WHERE word = ?').get(entry.word)));
+      raw = excluded.raw, article_id = COALESCE(vocabulary.article_id, excluded.article_id) ${ownerGuard}`).run(entry);
+    return res.status(201).json(serializeVocabulary(db.prepare(`SELECT * FROM vocabulary WHERE word = ?
+      ${isOwnedAccountRequest(req) ? 'AND user_id = ?' : ''}`).get(entry.word, ...ownerParameters(req))));
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -2057,7 +2436,8 @@ app.get('/api/vocabulary/:word', async (req, res) => {
   }
 
   try {
-    const entry = db.prepare('SELECT * FROM vocabulary WHERE word = ?').get(word);
+    const entry = db.prepare(`SELECT * FROM vocabulary WHERE word = ?
+      ${isOwnedAccountRequest(req) ? 'AND user_id = ?' : ''}`).get(word, ...ownerParameters(req));
     if (!entry) {
       return res.status(404).json({ error: 'Word not found.' });
     }
@@ -2072,9 +2452,9 @@ app.get('/api/articles/:id/vocabulary', (req, res) => {
     const words = db.prepare(`
       SELECT word
       FROM vocabulary
-      WHERE article_id = ?
+      WHERE article_id = ?${isOwnedAccountRequest(req) ? ' AND user_id = ?' : ''}
     `)
-    .all(req.params.id)
+    .all(req.params.id, ...ownerParameters(req))
     .map(row => row.word.toLowerCase());
 
     res.json(words);
@@ -2094,8 +2474,9 @@ app.delete('/api/vocabulary/:word', async (req, res) => {
   }
 
   try {
-    db.prepare('DELETE FROM vocabulary WHERE word = ?').run(word);
-    return res.status(204).end();
+    const result = db.prepare(`DELETE FROM vocabulary WHERE word = ?
+      ${isOwnedAccountRequest(req) ? 'AND user_id = ?' : ''}`).run(word, ...ownerParameters(req));
+    return result.changes ? res.status(204).end() : res.status(404).json({ error: 'Word not found.' });
   } catch (error) {
     return res.status(500).json({ error: 'Internal server error' });
   }
@@ -2103,13 +2484,44 @@ app.delete('/api/vocabulary/:word', async (req, res) => {
 
 app.post('/api/sync', async (req, res) => {
   const { articles = [], vocabulary = [] } = req.body || {};
+  if (!Array.isArray(articles) || !Array.isArray(vocabulary)) {
+    return res.status(400).json({ error: 'Articles and vocabulary must be arrays.' });
+  }
 
   try {
+    const articleIds = new Set(articles.map((article) => article?.id).filter(Boolean));
+    for (const article of articles) {
+      if (!article || typeof article !== 'object' || Array.isArray(article)) {
+        return res.status(400).json({ error: 'Each article must be an object.' });
+      }
+      if (article.id) {
+        const existing = db.prepare(`SELECT id${isOwnedAccountRequest(req) ? ', user_id' : ''}
+          FROM articles WHERE id = ?`).get(article.id);
+        if (existing && isOwnedAccountRequest(req) && existing.user_id !== req.auth.userId) {
+          return res.status(409).json({ error: 'An article id belongs to another account.' });
+        }
+      }
+    }
+    for (const entry of vocabulary) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+        return res.status(400).json({ error: 'Each vocabulary entry must be an object.' });
+      }
+      if (entry.id) {
+        const existing = db.prepare(`SELECT id${isOwnedAccountRequest(req) ? ', user_id' : ''}
+          FROM vocabulary WHERE id = ?`).get(entry.id);
+        if (existing && isOwnedAccountRequest(req) && existing.user_id !== req.auth.userId) {
+          return res.status(409).json({ error: 'A vocabulary id belongs to another account.' });
+        }
+      }
+      if (entry.articleId && !articleIds.has(entry.articleId) && !findOwnedArticle(req, entry.articleId)) {
+        return res.status(409).json({ error: 'A vocabulary entry references an unavailable article.' });
+      }
+    }
+
     let articlesSaved = 0;
     let vocabularySaved = 0;
 
     const saveAll = db.transaction(() => {
-    if (Array.isArray(articles)) {
       for (const a of articles) {
         const sourceMetadata = a.sourceMetadata && typeof a.sourceMetadata === 'object'
           ? a.sourceMetadata
@@ -2129,13 +2541,17 @@ app.post('/api/sync', async (req, res) => {
           source_published_at_provided: typeof sourceMetadata.sourcePublishedAt === 'string' ? 1 : 0,
           created_at: a.createdAt || new Date().toISOString(),
           updated_at: a.updatedAt || new Date().toISOString(),
+          user_id: req.auth.userId,
         };
+        const ownerColumns = isOwnedAccountRequest(req) ? ', user_id' : '';
+        const ownerValues = isOwnedAccountRequest(req) ? ', @user_id' : '';
+        const ownerGuard = isOwnedAccountRequest(req) ? 'WHERE articles.user_id = excluded.user_id' : '';
         db.prepare(`INSERT INTO articles (
           id, title, content, highlights, source_name, source_url, source_author,
-          source_published_at, created_at, updated_at
+          source_published_at, created_at, updated_at${ownerColumns}
         ) VALUES (
           @id, @title, @content, @highlights, @source_name, @source_url, @source_author,
-          @source_published_at, @created_at, @updated_at
+          @source_published_at, @created_at, @updated_at${ownerValues}
         )
           ON CONFLICT(id) DO UPDATE SET title = excluded.title, content = excluded.content,
           highlights = excluded.highlights,
@@ -2143,13 +2559,12 @@ app.post('/api/sync', async (req, res) => {
           source_url = CASE WHEN @source_url_provided THEN excluded.source_url ELSE articles.source_url END,
           source_author = CASE WHEN @source_author_provided THEN excluded.source_author ELSE articles.source_author END,
           source_published_at = CASE WHEN @source_published_at_provided THEN excluded.source_published_at ELSE articles.source_published_at END,
-          updated_at = excluded.updated_at`).run(article);
+          updated_at = excluded.updated_at ${ownerGuard}`).run(article);
         articlesSaved += 1;
       }
-    }
 
-    if (Array.isArray(vocabulary)) {
       for (const v of vocabulary) {
+        if (typeof v.word !== 'string' || !v.word.trim()) continue;
         const entry = {
           id: v.id || generateId('vocab'),
           word: (v.word || '').trim().toLowerCase(),
@@ -2165,18 +2580,22 @@ app.post('/api/sync', async (req, res) => {
           interval: Number.isInteger(v.interval) ? v.interval : 0,
           context_line: v.contextLine || null,
           raw: v.raw ? JSON.stringify(v.raw) : null,
+          user_id: req.auth.userId,
         };
 
         if (!entry.word) continue;
-        db.prepare(`INSERT INTO vocabulary (id, word, definition, phonetic, part_of_speech, example, article_id, saved_at, next_review, review_count, ease_factor, interval, context_line, raw)
-          VALUES (@id, @word, @definition, @phonetic, @part_of_speech, @example, @article_id, @saved_at, @next_review, @review_count, @ease_factor, @interval, @context_line, @raw)
-          ON CONFLICT(word) DO UPDATE SET definition = excluded.definition, phonetic = excluded.phonetic,
+        const ownerColumn = isOwnedAccountRequest(req) ? ', user_id' : '';
+        const ownerValue = isOwnedAccountRequest(req) ? ', @user_id' : '';
+        const conflictKey = isOwnedAccountRequest(req) ? 'user_id, word' : 'word';
+        const ownerGuard = isOwnedAccountRequest(req) ? 'WHERE vocabulary.user_id = excluded.user_id' : '';
+        db.prepare(`INSERT INTO vocabulary (id, word, definition, phonetic, part_of_speech, example, article_id, saved_at, next_review, review_count, ease_factor, interval, context_line, raw${ownerColumn})
+          VALUES (@id, @word, @definition, @phonetic, @part_of_speech, @example, @article_id, @saved_at, @next_review, @review_count, @ease_factor, @interval, @context_line, @raw${ownerValue})
+          ON CONFLICT(${conflictKey}) DO UPDATE SET definition = excluded.definition, phonetic = excluded.phonetic,
           part_of_speech = excluded.part_of_speech, example = excluded.example, article_id = excluded.article_id,
           saved_at = excluded.saved_at, next_review = excluded.next_review, review_count = excluded.review_count,
-          ease_factor = excluded.ease_factor, interval = excluded.interval, context_line = excluded.context_line, raw = excluded.raw`).run(entry);
+          ease_factor = excluded.ease_factor, interval = excluded.interval, context_line = excluded.context_line, raw = excluded.raw ${ownerGuard}`).run(entry);
         vocabularySaved += 1;
       }
-    }
     });
     saveAll();
 
@@ -2208,6 +2627,9 @@ app.post('/api/translate', async (req, res) => {
     const legacyContentHash = hashSha256(text);
     const sourceLanguage = req.query.source || 'EN';
     if (articleId) {
+      if (!findOwnedArticle(req, articleId)) {
+        return res.status(404).json({ error: 'Article not found.' });
+      }
       const cacheLookup = db.prepare('SELECT translation FROM article_translation_cache WHERE article_id = ? AND page_number = ? AND content_hash = ? AND target = ? AND source = ? AND provider = ?');
       const cached = cacheLookup.get(articleId, pageNumber, contentHash, target, sourceLanguage, provider);
       if (cached) return res.json(JSON.parse(cached.translation));
@@ -2246,17 +2668,10 @@ app.post('/api/translate', async (req, res) => {
   }
 });
 
-app.post("/api/auth/logout",(req,res)=>{
-  req.session.destroy(()=>{
-    res.json({
-      success:true
-    });
-  });
-});
-
 app.post('/api/analyze', async (req, res) => {
   const { text, articleId, pageNumber = 1 } = req.body || {};
   const requestId = req.get('X-Analysis-Request-Id');
+  const requestKey = requestId ? `${analysisOwnerKey(req)}:${requestId}` : null;
   const provider = (req.query.provider || process.env.ANALYSIS_PROVIDER || (process.env.OPENAI_API_KEY ? 'openai' : process.env.GOOGLE_GEMINI_API_KEY ? 'gemini' : 'fallback')).toLowerCase();
   const model = req.query.model || process.env.OPENAI_MODEL || 'gpt-4o-mini';
   const analysisModel = provider === 'gemini' ? (process.env.GOOGLE_GEMINI_MODEL || 'gemini-flash-latest') : provider === 'openai' ? model : provider;
@@ -2276,18 +2691,23 @@ app.post('/api/analyze', async (req, res) => {
   // by its exact content so the request contract remains unchanged. Unsaved or
   // edited drafts still use the existing AI path without being cached.
   try {
+    if (articleId && !findOwnedArticle(req, articleId)) {
+      return res.status(404).json({ error: 'Article not found.' });
+    }
     cacheArticle = articleId
-      ? db.prepare('SELECT id FROM articles WHERE id = ?').get(articleId)
-      : db.prepare('SELECT id FROM articles WHERE content = ? ORDER BY updated_at DESC LIMIT 1').get(analysisInput);
+      ? db.prepare(`SELECT id FROM articles WHERE id = ?${isOwnedAccountRequest(req) ? ' AND user_id = ?' : ''}`)
+        .get(articleId, ...ownerParameters(req))
+      : db.prepare(`SELECT id FROM articles WHERE content = ?${isOwnedAccountRequest(req) ? ' AND user_id = ?' : ''}
+        ORDER BY updated_at DESC LIMIT 1`).get(analysisInput, ...ownerParameters(req));
     if (cacheArticle) {
-      cacheKey = analysisCacheKey(cacheArticle.id, pageNumber, contentHash, promptVersion);
+      cacheKey = analysisCacheKey(req, cacheArticle.id, pageNumber, contentHash, promptVersion);
       cacheGeneration = analysisGenerations.get(cacheKey) || 0;
       const cached = db.prepare(`SELECT analysis FROM article_analyses
         WHERE article_id = ? AND page_number = ? AND content_hash = ? AND prompt_version = ? LIMIT 1`)
         .get(articleId || cacheArticle.id, pageNumber, contentHash, promptVersion);
       if (cached) {
         try {
-          if (requestId) cancelledAnalysisRequests.delete(requestId);
+          if (requestKey) cancelledAnalysisRequests.delete(requestKey);
           return res.json(JSON.parse(cached.analysis));
         } catch (cacheParseError) {
         }
@@ -2317,7 +2737,7 @@ app.post('/api/analyze', async (req, res) => {
       Array.isArray(analysis.vocabularyAnalysis) && analysis.vocabularyAnalysis.length > 0 &&
       Array.isArray(analysis.phraseCollocations) && analysis.phraseCollocations.length > 0;
 
-    if (cacheArticle && analysis?.source !== 'fallback' && hasMeaningfulContent && (analysisGenerations.get(cacheKey) || 0) === cacheGeneration && !cancelledAnalysisRequests.has(requestId)) {
+    if (cacheArticle && analysis?.source !== 'fallback' && hasMeaningfulContent && (analysisGenerations.get(cacheKey) || 0) === cacheGeneration && !cancelledAnalysisRequests.has(requestKey)) {
       try {
         const now = new Date().toISOString();
         const saveAnalysis = db.transaction(() => {
@@ -2356,7 +2776,7 @@ app.post('/api/analyze', async (req, res) => {
       provider,
     });
   } finally {
-    if (requestId) cancelledAnalysisRequests.delete(requestId);
+    if (requestKey) cancelledAnalysisRequests.delete(requestKey);
   }
 });
 
@@ -2374,9 +2794,19 @@ app.use(express.static(distPath));
 app.get(/^(?!\/api\/).*/, (req, res) => res.sendFile(path.join(distPath, 'index.html')));
 
 if (require.main === module) {
-  app.listen(PORT, HOST, () => {
-    console.log(`Server listening on ${HOST}:${PORT}`);
-  });
+  try {
+    if (startupReadinessError) {
+      process.exitCode = 1;
+    } else {
+      assertAdminDatabaseReady(adminDb);
+      app.listen(PORT, HOST, () => {
+        console.log(`Server listening on ${HOST}:${PORT}`);
+      });
+    }
+  } catch (error) {
+    console.error(`[startup] ${error.message}`);
+    process.exitCode = 1;
+  }
 }
 
 module.exports = { app, splitTranslationChunks, splitAtBoundaries };

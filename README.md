@@ -88,6 +88,18 @@ AUTH_SESSION_SECRET=replace-with-a-local-random-secret
 
 > **Note**: `backend/.env.example` is the development template. The root `.env.example` is production-oriented (`NODE_ENV=production`, `DATABASE_PATH=/data/deepread/app.db`) — do not use it for local development.
 
+### Existing Database Migration
+
+If `data/app.db` was created by a version before account-ownership migrations, back it up before starting this version. Then apply the migrations explicitly and start the backend:
+
+```bash
+npm run db:backup
+npm --prefix backend run db:migrate
+npm start
+```
+
+The migration command updates only the configured Admin database and does not migrate `guest.db`. It requires an unambiguous legacy account; if it fails, stop and follow the backup/rollback instructions in [DEPLOYMENT.md](./DEPLOYMENT.md#85-account-ownership-migration). `npm start` does not apply migrations automatically.
+
 ### Run Development Servers
 
 **Terminal 1 — Backend API (http://127.0.0.1:3000)**
@@ -130,8 +142,8 @@ npm run lint         # Run oxlint
 | `DATABASE_PATH` | `./data/app.db` | `/data/deepread/app.db` | SQLite file path |
 | `HOST` | `127.0.0.1` | `127.0.0.1` | Backend bind address |
 | `PORT` | `3000` | `3000` | Backend port |
-| `AUTH_USERNAME` | Required | Required | Admin login username |
-| `AUTH_PASSWORD` | Required | Required | Admin login password |
+| `AUTH_USERNAME` | Required | Required | Existing primary account username (regular user after ownership migration) |
+| `AUTH_PASSWORD` | Required | Required | Existing primary account password |
 | `AUTH_SESSION_SECRET` | Required | Required | Session encryption (32+ chars) |
 | `OPENAI_API_KEY` | Optional | Optional | AI analysis (OpenAI) |
 | `GOOGLE_GEMINI_API_KEY` | Optional | Optional | AI analysis (Gemini) |
@@ -140,6 +152,10 @@ npm run lint         # Run oxlint
 | `TENCENT_SECRET_ID` | Optional | Optional | Tencent translation |
 
 See `backend/.env.example` for the complete list.
+
+The separate Administrator account is initialized after the account ownership migrations with `npm --prefix backend run db:bootstrap-administrator`. Its username and password are entered interactively; the password is hidden and is never supplied in command-line arguments. Regular accounts are created through the Administrator-only `/api/admin/users` API; role assignment is not accepted through that endpoint.
+
+Authenticated regular-account routes use the session's database and user ID for ownership filtering. Administrator account operations are isolated under `/api/admin/users`; account exports require an Administrator session, and credentials/password hashes are never returned. Browser drafts and per-article reading UI state are namespaced by database and authenticated account ID. Legacy unscoped browser datasets are not imported because their owner cannot be verified.
 
 ## Production Deployment
 

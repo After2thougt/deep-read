@@ -67,20 +67,24 @@ export default function UserMenu({ username, role, onLogout }) {
           <div className="user-name">{username || "Guest"}</div>
 
 
-          <button
-            onClick={() => {
-                closeMenu();
-                navigate("/about");
-            }}
-          >
-            <Info size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
-            About DeepRead
-          </button>
+          {role !== "administrator" && (
+            <button
+              onClick={() => {
+                  closeMenu();
+                  navigate("/about");
+              }}
+            >
+              <Info size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+              About DeepRead
+            </button>
+          )}
 
-          <button type="button" onClick={handleExport} disabled={exporting}>
-            {exporting ? <LoaderCircle className="export-spinner" size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} /> : <Download size={16} style={{ marginRight: "6px", verticalAlign: "middle" }}  />}
-            {exporting ? "Preparing export..." : "Export Data"}
-          </button>
+          {role !== "administrator" && (
+            <button type="button" onClick={handleExport} disabled={exporting}>
+              {exporting ? <LoaderCircle className="export-spinner" size={16} style={{ marginRight: "6px", verticalAlign: "middle" }} /> : <Download size={16} style={{ marginRight: "6px", verticalAlign: "middle" }}  />}
+              {exporting ? "Preparing export..." : "Export Data"}
+            </button>
+          )}
 
           {exportMessage && (
             <p className={`export-status export-status--${exportMessage.type}`} role="status" aria-live="polite">

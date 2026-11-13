@@ -10,6 +10,7 @@ import { getWords } from "../../utils/text";
 import { generateId } from "../../utils/id";
 import HighlightsPanel from "./HighlightsPanel";
 import MemoizedParagraph from "./Paragraph";
+import { accountStorageKey } from "../../utils/storage";
 
 // ImageWrapper component (no debug logging)
 function ImageWrapper({ src }) {
@@ -291,7 +292,7 @@ export default function Reader({
     try {
 
       const saved = localStorage.getItem(
-        "deepread:learning-toolbar-position"
+        accountStorageKey("learning-toolbar-position")
       );
 
       if (saved) {
@@ -616,7 +617,7 @@ useEffect(() => {
       setToolbarPosition((position) => {
         try {
           localStorage.setItem(
-            "deepread:learning-toolbar-position",
+            accountStorageKey("learning-toolbar-position"),
             JSON.stringify(position)
           );
         } catch {}

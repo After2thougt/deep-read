@@ -134,7 +134,7 @@ ssh -T git@github.com
     │   └── ...
     ├── dist/                     # Frontend build output (npm run build)
     ├── node_modules/             # Dependencies (npm ci)
-    ├── deploy/                   # Deployment scripts (read-only, do not modify)
+    ├── deploy/                   # Deployment scripts and versioned migrations
     │   ├── install.sh
     │   ├── update.sh
     │   ├── import-db.sh
@@ -167,8 +167,8 @@ ssh -T git@github.com
 └── sites-enabled/deepread        # Symlink → sites-available/deepread
 
 deploy/migrations/                # Database migration scripts
-├── 001-init.sql
-├── 002-add-index.sql
+├── 001-account-ownership.sql
+├── 002-strict-ownership-and-account-status.sql
 └── ...
 ```
 
@@ -199,6 +199,8 @@ git clone git@github.com:After2thougt/deep-read.git
 cd deep-read
 ```
 
+Before installation, place the intended existing Admin database at `/data/deepread/app.db` and ensure it is readable by `ubuntu`. Do not substitute `guest.db` or start from an empty replacement: the ownership migration requires an unambiguous existing Admin account.
+
 ### 4.2 Run Install Script
 
 ```bash
@@ -211,17 +213,18 @@ bash deploy/install.sh
 | Step | Description | Execution User |
 |------|-------------|----------------|
 | 1. System packages | nginx, sqlite3, build-essential, etc. | root (sudo) |
-| 2. Clean legacy | Remove old systemd, PM2 process, nginx config | ubuntu |
+| 2. Clean legacy | Remove legacy systemd service and nginx site; preserve the PM2 process until migration/build succeeds | ubuntu |
 | 3. Create directories | `/opt/deepread/app`, `/data/deepread/*` | root (sudo mkdir/chown) |
 | 4. Clone repository | `git clone git@github.com:After2thougt/deep-read.git` | ubuntu |
 | 5. Configure env | Generate `.env` from `.env.example`, set production defaults | ubuntu |
 | 6. Install deps | `npm ci` + `backend npm ci` | ubuntu |
-| 7. Run migrations | Execute `deploy/migrate.sh` (if exists) | ubuntu |
-| 8. Build frontend | `npm run build` → generates `dist/` | ubuntu |
-| 9. Configure Nginx | Copy config, test, reload | root (sudo) |
-| 10. Start PM2 | `pm2 start ecosystem.config.cjs` + `pm2 save` | ubuntu |
-| 11. Configure autostart | `pm2 startup systemd -u ubuntu --hp /home/ubuntu` | ubuntu (run printed sudo cmd) |
-| 12. Health checks | API, frontend, database verification | ubuntu |
+| 7. Verify and back up Admin DB | Requires existing `/data/deepread/app.db`; a verified backup is mandatory before migration | ubuntu |
+| 8. Apply Admin migrations | Explicitly targets `/data/deepread/app.db`; failure stops installation before build/start | ubuntu |
+| 9. Initialize/verify Administrator | Prompts for one-time hidden password only when no Administrator exists; existing Administrator is preserved | ubuntu |
+| 10. Build and configure | Build frontend, configure/test Nginx | ubuntu / root (sudo) |
+| 11. Start PM2 and verify | Start/reload PM2, configure autostart, check API and frontend | ubuntu |
+
+The installer does not create an empty replacement database. If `/data/deepread/app.db` is absent, restore or stage the intended Admin database first; the Guest database at `/data/deepread/guest.db` is never migrated.
 
 ### 4.4 Edit `.env` with Sensitive Values
 
@@ -237,9 +240,9 @@ GUEST_DATABASE_PATH=/data/deepread/guest.db
 
 # MUST SET THESE
 OPENAI_API_KEY=sk-xxx…xxxx
-AUTH_USERNAME=your_admin_username
+AUTH_USERNAME=your_existing_username
 AUTH_PASSWORD=your_s…word
-AUTH_SESSION_SECRET=*** rand -hex 32)
+AUTH_SESSION_SECRET=<generated-secret>
 
 # Optional: Third-party services
 # EUDIC_TOKEN=
@@ -251,17 +254,38 @@ AUTH_SESSION_SECRET=*** rand -hex 32)
 ```
 
 Press Enter after editing to continue.
+Generate `AUTH_SESSION_SECRET` with `openssl rand -hex 32` in a trusted terminal and enter it directly in `.env`; do not paste it into deployment logs or command transcripts.
 
-### 4.5 Enable PM2 Autostart (Critical)
+### 4.5 First Administrator Initialization
 
-`install.sh` outputs a command like this — **must run manually**:
+The existing account configured by `AUTH_USERNAME` remains a regular `user`; it is never promoted. After the Admin migrations, `install.sh` checks the Admin database:
+
+- If an active Administrator already exists, the installer verifies it and does not run bootstrap or change credentials.
+- If none exists, the installer offers the one-time interactive initialization. Confirm to enter a separate Administrator username and password. Password input is hidden and confirmed; it is neither an environment variable nor a command-line argument.
+- If an Administrator exists but is inactive, the installer stops and does not replace or reset it.
+
+The bootstrap command requires both ownership migrations and targets only the Admin DB. For a manual one-time initialization (for example, after declining the installer prompt), run it as the `ubuntu` user after confirming the `.env` paths:
 
 ```bash
-# Example output (use actual command from script)
-sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
+cd /opt/deepread/app
+DATABASE_PATH=/data/deepread/app.db \
+GUEST_DATABASE_PATH=/data/deepread/guest.db \
+npm --prefix backend run db:bootstrap-administrator
 ```
 
-Verify after reboot:
+The command refuses an existing Administrator or a username already in use. It uses the project's password hash function. Never add the Administrator password to `.env`, shell arguments, scripts, or logs.
+
+### 4.6 Verify PM2 Autostart (Critical)
+
+`install.sh` configures PM2 systemd startup and saves the process list automatically. Verify the setup as the `ubuntu` user:
+
+```bash
+# Check the saved PM2 process list
+pm2 status
+systemctl status pm2-ubuntu
+```
+
+After a planned reboot, verify that the application returns online:
 
 ```bash
 sudo reboot
@@ -289,10 +313,10 @@ pm2 list
 | `HOST` | Yes | Backend bind address | `127.0.0.1` |
 | `PORT` | Yes | Backend port | `3000` |
 | `DATABASE_PATH` | Yes | SQLite path | `/data/deepread/app.db` |
-| `GUEST_DATABASE_PATH` | No | Guest SQLite path | `/data/deepread/guest.db` |
+| `GUEST_DATABASE_PATH` | Yes | Separate Guest SQLite path | `/data/deepread/guest.db` |
 | `OPENAI_API_KEY` | Yes | OpenAI API Key | `sk-xxx` |
-| `AUTH_USERNAME` | Yes | Admin username | `admin` |
-| `AUTH_PASSWORD` | Yes | Admin password | `StrongP@ssw0rd` |
+| `AUTH_USERNAME` | Yes | Existing primary account username (regular user after ownership migration) | `your-existing-username` |
+| `AUTH_PASSWORD` | Yes | Existing primary account password | Set securely |
 | `AUTH_SESSION_SECRET` | Yes | Session encryption key | `openssl rand -hex 32` |
 | `CORS_ORIGIN` | No | CORS origin | `https://your-domain.com` |
 
@@ -318,27 +342,22 @@ bash deploy/update.sh [branch-name]
 
 ### 6.2 `update.sh` Execution Flow
 
-```
-git pull --ff-only origin main
-        ↓
-npm ci (root)
-        ↓
-backend npm ci (if exists)
-        ↓
-Run Database Migrations (bash deploy/migrate.sh)
-        ↓
-npm run build (frontend build)
-        ↓
-pm2 reload deepread --update-env (zero-downtime)
-        ↓
-Health Check (API + Frontend + Assets)
-```
+1. Fetch and fast-forward the selected branch.
+2. Install root and backend dependencies.
+3. Back up the Admin database. A missing or invalid backup stops the update.
+4. Stop PM2 if it is running, then apply only pending Admin database migrations.
+5. Check whether an active Administrator exists; warn if none, but never initialize or reset one.
+6. Build the frontend.
+7. Restart PM2 and verify PM2, API, and frontend health.
 
 ### 6.3 Pre-update Requirements
 
 - Clean working tree (`git status` shows no uncommitted changes)
 - Fast-forward merge possible (no conflicts)
 - GitHub reachable
+- `/data/deepread/app.db` exists and `.env` identifies the Admin and Guest paths explicitly and separately.
+
+The automatic `deepread-deploy.timer` uses the same `deploy/update.sh` path; it does not reset the working tree or bypass backup/migrations. Updates only print a reminder if no active Administrator exists. They never run the bootstrap command.
 
 ### 6.4 Rollback Procedure
 
@@ -422,10 +441,8 @@ bash deploy/restore-db.sh /data/deepread/backups/app-20240115T030000Z.db
 
 ```
 deploy/migrations/
-├── 001-init.sql          # Initial schema
-├── 002-add-index.sql     # Add indexes
-├── 003-add-column.sql    # Add columns
-└── ...
+├── 001-account-ownership.sql
+└── 002-strict-ownership-and-account-status.sql
 ```
 
 - Filename format: `<seq>-<description>.sql`
@@ -435,23 +452,65 @@ deploy/migrations/
 ### 8.2 Running Migrations
 
 ```bash
-# Manual execution (update.sh calls this automatically)
+# Explicit Admin database target; Guest DB is never passed to the runner
 bash deploy/migrate.sh
 ```
 
 ### 8.3 Migration Mechanism
 
-1. Auto-create `migrations` tracking table (if missing)
-2. Scan `deploy/migrations/*.sql` sorted by filename
-3. Compare against `migrations` table, skip applied
-4. Execute pending migrations in transaction
-5. Record success in `migrations` table (with `applied_at` timestamp)
+1. The backend migration runner creates the `migrations` tracking table if needed.
+2. It scans `deploy/migrations/*.sql` in filename order and skips applied IDs.
+3. Each migration and its tracking row are applied in one SQLite transaction.
+4. Foreign keys are enabled and checked before the transaction commits.
 
 ### 8.4 Idempotency Guarantee
 
 - Re-running `migrate.sh` **will not** re-apply migrations
 - Deduplication by migration ID
-- Failed migrations error out without corrupting state
+- Failed migrations roll back their schema and data changes
+
+### 8.5 Account Ownership Migration
+
+The versioned ownership migrations apply only to the shared Admin database (`app.db`); they do not open or modify `guest.db`.
+
+The backend checks this migration state before listening. If an older Admin database is missing either migration, startup exits with an actionable message instead of accepting logins that would fail on missing `role` or `is_active` columns. For local databases, take a verified backup and run `npm --prefix backend run db:migrate` before `npm start`; migrations are intentionally not run automatically during startup.
+
+- `001-account-ownership.sql` requires exactly one existing Admin auth account. It preserves that account's ID, username, password hash, and timestamps, changes its role to `user`, and assigns historical articles, tags, and vocabulary to that account. It adds role support; a separate command creates the Administrator only after migration.
+- `002-strict-ownership-and-account-status.sql` makes content ownership mandatory, adds account activation state, uses per-user tag and vocabulary uniqueness, and enforces same-owner article/tag and vocabulary/article relationships. It preserves article blocks, analyses, translations, cache records, IDs, timestamps, and existing relationships.
+
+Before deploying:
+
+1. Confirm `.env` uses `DATABASE_PATH=/data/deepread/app.db` and `GUEST_DATABASE_PATH=/data/deepread/guest.db`; the deployment migration wrapper passes both paths explicitly.
+2. Ensure `/data/deepread/app.db` exists. Deployment fails rather than creating or replacing it when absent.
+3. Stop the application, run `bash deploy/backup-db.sh`, and verify the backup before migration. Install and update scripts abort if this backup fails.
+4. Record row counts for `auth_users`, `articles`, `tags`, `article_tags`, `article_blocks`, `vocabulary`, `article_analyses`, and `article_translation_cache`.
+5. Run `bash deploy/migrate.sh`. It targets only `/data/deepread/app.db`; the runner skips applied migration IDs and stops on failure.
+6. Verify migration records, row counts, and `PRAGMA foreign_key_check` before building or restarting the application.
+7. During first installation, the installer checks for an active Administrator and offers the separate interactive bootstrap only if none exists. If performing the one-time setup manually:
+
+   ```bash
+   DATABASE_PATH=/data/deepread/app.db \
+   GUEST_DATABASE_PATH=/data/deepread/guest.db \
+   npm --prefix backend run db:bootstrap-administrator
+   ```
+
+   The command requires both migrations, refuses an existing Administrator or username conflict, and reads the new password interactively without echoing or logging it. It never promotes the existing regular account.
+
+If an Administrator already exists, do not run the bootstrap command; installation verifies its active status, and updates only issue a reminder if no active Administrator is found. The routine update script never creates, promotes, replaces, or resets an Administrator.
+
+If backup or migration fails, `set -e` stops the install/update before build and restart. A failed backup prevents migration from starting. A migration failure may follow earlier successfully committed migration files, so do not restart against a partially upgraded database. Keep the application stopped, preserve the failed database for diagnosis, and restore the verified pre-migration backup only after selecting the application version compatible with that backup:
+
+```bash
+# Check out the compatible application release first, then restore:
+cd /opt/deepread/app
+git checkout <compatible-commit>
+BACKUP=/data/deepread/backups/REPLACE_WITH_VERIFIED_BACKUP.db
+bash deploy/restore-db.sh "$BACKUP"
+```
+
+The restore script first backs up the current database. Do not delete the original database or uploads. The Guest database is not part of this migration.
+
+After both migrations, do not roll back by manually editing the schema. Restore the verified pre-migration Admin database backup if rollback is required. The ownership-aware API derives regular-account ownership only from the authenticated session; the Guest database remains a separate legacy schema and is not modified by these migrations. Legacy browser datasets with no verifiable account owner are not imported. Administrator-only account endpoints list/create/deactivate regular accounts and can export an explicitly selected regular account; they never accept role assignment.
 
 ---
 
