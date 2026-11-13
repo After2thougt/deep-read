@@ -3,11 +3,15 @@ CREATE TEMP TABLE ownership_migration_guard (
 );
 
 INSERT INTO ownership_migration_guard (valid)
-SELECT CASE WHEN COUNT(*) = 1 THEN 1 ELSE 0 END FROM auth_users;
+SELECT CASE WHEN COUNT(*) = 1 THEN 1 ELSE 0 END
+FROM auth_users
+WHERE id = __LEGACY_OWNER_ID__;
 DROP TABLE ownership_migration_guard;
 
 CREATE TEMP TABLE ownership_migration_owner (id INTEGER PRIMARY KEY);
-INSERT INTO ownership_migration_owner (id) SELECT id FROM auth_users;
+INSERT INTO ownership_migration_owner (id)
+SELECT id FROM auth_users
+WHERE id = __LEGACY_OWNER_ID__;
 
 CREATE TEMP TABLE ownership_migration_articles AS SELECT * FROM articles;
 CREATE TEMP TABLE ownership_migration_tags AS SELECT * FROM tags;

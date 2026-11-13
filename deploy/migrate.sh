@@ -12,6 +12,7 @@ fi
 APP_DIR="/opt/deepread/app"
 ADMIN_DB_PATH="/data/deepread/app.db"
 GUEST_DB_PATH="/data/deepread/guest.db"
+LEGACY_OWNER="${LEGACY_OWNER:-carolc}"
 
 if [ "$ADMIN_DB_PATH" = "$GUEST_DB_PATH" ]; then
   echo "[ERROR] Admin and Guest database paths must be different."
@@ -24,4 +25,6 @@ if [ ! -f "$ADMIN_DB_PATH" ]; then
 fi
 
 DATABASE_PATH="$ADMIN_DB_PATH" GUEST_DATABASE_PATH="$GUEST_DB_PATH" \
-  node "${APP_DIR}/backend/scripts/migrate.js" --database-path "$ADMIN_DB_PATH"
+  node "${APP_DIR}/backend/scripts/migrate.js" \
+  --database-path "$ADMIN_DB_PATH" \
+  --legacy-owner "$LEGACY_OWNER"

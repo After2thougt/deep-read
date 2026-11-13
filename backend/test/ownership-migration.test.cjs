@@ -345,8 +345,71 @@ test('ambiguous legacy ownership aborts before changing the Admin schema or data
   });
   const before = snapshotDatabase(db);
 
-  assert.throws(() => applyOwnershipMigration(db), /requires exactly one existing Admin account; found 2/);
+  assert.throws(() => applyOwnershipMigration(db), /ambiguous legacy ownership; found 2 accounts/);
   assert.deepEqual(snapshotDatabase(db), before);
+});
+
+
+test('explicit legacy owner receives all historical data when multiple accounts exist', (t) => {
+  const temporaryDirectory = createTemporaryDirectory();
+  const db = createLegacyDatabase(
+    path.join(temporaryDirectory, 'admin.db'),
+    { extraAccount: true }
+  );
+
+  t.after(() => {
+    db.close();
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  });
+
+  const applied = runMigrations(db, migrationDirectory, {
+    legacyOwnerId: 91,
+  });
+
+  assert.deepEqual(applied, [
+    '001-account-ownership',
+    '002-strict-ownership-and-account-status',
+  ]);
+
+  assert.equal(
+    db.prepare('SELECT user_id FROM articles WHERE id = ?')
+      .get('article-old').user_id,
+    91
+  );
+
+  assert.equal(
+    db.prepare('SELECT user_id FROM tags WHERE id = ?')
+      .get(17).user_id,
+    91
+  );
+
+  assert.equal(
+    db.prepare('SELECT user_id FROM vocabulary WHERE id = ?')
+      .get('vocabulary-old').user_id,
+    91
+  );
+
+  assert.equal(
+    db.prepare('SELECT COUNT(*) AS count FROM article_blocks').get().count,
+    1
+  );
+
+  assert.equal(
+    db.prepare('SELECT COUNT(*) AS count FROM article_analyses').get().count,
+    1
+  );
+
+  assert.equal(
+    db.prepare('SELECT COUNT(*) AS count FROM article_translation_cache').get().count,
+    1
+  );
+
+  assert.equal(
+    db.prepare('SELECT COUNT(*) AS count FROM article_tags').get().count,
+    1
+  );
+
+  assert.deepEqual(db.pragma('foreign_key_check'), []);
 });
 
 test('a late relationship integrity failure rolls back the migration completely', (t) => {
