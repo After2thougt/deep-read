@@ -9,6 +9,7 @@ import ProfilePage from "./pages/ProfilePage";
 import NotesPage from "./pages/NotesPage";
 import ArticleNotesPage from "./pages/ArticleNotesPage";
 import UserManagementPage from "./pages/UserManagementPage";
+import AdministratorHomePage from "./pages/AdministratorHomePage";
 import { clearVocabularyCache, fetchVocabulary } from "./api/vocabulary";
 import UserMenu from "./components/ui/UserMenu";
 import { DEFAULT_LOGIN_PATH, getNavigationItems, getRoleRedirect } from "./routing/access";
@@ -19,7 +20,7 @@ import {
   LibraryBig,
   Highlighter,
   BookOpen,
-  Users,
+  Network,
 } from "lucide-react";
 
 import {
@@ -38,7 +39,7 @@ const NAVIGATION_ICONS = {
   articles: LibraryBig,
   vocabulary: Newspaper,
   highlight: Highlighter,
-  users: Users,
+  users: Network,
 };
 
 function clearSessionCaches() {
@@ -193,7 +194,7 @@ function AppRoutes({onLogout, username, role, authenticated}) {
    */
 
     useEffect(() => {
-      if (!authenticated || (role === "administrator" && location.pathname !== "/")) {
+      if (!authenticated || role === "administrator") {
         setHomeArticles([]);
         return;
       }
@@ -231,7 +232,7 @@ function AppRoutes({onLogout, username, role, authenticated}) {
  */
 
 useEffect(() => {
-  if (!authenticated || (role === "administrator" && location.pathname !== "/")) {
+  if (!authenticated || role === "administrator") {
     setHomeWords([]);
     return;
   }
@@ -354,13 +355,15 @@ useEffect(() => {
         <Route
           path="/"
           element={
-            <HomePage
-              articles={homeArticles}
-              words={homeWords}
-              onOpenArticle={openArticle}
-              onNewArticle={newArticle}
-              onOpenVocabulary={() => navigate("/vocabulary")}
-            />
+            role === "administrator"
+              ? <AdministratorHomePage />
+              : <HomePage
+                  articles={homeArticles}
+                  words={homeWords}
+                  onOpenArticle={openArticle}
+                  onNewArticle={newArticle}
+                  onOpenVocabulary={() => navigate("/vocabulary")}
+                />
           }
         />
        

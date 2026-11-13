@@ -206,7 +206,7 @@ Date.now = () => {
   assert.equal(healthy, true, `test server failed to start:\n${serverOutput}`);
 
   const admin = await login(baseUrl, 'test-admin', 'test-admin-password');
-  const guest = await login(baseUrl, 'test-guest', 'test-guest-password');
+  let guest = await login(baseUrl, 'test-guest', 'test-guest-password');
   const secondaryAdmin = await login(baseUrl, 'secondary-user', 'secondary-user-password');
   const administrator = await login(baseUrl, 'test-administrator', 'test-administrator-password');
   assert.equal(admin.user.role, 'user');
@@ -276,6 +276,48 @@ Date.now = () => {
     });
     assert.equal(disableUser.status, 200);
     assert.equal((await disableUser.json()).is_active, 0);
+
+    const refreshedAccountsResponse = await fetch(`${baseUrl}/api/admin/users`, {
+      headers: { Cookie: administrator.cookie },
+    });
+    assert.equal(refreshedAccountsResponse.status, 200);
+    const refreshedAccounts = await refreshedAccountsResponse.json();
+    assert.equal(refreshedAccounts.filter((account) => account.role === 'user').length, 3);
+    assert.equal(refreshedAccounts.filter((account) => account.role === 'administrator').length, 1);
+    assert.equal(refreshedAccounts.filter((account) => account.role === 'guest').length, 1);
+    assert.equal(refreshedAccounts.length, 5);
+    assert.equal(
+      refreshedAccounts.find((account) => account.username === 'managed-user').is_active,
+      0,
+    );
+
+    const unauthenticatedOverview = await fetch(`${baseUrl}/api/admin/overview`);
+    assert.equal(unauthenticatedOverview.status, 401);
+    const regularOverview = await fetch(`${baseUrl}/api/admin/overview`, {
+      headers: { Cookie: admin.cookie },
+    });
+    assert.equal(regularOverview.status, 403);
+    const guestOverview = await fetch(`${baseUrl}/api/admin/overview`, {
+      headers: { Cookie: guest.cookie },
+    });
+    assert.equal(guestOverview.status, 403);
+    const overviewResponse = await fetch(`${baseUrl}/api/admin/overview`, {
+      headers: { Cookie: administrator.cookie },
+    });
+    assert.equal(overviewResponse.status, 200);
+    const overview = await overviewResponse.json();
+    assert.deepEqual(overview.stats, {
+      totalUsers: 3,
+      activeUsers: 2,
+      disabledUsers: 1,
+      administrators: 1,
+    });
+    assert.equal(overview.recentUsers.length, 3);
+    assert.ok(overview.recentUsers.some((user) => user.username === 'managed-user'));
+    assert.ok(overview.recentUsers.every((user) => user.username !== 'test-guest'));
+    assert.ok(overview.recentUsers.every((user) =>
+      Object.keys(user).sort().join(',') === 'createdAt,username'));
+    assert.doesNotMatch(JSON.stringify(overview), /password_hash|session_token|test-session/);
 
     const accountExport = await fetch(`${baseUrl}/api/admin/users/${primaryId}/export`, {
       headers: { Cookie: administrator.cookie },
@@ -579,6 +621,87 @@ Date.now = () => {
     });
     assert.equal(disableAdmin.status, 404);
     assert.equal(disableAdminAsRegular.status, 403);
+  });
+
+  await t.test('Guest is a single manageable system account and disabling it preserves its database', async () => {
+    const listResponse = await fetch(`${baseUrl}/api/admin/users`, {
+      headers: { Cookie: administrator.cookie },
+    });
+    assert.equal(listResponse.status, 200);
+    const accounts = await listResponse.json();
+    const guestAccounts = accounts.filter((account) => account.role === 'guest');
+    assert.equal(guestAccounts.length, 1);
+    assert.equal(guestAccounts[0].username, 'Guest');
+    assert.equal(guestAccounts[0].account_count, 1);
+    assert.equal(guestAccounts[0].is_active, 1);
+    assert.equal(guestAccounts[0].active_sessions, 1);
+    assert.equal(guestAccounts[0].database, 'Guest Database');
+    assert.deepEqual(guestAccounts[0].database_stats, { articles: 1, tags: 1, vocabulary: 1 });
+    assert.equal(guestAccounts[0].login_configured, true);
+    assert.doesNotMatch(JSON.stringify(guestAccounts[0]), /password_hash|test-guest-password/);
+    const adminDatabase = new Database(adminDatabasePath);
+    assert.equal(adminDatabase.prepare(
+      'SELECT COUNT(*) AS count FROM auth_users WHERE username = ?',
+    ).get('test-guest').count, 0);
+    assert.equal(adminDatabase.prepare(
+      "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'guest_access_settings'",
+    ).get().count, 1);
+    adminDatabase.close();
+
+    const forbiddenUpdate = await fetch(`${baseUrl}/api/admin/guest`, {
+      method: 'PATCH',
+      headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: false }),
+    });
+    assert.equal(forbiddenUpdate.status, 403);
+    const guestUpdate = await fetch(`${baseUrl}/api/admin/guest`, {
+      method: 'PATCH',
+      headers: { Cookie: guest.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: false }),
+    });
+    assert.equal(guestUpdate.status, 403);
+
+    const disabled = await fetch(`${baseUrl}/api/admin/guest`, {
+      method: 'PATCH',
+      headers: { Cookie: administrator.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: false }),
+    });
+    assert.equal(disabled.status, 200);
+    const disabledGuest = await disabled.json();
+    assert.equal(disabledGuest.is_active, 0);
+    assert.equal(disabledGuest.active_sessions, 0);
+
+    const existingGuestSession = await fetch(`${baseUrl}/api/auth/me`, {
+      headers: { Cookie: guest.cookie },
+    });
+    assert.equal(existingGuestSession.status, 401);
+    const disabledLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'test-guest', password: 'test-guest-password' }),
+    });
+    assert.equal(disabledLogin.status, 401);
+
+    const guestDatabase = new Database(guestDatabasePath);
+    assert.equal(guestDatabase.prepare(
+      "SELECT COUNT(*) AS count FROM sqlite_master WHERE type = 'table' AND name = 'guest_access_settings'",
+    ).get().count, 0);
+    assert.equal(guestDatabase.prepare('SELECT COUNT(*) AS count FROM auth_users').get().count, 1);
+    assert.equal(guestDatabase.prepare('SELECT COUNT(*) AS count FROM articles').get().count, 1);
+    assert.equal(guestDatabase.prepare('SELECT COUNT(*) AS count FROM tags').get().count, 1);
+    assert.equal(guestDatabase.prepare('SELECT COUNT(*) AS count FROM vocabulary').get().count, 1);
+    assert.equal(guestDatabase.prepare('SELECT content FROM articles').get().content, 'GUEST_PRIVATE_CONTENT');
+    guestDatabase.close();
+
+    const enabled = await fetch(`${baseUrl}/api/admin/guest`, {
+      method: 'PATCH',
+      headers: { Cookie: administrator.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: true }),
+    });
+    assert.equal(enabled.status, 200);
+    assert.equal((await enabled.json()).is_active, 1);
+    guest = await login(baseUrl, 'test-guest', 'test-guest-password');
+    assert.equal(guest.user.role, 'guest');
   });
 
   await t.test('repeated exports remain bound to the active session database', async () => {

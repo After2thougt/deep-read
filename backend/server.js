@@ -134,6 +134,13 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 const { db, adminDb, guestDb, runWithDatabase, serializeArticle, serializeVocabulary } = require("./db");
 const { hashPassword, verifyPassword } = require("./password");
 const { assertAdminDatabaseReady } = require("./database-readiness");
+const { getAdministratorOverview } = require("./admin-overview");
+const {
+  getGuestSystemAccount,
+  initializeGuestAccessSettings,
+  isGuestAccessEnabled,
+  setGuestAccessEnabled,
+} = require("./guest-management");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -206,6 +213,10 @@ function currentSession(req) {
     return null;
   }
   if (session.database === guestDb) {
+    if (!isGuestAccessEnabled(adminDb)) {
+      sessions.delete(token);
+      return null;
+    }
     return { ...session, userId: user.id, role: 'guest' };
   }
 
@@ -276,6 +287,7 @@ if (require.main === module && adminDb.prepare('SELECT 1 FROM auth_users LIMIT 1
 }
 
 if (!startupReadinessError) {
+  initializeGuestAccessSettings(adminDb);
   ensureAdminUser();
   ensureGuestUser();
 }
@@ -288,7 +300,8 @@ app.post('/api/auth/login', (req, res) => {
   const adminUser = adminDb.prepare('SELECT id, username, password_hash, role, is_active FROM auth_users WHERE username = ?')
     .get(username);
   const guestUsername = String(process.env.GUEST_USERNAME || '').trim();
-  const guestUser = guestUsername && username.toLowerCase() === guestUsername.toLowerCase()
+  const guestUser = isGuestAccessEnabled(adminDb) && guestUsername
+    && username.toLowerCase() === guestUsername.toLowerCase()
     ? guestDb.prepare('SELECT username,password_hash FROM auth_users WHERE username = ?').get(username)
     : null;
   const user = adminUser || guestUser;
@@ -460,14 +473,54 @@ function requireAdministrator(req, res) {
   return false;
 }
 
-app.get('/api/admin/users', (req, res) => {
-  if (!requireAdministrator(req, res)) return;
+function requireAdministratorDatabase(req, res) {
+  if (!requireAdministrator(req, res)) return false;
+  if (req.auth.database === adminDb) return true;
+  res.status(403).json({ error: 'Administrator access required.' });
+  return false;
+}
+
+app.get('/api/admin/overview', (req, res) => {
+  if (!requireAdministratorDatabase(req, res)) return;
   try {
-    return res.json(db.prepare(`SELECT id, username, role, is_active, created_at, updated_at
-      FROM auth_users ORDER BY username COLLATE NOCASE`).all());
+    return res.json(getAdministratorOverview(db));
+  } catch (error) {
+    console.error('Unable to load Administrator overview:', error);
+    return res.status(500).json({ error: 'Unable to load platform overview.' });
+  }
+});
+
+app.get('/api/admin/users', (req, res) => {
+  if (!requireAdministratorDatabase(req, res)) return;
+  try {
+    const accounts = db.prepare(`SELECT id, username, role, is_active, created_at, updated_at
+      FROM auth_users WHERE role IN ('user', 'administrator')
+      ORDER BY username COLLATE NOCASE`).all();
+    accounts.push(getGuestSystemAccount(adminDb, guestDb, sessions));
+    return res.json(accounts);
   } catch (error) {
     console.error('Unable to list accounts:', error);
     return res.status(500).json({ error: 'Unable to load accounts.' });
+  }
+});
+
+app.patch('/api/admin/guest', (req, res) => {
+  if (!requireAdministratorDatabase(req, res)) return;
+  if (!req.body || typeof req.body.isActive !== 'boolean'
+    || Object.keys(req.body).some((key) => key !== 'isActive')) {
+    return res.status(400).json({ error: 'Only a valid isActive status may be changed.' });
+  }
+  try {
+    const isActive = setGuestAccessEnabled(adminDb, req.body.isActive);
+    if (!isActive) {
+      for (const [token, session] of sessions.entries()) {
+        if (session.database === guestDb) sessions.delete(token);
+      }
+    }
+    return res.json(getGuestSystemAccount(adminDb, guestDb, sessions));
+  } catch (error) {
+    console.error('Unable to update Guest access:', error);
+    return res.status(500).json({ error: 'Unable to update Guest access.' });
   }
 });
 

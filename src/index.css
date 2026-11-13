@@ -14,6 +14,7 @@
 @import "./styles/pagination.css";
 @import "./styles/auth.css";
 @import "./styles/home.css";
+@import "./styles/administrator-home.css";
 @import "./styles/profile.css";
 @import "./styles/user-management.css";
 @import "./styles/dark-mode.css";

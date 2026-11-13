@@ -235,6 +235,23 @@
   background: #f0f0ec;
 }
 
+.user-management-guest-details {
+  display: grid;
+  min-width: 190px;
+  gap: 3px;
+}
+
+.user-management-guest-details strong {
+  color: #52684c;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.user-management-guest-details span {
+  color: #85877c;
+  font-size: 0.72rem;
+}
+
 .user-management-actions {
   display: flex;
   justify-content: flex-end;
@@ -368,4 +385,12 @@
 [data-theme="dark"] .user-management-status.is-inactive {
   color: var(--text-secondary);
   background: var(--bg-hover);
+}
+
+[data-theme="dark"] .user-management-guest-details strong {
+  color: #b7d6a8;
+}
+
+[data-theme="dark"] .user-management-guest-details span {
+  color: var(--text-secondary);
 }

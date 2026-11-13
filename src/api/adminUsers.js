@@ -2,6 +2,10 @@ import { apiFetch } from "./http";
 
 const USERS_API = "/api/admin/users";
 
+export function fetchAdminOverview() {
+  return apiFetch("/api/admin/overview");
+}
+
 export function fetchAdminUsers() {
   return apiFetch(USERS_API);
 }
@@ -16,6 +20,14 @@ export function createAdminUser({ username, password }) {
 
 export function updateAdminUserStatus(userId, isActive) {
   return apiFetch(`${USERS_API}/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ isActive }),
+  });
+}
+
+export function updateGuestAccess(isActive) {
+  return apiFetch("/api/admin/guest", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ isActive }),
