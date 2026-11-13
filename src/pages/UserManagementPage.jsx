@@ -382,8 +382,8 @@ export default function UserManagementPage() {
                             {busyUserId === user.id
                               ? "Saving…"
                               : isActive
-                                ? "Disable Guest"
-                                : "Enable Guest"}
+                                ? "Disable"
+                                : "Enable"}
                           </button>
                         ) : (
                           <>
@@ -397,8 +397,8 @@ export default function UserManagementPage() {
                                 ? "Saving…"
                                 : isAdministrator
                                   ? isActive
-                                    ? "Disable Admin"
-                                    : "Enable Admin"
+                                    ? "Disable"
+                                    : "Enable"
                                   : isActive
                                     ? "Deactivate"
                                     : "Activate"}

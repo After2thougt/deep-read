@@ -95,7 +95,7 @@ h1 {
   min-height: 30px;
   padding: 0 0 5px;
   border-bottom: 1px solid transparent;
-  color: #3D3D3A;
+  color: #748568;
   font-size: 0.9rem;
   font-weight: 500;
   white-space: nowrap;
@@ -130,7 +130,7 @@ h1 {
 }
 
 .nav-button.active {
-  color: #748568;
+  color: #3D3D3A;
   
 }
 
