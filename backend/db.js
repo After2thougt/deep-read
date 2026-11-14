@@ -15,7 +15,7 @@ const schemaSql = `
     source_published_at TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS auth_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL COLLATE BINARY UNIQUE,
     password_hash TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS tags (
@@ -60,8 +60,92 @@ const schemaSql = `
     UNIQUE (article_id, page_number, content_hash, source, target, provider)
   );`;
 
+  function migrateUsernameCollation(db) {
+  const table = db.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table' AND name = 'auth_users'
+  `).get();
+
+  if (!table?.sql || !/COLLATE\s+NOCASE/i.test(table.sql)) {
+    return;
+  }
+
+  const columns = db.pragma('table_info(auth_users)');
+  const hasRole = columns.some((column) => column.name === 'role');
+  const hasIsActive = columns.some((column) => column.name === 'is_active');
+
+  const extraColumns = [
+    hasRole
+      ? ", role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'administrator'))"
+      : '',
+    hasIsActive
+      ? ', is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))'
+      : '',
+  ].join('');
+
+  const columnNames = [
+    'id',
+    'username',
+    'password_hash',
+    'created_at',
+    'updated_at',
+    ...(hasRole ? ['role'] : []),
+    ...(hasIsActive ? ['is_active'] : []),
+  ];
+
+  const columnList = columnNames.map((name) => `"${name}"`).join(', ');
+
+  if (db.pragma('foreign_keys', { simple: true }) !== 1) {
+    throw new Error('SQLite foreign-key enforcement must be enabled before username migration.');
+  }
+
+  // SQLite requires foreign-key enforcement to be disabled
+  // before starting the table-rebuild transaction.
+  db.pragma('foreign_keys = OFF');
+
+  try {
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE auth_users_case_sensitive (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL COLLATE BINARY UNIQUE,
+          password_hash TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+          ${extraColumns}
+        );
+
+        INSERT INTO auth_users_case_sensitive (${columnList})
+        SELECT ${columnList}
+        FROM auth_users;
+
+        DROP TABLE auth_users;
+
+        ALTER TABLE auth_users_case_sensitive
+        RENAME TO auth_users;
+      `);
+    }).immediate();
+  } finally {
+    // Always restore foreign-key enforcement, including after rollback.
+    db.pragma('foreign_keys = ON');
+  }
+
+  const violations = db.pragma('foreign_key_check');
+
+  if (violations.length) {
+    throw new Error(
+      `Username migration produced ${violations.length} foreign-key violation(s).`
+    );
+  }
+
+  console.log('[DB] Migrated auth_users to case-sensitive usernames.');
+}
+
 function migrate(db) {
   db.exec(schemaSql);
+
+  migrateUsernameCollation(db);
   for (const statement of [
     'ALTER TABLE article_analyses ADD COLUMN page_number INTEGER NOT NULL DEFAULT 1',
     'ALTER TABLE vocabulary ADD COLUMN start_offset INTEGER',

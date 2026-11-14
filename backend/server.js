@@ -328,7 +328,7 @@ app.post('/api/auth/login', (req, res) => {
     .get(username);
   const guestUsername = String(process.env.GUEST_USERNAME || '').trim();
   const guestUser = isGuestAccessEnabled(adminDb) && guestUsername
-    && username.toLowerCase() === guestUsername.toLowerCase()
+    && username === guestUsername
     ? guestDb.prepare('SELECT username,password_hash FROM auth_users WHERE username = ?').get(username)
     : null;
   const user = adminUser || guestUser;
