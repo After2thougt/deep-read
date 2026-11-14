@@ -103,8 +103,7 @@
   box-shadow: 0 0 0 3px rgb(116 133 104 / 14%);
 }
 
-.user-management-primary,
-.user-management-secondary {
+.user-management-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -130,22 +129,91 @@
   background: #44583f;
 }
 
-.user-management-secondary {
-  border: 1px solid #deded3;
-  color: #52684c;
-  background: #fff;
+/* Circular action buttons */
+.user-management-icon-button {
+  display: inline-flex;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 50%;
+
+  color: #64705f;
+  background: #f3f4f0;
+
+  cursor: pointer;
+
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+/* Active / Inactive */
+.user-management-icon-button.is-active {
+  color: #526b49;
+  background: #edf3e9;
+}
+
+.user-management-icon-button.is-inactive {
+  color: #92958d;
+  background: #f1f1ee;
+}
+
+/* Hover */
+.user-management-icon-button:hover:not(:disabled) {
+  border-color: #dce3d5;
+  color: #44583f;
+  background: #e9eee4;
+  transform: translateY(-1px);
+}
+
+/* Delete */
+.user-management-icon-button.is-delete {
+  color: #b76e6b;
+  background: #fbefed;
+}
+
+.user-management-icon-button.is-delete:hover:not(:disabled) {
+  border-color: #edcfca;
+  color: #a34e49;
+  background: #f8e3df;
+}
+
+
+/* Disabled */
+.user-management-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+/* Keyboard accessibility */
+.user-management-icon-button:focus-visible {
+  outline: 3px solid rgb(116 133 104 / 28%);
+  outline-offset: 2px;
+}
+
+/* Actions column */
+.user-management-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
   white-space: nowrap;
+  min-width: 150px;
 }
 
-.user-management-secondary:hover:not(:disabled) {
-  border-color: #aab49f;
-  background: #f6f8f4;
-}
-
-.user-management-primary:disabled,
-.user-management-secondary:disabled {
-  cursor: wait;
-  opacity: 0.6;
+.user-management-table th:last-child,
+.user-management-table td:last-child {
+  width: 17%;
+  text-align: center;
 }
 
 .user-management-hint {
@@ -188,8 +256,46 @@
 
 .user-management-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   text-align: left;
+}
+
+/* No. */
+.user-management-table th:nth-child(1),
+.user-management-table td:nth-child(1) {
+  width: 5%;
+}
+
+/* Username */
+.user-management-table th:nth-child(2),
+.user-management-table td:nth-child(2) {
+  width: 12%;
+}
+
+/* Status */
+.user-management-table th:nth-child(4),
+.user-management-table td:nth-child(4) {
+  width: 15%;
+}
+
+/* Databse */
+.user-management-table th:nth-child(5),
+.user-management-table td:nth-child(5) {
+  width: 15%;
+}
+
+/* Created */
+.user-management-table th:nth-child(6),
+.user-management-table td:nth-child(6) {
+  width: 20%;
+}
+
+/* Actions */
+.user-management-table th:nth-child(7),
+.user-management-table td:nth-child(7) {
+  width: 17%;
+  text-align: center;
 }
 
 .user-management-table th,
@@ -354,8 +460,7 @@
   color: var(--text-secondary);
 }
 
-[data-theme="dark"] .user-create-form input,
-[data-theme="dark"] .user-management-secondary {
+[data-theme="dark"] .user-create-form input {
   border-color: var(--border-color);
   color: var(--text-primary);
   background: var(--bg-input);
@@ -393,4 +498,38 @@
 
 [data-theme="dark"] .user-management-guest-details span {
   color: var(--text-secondary);
+}
+
+[data-theme="dark"] .user-management-icon-button.is-delete {
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .user-management-icon-button.is-delete:hover:not(:disabled) {
+  border-color: var(--border-danger);
+  color: var(--text-danger);
+  background: var(--bg-danger-hover);
+}
+
+[data-theme="dark"] .user-management-icon-button {
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .user-management-icon-button:hover:not(:disabled) {
+  border-color: #64745b;
+  color: #c5d9b9;
+  background: #344333;
+}
+
+[data-theme="dark"] .user-management-icon-button.is-delete {
+  border-color: transparent;
+  color: #fca5a5;
+  background: #422e30;
+}
+
+[data-theme="dark"] .user-management-icon-button.is-delete:hover:not(:disabled) {
+  border-color: #815153;
+  color: #fecaca;
+  background: #553638;
 }

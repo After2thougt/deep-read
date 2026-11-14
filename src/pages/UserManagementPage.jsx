@@ -2,16 +2,39 @@
 import { useEffect, useState } from "react";
 import {
   createAdminUser,
+  deleteAdminUser,
   exportAdminUserData,
   fetchAdminUsers,
   updateAdminUserStatus,
   updateGuestAccess,
 } from "../api/adminUsers";
+import {
+  Download,
+  Trash2,
+  UserCheck,
+  UserX,
+  ToggleRight,
+  ToggleLeft,
+} from "lucide-react";
+import ConfirmModal from "../components/ui/ConfirmModal";
+import { clearAccountStorage } from "../utils/storage";
+import Tooltip from "../components/ui/Tooltip";
 
 function formatDate(value) {
   if (!value) return "—";
+
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString("sv-SE", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 // Administrator → Guest → regular Users (oldest first)
@@ -62,6 +85,8 @@ export default function UserManagementPage() {
   const [creating, setCreating] = useState(false);
   const [busyUserId, setBusyUserId] = useState(null);
   const [exportingUserId, setExportingUserId] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deletingUserId, setDeletingUserId] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -189,6 +214,40 @@ export default function UserManagementPage() {
     }
   }
 
+  async function handleDeleteUser() {
+    if (!userToDelete || deletingUserId !== null) return;
+
+    const user = userToDelete;
+    setDeletingUserId(user.id);
+    setError("");
+    setNotice("");
+
+    try {
+      await deleteAdminUser(user.id);
+      const localDataCleared = clearAccountStorage(user.id);
+      setUserToDelete(null);
+      setNotice(
+        localDataCleared
+          ? `User account "${user.username}" and its associated data were deleted.`
+          : `User account "${user.username}" was deleted, but browser-local data could not be cleared on this device.`,
+      );
+      setRefreshVersion((version) => version + 1);
+    } catch (deleteError) {
+      if (deleteError.accountDeleted) {
+        clearAccountStorage(user.id);
+        setUsers((current) => current.filter((account) => account.id !== user.id));
+        setUserToDelete(null);
+      }
+      setError(deleteError.message || "Unable to delete the account.");
+    } finally {
+      setDeletingUserId(null);
+    }
+  }
+
+  function handleCancelDelete() {
+    if (deletingUserId === null) setUserToDelete(null);
+  }
+
   // Always render the accounts in the required order.
   const sortedUsers = sortUsers(users);
 
@@ -300,9 +359,7 @@ export default function UserManagementPage() {
                   <th scope="col">Status</th>
                   <th scope="col">Database</th>
                   <th scope="col">Created</th>
-                  <th scope="col">
-                    <span className="visually-hidden">Actions</span>
-                  </th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
 
@@ -312,6 +369,10 @@ export default function UserManagementPage() {
                     user.role === "administrator";
                   const isGuest = user.role === "guest";
                   const isActive = Boolean(user.is_active);
+                  const isRowBusy =
+                    busyUserId === user.id
+                    || exportingUserId === user.id
+                    || deletingUserId === user.id;
 
                   return (
                     <tr key={user.id}>
@@ -368,57 +429,68 @@ export default function UserManagementPage() {
                           : formatDate(user.created_at)}
                       </td>
 
+                      
                       <td
                         className="user-management-actions"
                         data-label="Actions"
                       >
                         {isGuest ? (
-                          <button
-                            type="button"
-                            className="user-management-secondary"
-                            onClick={() => handleGuestStatusChange(user)}
-                            disabled={busyUserId === user.id}
-                          >
-                            {busyUserId === user.id
-                              ? "Saving…"
-                              : isActive
-                                ? "Disable"
-                                : "Enable"}
-                          </button>
-                        ) : (
-                          <>
+                          <Tooltip text={isActive ? "Disable Guest access" : "Enable Guest access"}>
                             <button
                               type="button"
-                              className="user-management-secondary"
-                              onClick={() => handleStatusChange(user)}
-                              disabled={busyUserId === user.id}
+                              className="user-management-icon-button"
+                              onClick={() => handleGuestStatusChange(user)}
+                              disabled={isRowBusy}
+                              aria-label={isActive ? "Disable Guest access" : "Enable Guest access"}
                             >
-                              {busyUserId === user.id
-                                ? "Saving…"
-                                : isAdministrator
-                                  ? isActive
-                                    ? "Disable"
-                                    : "Enable"
-                                  : isActive
-                                    ? "Deactivate"
-                                    : "Activate"}
+                              {isActive ? <ToggleRight size={19} /> : <ToggleLeft size={19} />}
                             </button>
-
-                            {!isAdministrator && (
+                          </Tooltip>
+                        ) : (
+                          <>
+                            <Tooltip text={isActive ? "Deactivate account" : "Activate account"}>
                               <button
                                 type="button"
-                                className="user-management-secondary"
-                                onClick={() => handleExport(user)}
-                                disabled={exportingUserId === user.id}
+                                className="user-management-icon-button"
+                                onClick={() => handleStatusChange(user)}
+                                disabled={isRowBusy}
+                                aria-label={isActive ? "Deactivate account" : "Activate account"}
                               >
-                                {exportingUserId === user.id
-                                  ? "Exporting…"
-                                  : "Export data"}
+                                {isActive ? <UserCheck size={17} /> : <UserX size={17} />}
                               </button>
+                            </Tooltip>
+
+                            {!isAdministrator && (
+                              <Tooltip text="Export data">
+                                <button
+                                  type="button"
+                                  className="user-management-icon-button"
+                                  onClick={() => handleExport(user)}
+                                  disabled={isRowBusy}
+                                  aria-label="Export data"
+                                >
+                                  <Download size={16} />
+                                </button>
+                              </Tooltip>
+                            )}
+
+                            {user.role === "user" && (
+                              <Tooltip text="Delete user">
+                                <button
+                                  type="button"
+                                  className="user-management-icon-button is-delete"
+                                  onClick={() => setUserToDelete(user)}
+                                  disabled={isRowBusy}
+                                  aria-label={`Delete user ${user.username}`}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </Tooltip>
                             )}
                           </>
                         )}
                       </td>
+
                     </tr>
                   );
                 })}
@@ -427,6 +499,20 @@ export default function UserManagementPage() {
           </div>
         )}
       </section>
+
+      <ConfirmModal
+        open={Boolean(userToDelete)}
+        data-tooltip="Delete user?"
+        message={
+          userToDelete
+            ? `Are you sure you want to permanently delete the account "${userToDelete.username}" and all associated data? This action cannot be undone.`
+            : ""
+        }
+        onCancel={handleCancelDelete}
+        onConfirm={handleDeleteUser}
+        confirmText={deletingUserId !== null ? "Deleting…" : "Delete user"}
+        confirmDisabled={deletingUserId !== null}
+      />
     </main>
   );
 }

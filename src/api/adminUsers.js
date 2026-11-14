@@ -26,6 +26,35 @@ export function updateAdminUserStatus(userId, isActive) {
   });
 }
 
+export async function deleteAdminUser(userId) {
+  let response;
+  try {
+    response = await fetch(`${USERS_API}/${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+  } catch {
+    throw new Error("Unable to connect to DeepRead to delete this account.");
+  }
+
+  let body = {};
+  try {
+    body = await response.json();
+  } catch {
+    // Keep the status-based message when the server does not return JSON.
+  }
+
+  if (!response.ok) {
+    const error = new Error(
+      body.error || `Account deletion failed (${response.status}).`,
+    );
+    error.accountDeleted = body.accountDeleted === true;
+    throw error;
+  }
+
+  return body;
+}
+
 export function updateGuestAccess(isActive) {
   return apiFetch("/api/admin/guest", {
     method: "PATCH",

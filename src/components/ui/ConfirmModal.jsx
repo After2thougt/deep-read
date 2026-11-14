@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 
 export default function ConfirmModal({
   open,
-  title = "Delete item?",
+  title = "Delete User?",
   message = "This will delete this item.",
   onCancel,
   onConfirm,

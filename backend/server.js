@@ -62,6 +62,33 @@ function accountMediaRoot(auth) {
   return path.join(uploadsBase, namespace, String(auth.userId));
 }
 
+function stageUserMediaDirectory(userId) {
+  const usersRoot = path.resolve(uploadsBase, 'users');
+  const mediaDirectory = path.resolve(usersRoot, String(userId));
+  if (!mediaDirectory.startsWith(`${usersRoot}${path.sep}`)) {
+    throw new Error('Invalid user media directory.');
+  }
+
+  try {
+    fs.lstatSync(mediaDirectory);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+
+  const stagedDirectory = path.join(
+    usersRoot,
+    `.deleting-${userId}-${crypto.randomBytes(12).toString('hex')}`,
+  );
+  fs.renameSync(mediaDirectory, stagedDirectory);
+  return { mediaDirectory, stagedDirectory };
+}
+
+function restoreUserMediaDirectory(stagedMedia) {
+  if (!stagedMedia) return;
+  fs.renameSync(stagedMedia.stagedDirectory, stagedMedia.mediaDirectory);
+}
+
 function saveImageToTemp(buffer, fileName, auth) {
   const tempDirectory = path.join(accountMediaRoot(auth), 'temp');
   fs.mkdirSync(tempDirectory, { recursive: true });
@@ -569,6 +596,86 @@ app.patch('/api/admin/users/:id', (req, res) => {
   } catch (error) {
     console.error('Unable to update account status:', error);
     return res.status(500).json({ error: 'Unable to update account status.' });
+  }
+});
+
+app.delete('/api/admin/users/:id', (req, res) => {
+  if (!requireAdministratorDatabase(req, res)) return;
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'Valid account id is required.' });
+  }
+
+  let stagedMedia = null;
+  try {
+    const account = db.prepare('SELECT id, role FROM auth_users WHERE id = ?').get(id);
+    if (!account || account.role !== 'user') {
+      return res.status(404).json({ error: 'Regular account not found.' });
+    }
+
+    stagedMedia = stageUserMediaDirectory(id);
+    const deleteUser = db.transaction(() => {
+      const currentAccount = db.prepare('SELECT id, role FROM auth_users WHERE id = ?').get(id);
+      if (!currentAccount || currentAccount.role !== 'user') return false;
+
+      db.prepare('DELETE FROM article_tags WHERE user_id = ?').run(id);
+      db.prepare('DELETE FROM vocabulary WHERE user_id = ?').run(id);
+      db.prepare('DELETE FROM tags WHERE user_id = ?').run(id);
+      db.prepare('DELETE FROM articles WHERE user_id = ?').run(id);
+
+      const result = db.prepare("DELETE FROM auth_users WHERE id = ? AND role = 'user'").run(id);
+      if (result.changes !== 1) {
+        throw new Error('The regular account could not be deleted.');
+      }
+      return true;
+    });
+
+    if (!deleteUser.immediate()) {
+      restoreUserMediaDirectory(stagedMedia);
+      stagedMedia = null;
+      return res.status(404).json({ error: 'Regular account not found.' });
+    }
+
+    for (const [token, session] of sessions.entries()) {
+      if (session.database === adminDb && session.userId === id) {
+        sessions.delete(token);
+      }
+    }
+
+    const ownerPrefix = `admin:${id}:`;
+    for (const key of analysisGenerations.keys()) {
+      if (key.startsWith(ownerPrefix)) analysisGenerations.delete(key);
+    }
+    for (const key of cancelledAnalysisRequests) {
+      if (key.startsWith(ownerPrefix)) cancelledAnalysisRequests.delete(key);
+    }
+
+    if (stagedMedia) {
+      try {
+        fs.rmSync(stagedMedia.stagedDirectory, { recursive: true, force: true });
+      } catch (error) {
+        console.error(`Unable to remove staged media for account ${id}:`, error);
+        return res.status(500).json({
+          error: 'The account was deleted, but its uploaded files could not be fully removed.',
+          accountDeleted: true,
+        });
+      }
+    }
+
+    return res.json({ success: true, deletedUserId: id });
+  } catch (error) {
+    if (stagedMedia) {
+      try {
+        restoreUserMediaDirectory(stagedMedia);
+      } catch (restoreError) {
+        console.error(`Unable to restore media for account ${id} after deletion failed:`, restoreError);
+        return res.status(500).json({
+          error: 'Account deletion failed, and its uploaded files could not be restored automatically.',
+        });
+      }
+    }
+    console.error('Unable to delete user account:', error);
+    return res.status(500).json({ error: 'Unable to delete the account and its associated data.' });
   }
 });
 

@@ -784,7 +784,7 @@
 /* Tooltip */
 .tag-tool-button::after,
 .save-note-button::after,
-.cancel-note-button::after {
+.cancel-note-button::after{
   content: attr(data-tooltip);
   position: absolute;
   top: calc(100% + 8px);
