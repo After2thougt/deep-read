@@ -68,6 +68,9 @@
   color: #52684c;
   font-size: 0.8rem;
   font-weight: 650;
+
+  margin-right: 770px;
+  margin-top: 20px;
 }
 
 .user-create-form {
@@ -532,4 +535,224 @@
   border-color: #815153;
   color: #fecaca;
   background: #553638;
+}
+
+
+/* Header actions */
+.user-management-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-management-header-actions .user-management-primary {
+  min-height: 38px;
+  padding: 8px 14px;
+}
+
+/* Modal overlay */
+.user-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(35 40 32 / 42%);
+  backdrop-filter: blur(3px);
+}
+
+/* Modal container */
+.user-modal {
+  width: 100%;
+  max-width: 420px;
+  padding: 26px;
+  border: 1px solid #eae8e2;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 48px rgb(30 35 25 / 16%);
+  animation: user-modal-enter 180ms ease-out;
+}
+
+/* Modal heading */
+.user-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.user-modal-header h3 {
+  margin: 0;
+  color: #30342e;
+  font-size: 1.2rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+
+.user-modal-header p:last-child {
+  margin: 7px 0 0;
+  color: #85877c;
+  font-size: 0.84rem;
+}
+
+.user-modal-close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #85877c;
+  font-size: 23px;
+  cursor: pointer;
+}
+
+.user-modal-close:hover:not(:disabled) {
+  background: #f1f3ed;
+  color: #52684c;
+}
+
+/* Form layout */
+.user-modal .user-create-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 19px;
+}
+
+.user-modal .user-create-form label {
+  gap: 8px;
+  color: #565a52;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.user-modal .user-create-form input {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #dedfd8;
+  border-radius: 9px;
+  background: #fff;
+  color: #30342e;
+  font-size: 0.88rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.user-modal .user-create-form input:focus {
+  border-color: #748568;
+  box-shadow: 0 0 0 3px rgb(116 133 104 / 12%);
+}
+
+.user-modal .user-management-hint {
+  margin: -5px 0 0;
+  line-height: 1.5;
+}
+
+/* Modal footer */
+.user-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 5px;
+  padding-top: 18px;
+  border-top: 1px solid #eeeee9;
+}
+
+.user-modal-actions button {
+  min-width: 100px;
+  min-height: 38px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.user-management-secondary {
+  border: 1px solid #dedfd8;
+  background: #fff;
+  color: #565a52;
+}
+
+.user-management-secondary:hover:not(:disabled) {
+  background: #f5f6f2;
+  border-color: #c8cec0;
+}
+
+.user-modal button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Animation */
+@keyframes user-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dark theme */
+[data-theme="dark"] .user-modal {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .user-modal-header h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .user-modal-header p:last-child,
+[data-theme="dark"] .user-modal-close {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .user-modal-close:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .user-modal .user-create-form label {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .user-modal .user-create-form input {
+  border-color: var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .user-modal-actions {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .user-management-secondary {
+  border-color: var(--border-color);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .user-management-secondary:hover:not(:disabled) {
+  background: var(--bg-card);
+}
+
+@media (max-width: 600px) {
+  .user-modal {
+    padding: 22px;
+  }
+
+  .user-management-header-actions {
+    gap: 8px;
+  }
 }

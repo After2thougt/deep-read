@@ -82,6 +82,7 @@ export default function UserManagementPage() {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [busyUserId, setBusyUserId] = useState(null);
   const [exportingUserId, setExportingUserId] = useState(null);
@@ -128,6 +129,7 @@ export default function UserManagementPage() {
       setUsername("");
       setPassword("");
       setNotice("User account created.");
+      setIsCreateModalOpen(false);
       setRefreshVersion((version) => version + 1);
     } catch (createError) {
       setError(createError.message || "Unable to create the account.");
@@ -261,56 +263,103 @@ export default function UserManagementPage() {
         </p>
       </header>
 
-      <section
-        className="user-management-card"
-        aria-labelledby="create-user-heading"
-      >
-        <div className="user-management-card-heading">
-          <div>
-            <p className="user-management-eyebrow">New account</p>
-            <h3 id="create-user-heading">Create a user</h3>
-          </div>
+
+
+{/* Create User Modal */}
+{isCreateModalOpen && (
+  <div
+    className="user-modal-overlay"
+    onMouseDown={(event) => {
+      if (event.target === event.currentTarget && !creating) {
+        setIsCreateModalOpen(false);
+      }
+    }}
+  >
+    <section
+      className="user-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-user-heading"
+    >
+      <div className="user-modal-header">
+        <div>
+          <p className="user-management-eyebrow">New account</p>
+          <h3 id="create-user-heading">Create User</h3>
+          <p>
+            Create a new regular user account.
+          </p>
         </div>
 
-        <form className="user-create-form" onSubmit={handleCreate}>
-          <label>
-            Username
-            <input
-              autoComplete="off"
-              maxLength={64}
-              required
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-            />
-          </label>
+        <button
+          type="button"
+          className="user-modal-close"
+          onClick={() => setIsCreateModalOpen(false)}
+          disabled={creating}
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
 
-          <label>
-            Temporary password
-            <input
-              type="password"
-              autoComplete="new-password"
-              minLength={12}
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+      <form className="user-create-form" onSubmit={handleCreate}>
+        <label>
+          Username
+          <input
+            autoComplete="off"
+            maxLength={64}
+            required
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+          />
+        </label>
+
+        <label>
+          Password
+          <input
+            type="password"
+            autoComplete="new-password"
+            minLength={12}
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </label>
+
+        <p className="user-management-hint">
+          Passwords must be at least 12 characters.
+          
+        </p>
+
+        {error && (
+          <p className="user-management-message is-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        <div className="user-modal-actions">
+          <button
+            type="button"
+            className="user-management-secondary"
+            onClick={() => setIsCreateModalOpen(false)}
+            disabled={creating}
+          >
+            Cancel
+          </button>
 
           <button
             type="submit"
             className="user-management-primary"
             disabled={creating}
           >
-            {creating ? "Creating…" : "Create user"}
+            {creating ? "Creating…" : "Comfirm"}
           </button>
-        </form>
+        </div>
+      </form>
+    </section>
+  </div>
+)}
 
-        <p className="user-management-hint">
-          Passwords must be at least 12 characters. New accounts are regular users.
-        </p>
-      </section>
-
-      {(error || notice) && (
+      {(notice || (error && !isCreateModalOpen)) && (
         <p
           className={
             error
@@ -328,17 +377,30 @@ export default function UserManagementPage() {
         aria-labelledby="accounts-heading"
       >
         <div className="user-management-card-heading">
-          <div>
-            <p className="user-management-eyebrow">Accounts</p>
-            <h3 id="accounts-heading">DeepRead users</h3>
-          </div>
+  <div>
+    <p className="user-management-eyebrow">Accounts</p>
+    <h3 id="accounts-heading">DeepRead users</h3>
+  </div>
 
-          {!loading && (
-            <span className="user-management-count">
-              {users.length}
-            </span>
-          )}
-        </div>
+  <div className="user-management-header-actions">
+    {!loading && (
+      <span className="user-management-count">
+        {users.length}
+      </span>
+    )}
+
+    <button
+      type="button"
+      className="user-management-primary"
+      onClick={() => {
+        setError("");
+        setIsCreateModalOpen(true);
+      }}
+    >
+      + Add User
+    </button>
+  </div>
+</div>
 
         {loading ? (
           <p className="user-management-empty">
@@ -435,15 +497,15 @@ export default function UserManagementPage() {
                         data-label="Actions"
                       >
                         {isGuest ? (
-                          <Tooltip text={isActive ? "Disable Guest access" : "Enable Guest access"}>
+                          <Tooltip text={isActive ? "Deactivate Guest" : "Activate Guest"}>
                             <button
                               type="button"
                               className="user-management-icon-button"
                               onClick={() => handleGuestStatusChange(user)}
                               disabled={isRowBusy}
-                              aria-label={isActive ? "Disable Guest access" : "Enable Guest access"}
+                              aria-label={isActive ? "Deactivate Guest" : "Activate Guest"}
                             >
-                              {isActive ? <ToggleRight size={19} /> : <ToggleLeft size={19} />}
+                              {isActive ? <UserCheck size={17} /> : <UserX size={17} />}
                             </button>
                           </Tooltip>
                         ) : (

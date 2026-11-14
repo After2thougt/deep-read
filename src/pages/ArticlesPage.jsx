@@ -1,6 +1,7 @@
 import { ArrowUpDown, BarChart3, BookOpen,CalendarClock ,FileText , CalendarPlus, Check, ChevronLeft, ChevronRight, Clock3, Hash, ListFilter, Pencil, Plus, RotateCcw, Search, Trash2, X as XIcon } from "lucide-react";
 import { addArticleTag, clearArticleListCache, createTag, deleteTag, fetchArticle, fetchArticles, removeArticleTag, removeArticle, renameTag } from "../api/articles";
 import ConfirmModal from "../components/ui/ConfirmModal";
+import Tooltip from "../components/ui/Tooltip";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const PAGE_SIZE = 10;
@@ -324,13 +325,16 @@ async function deleteArticle(article) {
       <button type="button" className={`tag-filter ${selectedTag === "all" ? "is-active" : ""}`} onMouseEnter={() => prefetchTag("all")} onFocus={() => prefetchTag("all")} onClick={() => selectTag("all")}>All <span>{allTotal}</span></button>
       <button type="button" className={`tag-filter ${selectedTag === "untagged" ? "is-active" : ""}`} onMouseEnter={() => prefetchTag("untagged")} onFocus={() => prefetchTag("untagged")} onClick={() => selectTag("untagged")}>unlabel <span>{untaggedTotal}</span></button>
       {tags.map((tag) => <TagPill key={tag.id} tag={tag} active={selectedTag === String(tag.id)} managing={managing} onClick={() => selectTag(String(tag.id))} onPrefetch={() => prefetchTag(String(tag.id))} onRename={rename} onDelete={remove} />)}
-    </div><button className="tag-tool-button" 
-                  type="button" 
-                  aria-label="Edit Tag"
-                  data-tooltip="Edit Tag" 
-                  onClick={() => setManaging((current) => !current)}>
-                    <Pencil size={15} />
-                    </button></div>
+    </div><Tooltip text="Edit Tag">
+  <button
+    className="tag-tool-button"
+    type="button"
+    aria-label="Edit Tag"
+    onClick={() => setManaging((current) => !current)}
+  >
+    <Pencil size={15} />
+  </button>
+</Tooltip></div>
     {error && <p className="error-message">{error}</p>}
     {loading && !articles.length && <p className="side-message">Loading articles...</p>}
     {!loading && !articles.length && <p className="empty-vocabulary">{total ? "No articles match this tag." : "No saved articles yet."}</p>}
@@ -348,13 +352,16 @@ async function deleteArticle(article) {
             <span><strong>{article.title}</strong></span>
           </button>
 
-          <button
-            className="icon-button article-delete-button"
-            onClick={() => setArticleToDelete(article)}
-            aria-label={`Delete ${article.title}`}
-          >
-            <Trash2 size={16} />
-          </button>
+          <Tooltip text="Delete article">
+  <button
+    className="icon-button article-delete-button"
+    onClick={() => setArticleToDelete(article)}
+    type="button"
+    aria-label={`Delete ${article.title}`}
+  >
+    <Trash2 size={16} />
+  </button>
+</Tooltip>
         </div>
 
         <ArticlePreview value={article.contentPreview} />

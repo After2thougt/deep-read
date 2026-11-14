@@ -16,6 +16,7 @@ import {
   Save,
   Upload,
 } from "lucide-react";
+import Tooltip from "../ui/Tooltip";
 
 const EMPTY_SOURCE_METADATA = normalizeSourceMetadata();
 
@@ -1116,15 +1117,16 @@ const startNewArticle = () => {
           )}
         </div>
 
-        <button
-          className="article-edit-button"
-          onClick={() => setIsCollapsed(false)}
-          type="button"
-          aria-label="Edit article"
-          data-tooltip="Edit article"
-        >
-          <Pencil size={17} />
-        </button>
+        <Tooltip text="Edit article">
+  <button
+    className="article-edit-button"
+    onClick={() => setIsCollapsed(false)}
+    type="button"
+    aria-label="Edit article"
+  >
+    <Pencil size={17} />
+  </button>
+</Tooltip>
       </div>
     </section>
   );

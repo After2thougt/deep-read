@@ -13,6 +13,7 @@ export default function UserMenu({ username, role, onLogout }) {
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState(null);
   const ref = useRef(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   function closeMenu() {
   setOpen(false);
@@ -115,17 +116,30 @@ export default function UserMenu({ username, role, onLogout }) {
       )}
 
       <ConfirmModal
-        open={showLogoutConfirm}
-        title="Log out?"
-        message="You’ll need to sign in again to keep using Deep Read."
-        icon={<LogOut size={22} strokeWidth={2} />}
-        onCancel={() => setShowLogoutConfirm(false)}
-        onConfirm={() => {
-          setShowLogoutConfirm(false);
-          onLogout();
-        }}
-        confirmText="Logout"
-      />
+  open={showLogoutConfirm}
+  title="Sign out"
+  message="You’ll need to sign in again to access your reading workspace."
+  icon={<LogOut size={22} strokeWidth={2} />}
+  onCancel={() => {
+    if (!loggingOut) {
+      setShowLogoutConfirm(false);
+    }
+  }}
+  onConfirm={async () => {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+
+    try {
+      await onLogout();
+    } finally {
+      setLoggingOut(false);
+      setShowLogoutConfirm(false);
+    }
+  }}
+  confirmText={loggingOut ? "Signing out..." : "Sign out"}
+  confirmDisabled={loggingOut}
+/>
 
       <PasswordModal
         open={showPasswordModal}

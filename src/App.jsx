@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Navigate, Routes, Route, NavLink, useNavigate, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Routes,
+  Route,
+  NavLink,
+  Link,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 
 import ReaderPage from "./pages/ReaderPage";
 import VocabularyPage from "./pages/VocabularyPage";
@@ -21,6 +30,8 @@ import {
   Highlighter,
   BookOpen,
   Network,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 
 import {
@@ -30,7 +41,7 @@ import {
   clearArticleListCache,
 } from "./api/articles";
 
-import { safeGetItem, safeSetItem, safeRemoveItem, setStorageAccount } from "./utils/storage";
+import { safeGetItem, safeSetItem, setStorageAccount } from "./utils/storage";
 
 import "./index.css";
 
@@ -51,6 +62,7 @@ function LoginScreen({ onLogin }) {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -112,15 +124,31 @@ function LoginScreen({ onLogin }) {
             disabled={loading}
           />
 
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            placeholder="Password"
-            required
-            disabled={loading}
-          />
+<div className="auth-password-wrapper">
+  <input
+    type={showCurrent ? "text" : "password"}
+    value={password}
+    onChange={(event) => setPassword(event.target.value)}
+    autoComplete="current-password"
+    placeholder="Password"
+    required
+    disabled={loading}
+  />
+
+  <button
+    type="button"
+    className="auth-password-toggle"
+    onClick={() => setShowCurrent((current) => !current)}
+    aria-label={showCurrent ? "Hide password" : "Show password"}
+    disabled={loading}
+  >
+    {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+  </button>
+</div>
+
+<div className="auth-forgot-password">
+  <Link to="/forgot-password">Forgot password?</Link>
+</div>
         </div>
 
         {error && (
@@ -136,7 +164,11 @@ function LoginScreen({ onLogin }) {
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
+      {/*  <p className="auth-register-link">
+          New to DeepRead? <Link to="/register">Create an account</Link>
+        </p> */}
       </form>
+       
     </main>
   );
 }

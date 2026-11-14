@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import { fetchArticle } from "../api/articles";
-
+import Tooltip from "../components/ui/Tooltip";
 
 function getArticlePreview(content, maxLength = 180) {
   if (!content) {
@@ -223,16 +223,16 @@ export default function HomePage({
           </p>
 
           
-          <button
-            className="home-new-button tag-tool-button"
-            type="button"
-            onClick={onNewArticle}
-            aria-label="New Article"
-            data-tooltip="New Article" 
-          >
-
-            <Plus size={21} strokeWidth={1.8} />
-          </button>
+          <Tooltip text="New Article">
+  <button
+    className="home-new-button"
+    type="button"
+    onClick={onNewArticle}
+    aria-label="New Article"
+  >
+    <Plus size={21} strokeWidth={1.8} />
+  </button>
+</Tooltip>
 
 
         </div>
@@ -333,16 +333,16 @@ export default function HomePage({
               will recommend one for you every day.
             </p>
 
-            <button
-              className="home-empty-button tag-tool-button"
-              type="button"
-              onClick={onNewArticle}
-              aria-label="New Article"
-              data-tooltip="New Article"
-
-            >
-              <Plus size={21} strokeWidth={1.8} />
-            </button>
+            <Tooltip text="New Article">
+  <button
+    className="home-empty-button"
+    type="button"
+    onClick={onNewArticle}
+    aria-label="New Article"
+  >
+    <Plus size={21} strokeWidth={1.8} />
+  </button>
+</Tooltip>
 
           </div>
 
@@ -426,16 +426,16 @@ export default function HomePage({
         Save words while reading and they will appear here.
       </p>
 
-      <button
-        className="home-vocabulary-empty__button tag-tool-button"
-        type="button"
-        aria-label="Learn Vocabulary"
-        data-tooltip="Learn Vocabulary" 
-        onClick={onOpenVocabulary}
-      >
-        
-        <ArrowRight size={17} />
-      </button>
+      <Tooltip text="Learn Vocabulary">
+  <button
+    className="home-vocabulary-empty__button"
+    type="button"
+    aria-label="Learn Vocabulary"
+    onClick={onOpenVocabulary}
+  >
+    <ArrowRight size={17} />
+  </button>
+</Tooltip>
     </div>
   )}
 

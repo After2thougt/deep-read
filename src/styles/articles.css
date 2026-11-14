@@ -781,45 +781,7 @@
   position: relative;
 }
 
-/* Tooltip */
-.tag-tool-button::after,
-.save-note-button::after,
-.cancel-note-button::after{
-  content: attr(data-tooltip);
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
 
-  width: max-content;
-  max-width: 180px;
-  padding: 7px 10px;
-  border-radius: 6px;
-
-  background: #334155;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.5;
-  text-align: center;
-  white-space: normal;
-
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  z-index: 9999;
-
-  transition:
-    opacity 0.15s ease,
-    visibility 0.15s ease;
-}
-
-.tag-tool-button:hover::after,
-.save-note-button:hover::after,
-.cancel-note-button:hover::after {
-  opacity: 1;
-  visibility: visible;
-}
 
 /* =========================
    Tag options
