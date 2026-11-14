@@ -7,18 +7,19 @@ import {
   fetchAdminUsers,
   updateAdminUserStatus,
   updateGuestAccess,
+  changeAdminUserPassword,
 } from "../api/adminUsers";
 import {
   Download,
   Trash2,
   UserCheck,
   UserX,
-  ToggleRight,
-  ToggleLeft,
+  KeyRound,
 } from "lucide-react";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import { clearAccountStorage } from "../utils/storage";
 import Tooltip from "../components/ui/Tooltip";
+import PasswordModal from "../components/ui/PasswordModal";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -90,6 +91,7 @@ export default function UserManagementPage() {
   const [deletingUserId, setDeletingUserId] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [userToChangePassword, setUserToChangePassword] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -249,6 +251,23 @@ export default function UserManagementPage() {
   function handleCancelDelete() {
     if (deletingUserId === null) setUserToDelete(null);
   }
+
+async function handleChangePassword(newPassword) {
+  if (!userToChangePassword) return;
+
+  const targetUser = userToChangePassword;
+
+  await changeAdminUserPassword(
+    targetUser.id,
+    newPassword
+  );
+
+  setUserToChangePassword(null);
+
+  setNotice(
+    `Password updated for ${targetUser.username}. The account must log in again.`
+  );
+}
 
   // Always render the accounts in the required order.
   const sortedUsers = sortUsers(users);
@@ -493,65 +512,81 @@ export default function UserManagementPage() {
 
                       
                       <td
-                        className="user-management-actions"
-                        data-label="Actions"
-                      >
-                        {isGuest ? (
-                          <Tooltip text={isActive ? "Deactivate Guest" : "Activate Guest"}>
-                            <button
-                              type="button"
-                              className="user-management-icon-button"
-                              onClick={() => handleGuestStatusChange(user)}
-                              disabled={isRowBusy}
-                              aria-label={isActive ? "Deactivate Guest" : "Activate Guest"}
-                            >
-                              {isActive ? <UserCheck size={17} /> : <UserX size={17} />}
-                            </button>
-                          </Tooltip>
-                        ) : (
-                          <>
-                            <Tooltip text={isActive ? "Deactivate account" : "Activate account"}>
-                              <button
-                                type="button"
-                                className="user-management-icon-button"
-                                onClick={() => handleStatusChange(user)}
-                                disabled={isRowBusy}
-                                aria-label={isActive ? "Deactivate account" : "Activate account"}
-                              >
-                                {isActive ? <UserCheck size={17} /> : <UserX size={17} />}
-                              </button>
-                            </Tooltip>
+  className="user-management-actions"
+  data-label="Actions"
+>
+  {isGuest ? (
+    <Tooltip text={isActive ? "Deactivate Guest" : "Activate Guest"}>
+      <button
+        type="button"
+        className="user-management-icon-button"
+        onClick={() => handleGuestStatusChange(user)}
+        disabled={isRowBusy}
+        aria-label={isActive ? "Deactivate Guest" : "Activate Guest"}
+      >
+        {isActive ? <UserCheck size={17} /> : <UserX size={17} />}
+      </button>
+    </Tooltip>
+  ) : (
+    <>
+      <Tooltip text={isActive ? "Deactivate account" : "Activate account"}>
+        <button
+          type="button"
+          className="user-management-icon-button"
+          onClick={() => handleStatusChange(user)}
+          disabled={isRowBusy}
+          aria-label={isActive ? "Deactivate account" : "Activate account"}
+        >
+          {isActive ? <UserCheck size={17} /> : <UserX size={17} />}
+        </button>
+      </Tooltip>
 
-                            {!isAdministrator && (
-                              <Tooltip text="Export data">
-                                <button
-                                  type="button"
-                                  className="user-management-icon-button"
-                                  onClick={() => handleExport(user)}
-                                  disabled={isRowBusy}
-                                  aria-label="Export data"
-                                >
-                                  <Download size={16} />
-                                </button>
-                              </Tooltip>
-                            )}
+      {!isAdministrator && (
+        <Tooltip text="Export data">
+          <button
+            type="button"
+            className="user-management-icon-button"
+            onClick={() => handleExport(user)}
+            disabled={isRowBusy}
+            aria-label="Export data"
+          >
+            <Download size={16} />
+          </button>
+        </Tooltip>
+      )}
+    </>
+  )}
 
-                            {user.role === "user" && (
-                              <Tooltip text="Delete user">
-                                <button
-                                  type="button"
-                                  className="user-management-icon-button is-delete"
-                                  onClick={() => setUserToDelete(user)}
-                                  disabled={isRowBusy}
-                                  aria-label={`Delete user ${user.username}`}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </Tooltip>
-                            )}
-                          </>
-                        )}
-                      </td>
+  {/* All account types can reset passwords */}
+  <Tooltip text="Reset password">
+    <button
+      type="button"
+      className="user-management-icon-button"
+      onClick={() => {
+        setError("");
+        setNotice("");
+        setUserToChangePassword(user);
+      }}
+      disabled={isRowBusy}
+      aria-label={`Reset password for ${user.username}`}
+    >
+      <KeyRound size={16} />
+    </button>
+  </Tooltip>
+
+  {/* Delete account */}
+  <Tooltip text="Delete user">
+    <button
+      type="button"
+      className="user-management-icon-button is-delete"
+      onClick={() => setUserToDelete(user)}
+      disabled={isRowBusy}
+      aria-label={`Delete user ${user.username}`}
+    >
+      <Trash2 size={16} />
+    </button>
+  </Tooltip>
+</td>
 
                     </tr>
                   );
@@ -575,6 +610,15 @@ export default function UserManagementPage() {
         confirmText={deletingUserId !== null ? "Deleting…" : "Delete user"}
         confirmDisabled={deletingUserId !== null}
       />
+
+      <PasswordModal
+  open={Boolean(userToChangePassword)}
+  onClose={() => setUserToChangePassword(null)}
+  onSubmit={handleChangePassword}
+  mode="admin"
+  username={userToChangePassword?.username || ""}
+  title="Reset Password"
+/>
     </main>
   );
 }

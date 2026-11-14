@@ -26,6 +26,19 @@ export function updateAdminUserStatus(userId, isActive) {
   });
 }
 
+
+export function changeAdminUserPassword(userId, password) {
+  return apiFetch(
+    `${USERS_API}/${encodeURIComponent(userId)}/password`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    }
+  );
+}
+
+
 export async function deleteAdminUser(userId) {
   let response;
   try {

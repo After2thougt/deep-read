@@ -599,6 +599,132 @@ app.patch('/api/admin/users/:id', (req, res) => {
   }
 });
 
+
+app.patch('/api/admin/users/:id/password', (req, res) => {
+  if (!requireAdministrator(req, res)) return;
+
+  const accountId = req.params.id;
+  const password = typeof req.body?.password === 'string'
+    ? req.body.password
+    : '';
+
+  if (
+    !req.body ||
+    Object.keys(req.body).some((key) => key !== 'password')
+  ) {
+    return res.status(400).json({
+      error: 'Only the password may be changed.',
+    });
+  }
+
+  if (password.length < 12) {
+    return res.status(400).json({
+      error: 'Password must be at least 12 characters.',
+    });
+  }
+
+  try {
+    const now = new Date().toISOString();
+
+    // Guest is a system account stored in a separate database.
+    if (accountId === 'guest') {
+      const guestUsername = String(process.env.GUEST_USERNAME || '').trim();
+
+      if (!guestUsername) {
+        return res.status(404).json({
+          error: 'Guest account is not configured.',
+        });
+      }
+
+      const guestAccount = guestDb.prepare(
+        'SELECT id, username FROM auth_users WHERE username = ?'
+      ).get(guestUsername);
+
+      if (!guestAccount) {
+        return res.status(404).json({
+          error: 'Guest account not found.',
+        });
+      }
+
+      guestDb.prepare(`
+        UPDATE auth_users
+        SET password_hash = ?, updated_at = ?
+        WHERE id = ?
+      `).run(hashPassword(password), now, guestAccount.id);
+
+      // Invalidate all Guest sessions.
+      for (const [token, session] of sessions.entries()) {
+        if (
+          session.database === guestDb &&
+          session.userId === guestAccount.id
+        ) {
+          sessions.delete(token);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: 'Guest password updated successfully. All Guest sessions have been invalidated.',
+      });
+    }
+
+    // Regular users and administrators are stored in adminDb.
+    if (!/^[1-9]\d*$/.test(accountId)) {
+      return res.status(400).json({
+        error: 'Valid account id is required.',
+      });
+    }
+
+    const id = Number(accountId);
+
+    if (!Number.isSafeInteger(id)) {
+      return res.status(400).json({
+        error: 'Valid account id is required.',
+      });
+    }
+
+    const account = adminDb.prepare(
+      'SELECT id, role FROM auth_users WHERE id = ?'
+    ).get(id);
+
+    if (
+      !account ||
+      !['user', 'administrator'].includes(account.role)
+    ) {
+      return res.status(404).json({
+        error: 'Account not found.',
+      });
+    }
+
+    adminDb.prepare(`
+      UPDATE auth_users
+      SET password_hash = ?, updated_at = ?
+      WHERE id = ?
+    `).run(hashPassword(password), now, id);
+
+    // Invalidate all sessions belonging to this account.
+    for (const [token, session] of sessions.entries()) {
+      if (
+        session.database === adminDb &&
+        session.userId === id
+      ) {
+        sessions.delete(token);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Password updated successfully. The account must log in again.',
+    });
+  } catch (error) {
+    console.error('Unable to reset account password:', error);
+    return res.status(500).json({
+      error: 'Unable to reset account password.',
+    });
+  }
+});
+
+
 app.delete('/api/admin/users/:id', (req, res) => {
   if (!requireAdministratorDatabase(req, res)) return;
   const id = Number(req.params.id);

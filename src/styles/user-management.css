@@ -298,7 +298,7 @@
 .user-management-table th:nth-child(7),
 .user-management-table td:nth-child(7) {
   width: 17%;
-  text-align: center;
+  text-align: left;
 }
 
 .user-management-table th,
